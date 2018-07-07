@@ -1,0 +1,175 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "ZQJSiJXqf+iSGZaOZT/rxEG/Wf8=",
+			"path": "github.com/Bowery/prompt",
+			"revision": "94b504f42fdd503acc3b3c79ec2b517d90e0de8a",
+			"revisionTime": "2018-02-09T14:12:55Z"
+		},
+		{
+			"checksumSHA1": "ULnk7ggN82JFO0ZdBCmSsQH3Vh8=",
+			"path": "github.com/dchest/safefile",
+			"revision": "855e8d98f1852d48dde521e0522408d1fe7e836a",
+			"revisionTime": "2015-10-22T10:31:44Z"
+		},
+		{
+			"checksumSHA1": "e/Kc2UOy1lKAy31xWlK37M1r2e8=",
+			"path": "github.com/google/shlex",
+			"revision": "6f45313302b9c56850fc17f99e40caebce98c716",
+			"revisionTime": "2015-01-27T13:39:51Z"
+		},
+		{
+			"checksumSHA1": "0Pry12nZ6UQBd1iXEtszySSfFpI=",
+			"path": "github.com/jinzhu/gorm/dialects/postgres",
+			"revision": "0fd395ab37aefd2d50854f0556a4311dccc6f45a",
+			"revisionTime": "2018-06-25T05:07:53Z"
+		},
+		{
+			"checksumSHA1": "FEAHzwQhwPrKpaEz3yPimQB/Ios=",
+			"path": "github.com/kardianos/govendor",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "EDbwTD6uQOx+c13If7Jxo9hFbs4=",
+			"path": "github.com/kardianos/govendor/cliprompt",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "n3xO1voKCy2Y0LkuRI6EzerU7Oo=",
+			"path": "github.com/kardianos/govendor/context",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "zNEnQheihh/BKnZl16KiIcG86F8=",
+			"path": "github.com/kardianos/govendor/help",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "SOMQHVCs36zWP0cZAEtSEU8H2bQ=",
+			"path": "github.com/kardianos/govendor/internal/pathos",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "Bl6I6yMiK60dzOAfyO7As6MSPIk=",
+			"path": "github.com/kardianos/govendor/internal/vfilepath",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "2Vg+J79rEhmtnprErQ7fTZdneIk=",
+			"path": "github.com/kardianos/govendor/internal/vos",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "9/Iq6KL6yP6m1QtDVGdgQQv2k0c=",
+			"path": "github.com/kardianos/govendor/migrate",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "wL4SaLS/HTn32Gmq8kpYRr/cn68=",
+			"path": "github.com/kardianos/govendor/pkgspec",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "B+3eGc34fJuF5dHsOSCa9dSdHQY=",
+			"path": "github.com/kardianos/govendor/prompt",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "UXJadfZnBzZeAQOIcwlBKs5bCE0=",
+			"path": "github.com/kardianos/govendor/run",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "7iE6/NlcU2PJoL2dikrwGQ0Jr9A=",
+			"path": "github.com/kardianos/govendor/vcs",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "oXa3HaUXhXktMp4C0xTOSrzPDTE=",
+			"path": "github.com/kardianos/govendor/vendorfile",
+			"revision": "9a2e603240c8c945d098dbd2ce3249ee46bde4e7",
+			"revisionTime": "2018-04-10T03:32:22Z"
+		},
+		{
+			"checksumSHA1": "s6eyIXpJ7VAU06FM27GcEBM/5lo=",
+			"path": "github.com/lib/pq",
+			"revision": "90697d60dd844d5ef6ff15135d0203f65d2f53b8",
+			"revisionTime": "2018-05-23T17:54:26Z"
+		},
+		{
+			"checksumSHA1": "EnMmNGgpDa5sNw0Zs5RhvNDcP2g=",
+			"path": "github.com/lib/pq/hstore",
+			"revision": "90697d60dd844d5ef6ff15135d0203f65d2f53b8",
+			"revisionTime": "2018-05-23T17:54:26Z"
+		},
+		{
+			"checksumSHA1": "ATnwV0POluBNQEMjPdylodz0oK0=",
+			"path": "github.com/lib/pq/oid",
+			"revision": "90697d60dd844d5ef6ff15135d0203f65d2f53b8",
+			"revisionTime": "2018-05-23T17:54:26Z"
+		},
+		{
+			"checksumSHA1": "SEnjvwVyfuU2xBaOfXfwPD5MZqk=",
+			"path": "github.com/mattn/go-colorable",
+			"revision": "efa589957cd060542a26d2dd7832fd6a6c6c3ade",
+			"revisionTime": "2018-03-10T13:32:14Z"
+		},
+		{
+			"checksumSHA1": "w5RcOnfv5YDr3j2bd1YydkPiZx4=",
+			"path": "github.com/mattn/go-isatty",
+			"revision": "6ca4dbf54d38eea1a992b3c722a76a5d1c4cb25c",
+			"revisionTime": "2017-11-07T05:05:31Z"
+		},
+		{
+			"checksumSHA1": "CIK3BBNX3nuUQCmNqTQydNfMNKI=",
+			"path": "github.com/mgutz/ansi",
+			"revision": "9520e82c474b0a04dd04f8a40959027271bab992",
+			"revisionTime": "2017-02-06T15:57:36Z"
+		},
+		{
+			"checksumSHA1": "DUdWW5gRHBk2zTxGQZoH1KLxFtc=",
+			"path": "github.com/mgutz/logxi/v1",
+			"revision": "aebf8a7d67ab4625e0fd4a665766fef9a709161b",
+			"revisionTime": "2016-10-27T14:08:23Z"
+		},
+		{
+			"checksumSHA1": "ljd3FhYRJ91cLZz3wsH9BQQ2JbA=",
+			"path": "github.com/pkg/errors",
+			"revision": "816c9085562cd7ee03e7f8188a1cfd942858cded",
+			"revisionTime": "2018-03-11T21:45:15Z"
+		},
+		{
+			"checksumSHA1": "e66DmNWQKgI97tvj4BH7rHYnyJs=",
+			"path": "golang.org/x/sys/unix",
+			"revision": "151529c776cdc58ddbe7963ba9af779f3577b419",
+			"revisionTime": "2018-04-04T02:59:38Z"
+		},
+		{
+			"checksumSHA1": "iF6AIRhNvnaONazwHIJkBVG6kXU=",
+			"path": "golang.org/x/tools/go/vcs",
+			"revision": "75d2ffb453d53bed20f95f0d563ee000dc4c0c83",
+			"revisionTime": "2018-07-03T04:15:06Z"
+		},
+		{
+			"checksumSHA1": "ZSWoOPUNRr5+3dhkLK3C4cZAQPk=",
+			"path": "gopkg.in/yaml.v2",
+			"revision": "5420a8b6744d3b0345ab293f6fcba19c978f1183",
+			"revisionTime": "2018-03-28T19:50:20Z"
+		}
+	],
+	"rootPath": "SchoolServer"
+}
