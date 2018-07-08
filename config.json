@@ -2,17 +2,17 @@
     "serverAddr" : "localhost:8000",
     "postgres" : "postgres",
     "redis" : "redis",
-    "maxProcs" : 8,
-    "poolSize" : 8,
+    "maxProcs" : 2,
+    "poolSize" : 128,
     "updateInterval" : 1800,
     "logFile" : "stdout",
     "schoolServers" : [
         {
             "type" : 1,
             "link" : "62.117.74.43",
-            "time" : 2700,
             "login" : "мкорнакова",
             "password" : "121212"
+            "time" : 2700
         }
     ]
 }

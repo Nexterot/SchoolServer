@@ -39,12 +39,12 @@ func (serv *Server) Run() error {
 		serv.config.SchoolServers,
 		serv.logger)
 	// Запускаем гуся, работяги.
+	// Саша, на месте гуся ты должен поставить свой Rest API.
 	var f func(http.ResponseWriter, *http.Request)
 	f = func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Welcome to the HomePage!")
 		fmt.Println("Endpoint Hit: homePage")
 	}
-
 	http.HandleFunc("/", f)
 	return http.ListenAndServe(":8000", nil)
 }

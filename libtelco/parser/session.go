@@ -206,3 +206,15 @@ func (s *session) firstTypeLogin() error {
 	}
 	return nil
 }
+
+type DayTimeTable struct {
+}
+
+type Lesson struct {
+	begin string
+	end   string
+}
+
+func (s *Session) getDayTimeTable(data string) {
+
+}
