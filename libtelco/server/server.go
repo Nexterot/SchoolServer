@@ -1,60 +1,50 @@
 // Copyright (C) 2018 Mikhail Masyagin
 
 /*
-Package server содержит "бизнес-логику" сервера,
-является своеобразным ядром.
+Package server содержит основную функциональность сервера.
 */
 package server
 
 import (
-	"log"
-
 	cp "SchoolServer/libtelco/config-parser"
-
-	"github.com/go-redis/redis"
-	"github.com/jinzhu/gorm"
+	"SchoolServer/libtelco/log"
+	"SchoolServer/libtelco/parser"
+	"fmt"
+	"net/http"
+	"runtime"
 )
 
-// Server struct содержит основную информацию о сервере:
-// - адрес сервера;
-// - sql базы данных;
-// - inMemory базу данных;
-// - логгер;
-// - размер пула;
-// - время обновления (в секундах);
-// - параметры школьных серверов;
+// Server struct содержит конфигурацию сервера.
 type Server struct {
-	serverAddr     string
-	sqlDB          *gorm.DB
-	inMemoryDB     *redis.Client
-	logger         *log.Logger
-	poolSize       int
-	updateInterval int
-	schoolServers  []cp.SchoolServer
+	config *cp.Config
+	parser *parser.Pool
+	logger *log.Logger
 }
 
-// NewServer создакт новый сервер.
-func NewServer(serverAddr string,
-	sqlDB *gorm.DB, inMemoryDB *redis.Client,
-	logger *log.Logger,
-	poolSize int,
-	updateInterval int,
-	schoolServers []cp.SchoolServer) *Server {
-	return &Server{serverAddr,
-		sqlDB, inMemoryDB,
-		logger,
-		poolSize,
-		updateInterval,
-		schoolServers}
+// NewServer создает новый сервер.
+func NewServer(config *cp.Config, logger *log.Logger) *Server {
+	serv := &Server{
+		config: config,
+		logger: logger,
+	}
+	return serv
 }
 
-// Run стартует сервер.
-func (server *Server) Run() {
+// Run запускает сервер.
+func (serv *Server) Run() error {
+	// Задаем максимальное количество потоков.
+	runtime.GOMAXPROCS(serv.config.MaxProcs)
+	// Запускаем пул.
+	serv.parser = parser.NewPool(serv.config.PoolSize,
+		serv.config.SchoolServers,
+		serv.logger)
+	// Запускаем гуся, работяги.
+	var f func(http.ResponseWriter, *http.Request)
+	f = func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Welcome to the HomePage!")
+		fmt.Println("Endpoint Hit: homePage")
+	}
 
-}
-
-// updateSQLDB создает, если надо, таблицы базы данных
-// и запускает автоматическое обновление расписания.
-func (server *Server) updateSQLDB() {
-
+	http.HandleFunc("/", f)
+	return http.ListenAndServe(":8000", nil)
 }

@@ -5,11 +5,8 @@ package main
 import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
-	"SchoolServer/libtelco/parser"
+	"SchoolServer/libtelco/server"
 	"os"
-
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-	_ "github.com/lib/pq"
 )
 
 var (
@@ -30,8 +27,6 @@ var (
 // init производит:
 // - чтение конфигурационных файлов;
 // - создание логгера;
-// - инициализацию SQL базы данных;
-// - инициализацию InMemory базы данных;
 func init() {
 	if config, err = cp.ReadConfig(); err != nil {
 		os.Exit(1)
@@ -39,15 +34,12 @@ func init() {
 	if logger, err = log.NewLogger(config.LogFile); err != nil {
 		os.Exit(1)
 	}
-	/*
-		if sqlDB, err = gorm.Open("postgres", config.Postgres); err != nil {
-			os.Exit(1)
-		}
-	*/
+
 }
 
 func main() {
-	logger.Info("SchoolServer V1.0 is running",
+	// Вся информация о конфиге.
+	logger.Info("SchoolServer V0.1 is running",
 		"Server address", config.ServerAddr,
 		"Postgres info", config.Postgres,
 		"Redis info", config.Redis,
@@ -56,6 +48,7 @@ func main() {
 		"Update Interval", config.UpdateInterval,
 		"LogFile", config.LogFile,
 	)
+	// Вся информация о списке серверов.
 	logger.Info("List of servers")
 	for _, schoolServer := range config.SchoolServers {
 		logger.Info("Server",
@@ -65,9 +58,7 @@ func main() {
 			"Password", schoolServer.Password,
 		)
 	}
-
-	timeTable := parser.NewTimeTable()
-	if err = timeTable.ParseSchoolServer(&config.SchoolServers[0]); err != nil {
-		logger.Error("Error occured, while running server", "error", err)
-	}
+	// Запуск сервера.
+	server := server.NewServer(config, logger)
+	logger.Error("Fatal error occured, while running server", "error", server.Run())
 }

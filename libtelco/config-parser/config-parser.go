@@ -44,6 +44,7 @@ const (
 type SchoolServer struct {
 	Type     int    `json:"type"`
 	Link     string `json:"link"`
+	Time     int    `json:"time"`
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }
