@@ -207,14 +207,33 @@ func (s *session) firstTypeLogin() error {
 	return nil
 }
 
+type WeekTimeTable struct {
+	WeekTimeTable []DayTimeTable
+}
+
 type DayTimeTable struct {
+	Lessons []Lesson
 }
 
 type Lesson struct {
-	begin string
-	end   string
+	Begin     string
+	End       string
+	Name      string
+	ClassRoom string
 }
 
-func (s *Session) getDayTimeTable(data string) {
+func (s *session) getDayTimeTable(data string) error {
+	var err error
+	switch s.serv.Type {
+	case cp.FirstType:
+		err = s.getDayTimeTableFirst(data)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.serv.Type)
+	}
+	return err
+}
 
+func (s *session) getDayTimeTableFirst(data string) error {
+
+	return nil
 }

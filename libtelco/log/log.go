@@ -32,7 +32,7 @@ func NewLogger(config string) (logger *Logger, err error) {
 	switch config {
 	case "stdout":
 		logger.useLog = true
-		logger.logger = log.NewLogger(log.NewConcurrentWriter(os.Stdout), "hakutaku_bot")
+		logger.logger = log.NewLogger(log.NewConcurrentWriter(os.Stdout), "SchoolServer")
 	case "":
 	default:
 		logger.useLog = true
@@ -48,7 +48,7 @@ func NewLogger(config string) (logger *Logger, err error) {
 				return
 			}
 		}
-		logger.logger = log.NewLogger(log.NewConcurrentWriter(io.Writer(logFile)), "hakutaku_bot")
+		logger.logger = log.NewLogger(log.NewConcurrentWriter(io.Writer(logFile)), "SchoolServer")
 	}
 	return
 }
