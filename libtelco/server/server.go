@@ -12,6 +12,7 @@ import (
 	"SchoolServer/libtelco/rest-api"
 	"net/http"
 	"runtime"
+	"time"
 )
 
 // Server struct содержит конфигурацию сервера.
@@ -39,10 +40,11 @@ func (serv *Server) Run() error {
 	serv.parser = parser.NewPool(serv.config.PoolSize,
 		serv.config.SchoolServers,
 		serv.logger)
-	// Запускаем гуся, работяги.
-	// Подключаем handler'ы из RestAPI
+	// Подключаем handler'ы из RestAPI.
 	serv.restapi = restapi.NewRestAPI(serv.logger)
 	serv.restapi.BindHandlers()
-
-	return http.ListenAndServe(":8000", nil)
+	// Запускаем гуся, работяги.
+	http.ListenAndServe(":8000", nil)
+	time.Sleep(time.Duration(100) * time.Second)
+	return nil
 }
