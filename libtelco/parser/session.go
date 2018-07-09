@@ -8,15 +8,11 @@ package parser
 import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
-	"bytes"
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"sync"
 	"time"
 
 	gr "github.com/levigross/grequests"
-	"golang.org/x/net/html"
 )
 
 // session struct содержит в себе описание сессии к одному из школьных серверов.
@@ -63,7 +59,7 @@ func (s *session) timer() {
 // startSession подключается к серверу и держит с ним соединение всё отведенное время.
 // Как только время заканчивается (например, на 62.117.74.43 стоит убогое ограничение в 45 минут,
 // мы заново коннектимся).
-func (s *session) startSession() {
+func (s *session) startSession(ch chan<- struct{}) {
 	flag := false
 	for {
 		// Подключаемся к серверу.
@@ -80,6 +76,7 @@ func (s *session) startSession() {
 			if !flag {
 				s.logger.Info("New session was successfully created")
 				flag = true
+				ch <- struct{}{}
 			} else {
 				s.logger.Info("Session was successfully reloaded")
 			}
@@ -91,130 +88,69 @@ func (s *session) startSession() {
 	}
 }
 
-// login логинится к серверу и создает очередную сессию.
-func (s *session) login() error {
+// TimeTable struct - расписание на N дней (N = 1, 2, ..., 7).
+type TimeTable struct {
+	Days []DayTimeTable `json:"days"`
+}
+
+// DayTimeTable struct - расписание на день.
+type DayTimeTable struct {
+	Date    string   `json:"date"`
+	Lessons []Lesson `json:"lesson"`
+}
+
+// Lesson struct - один урок.
+type Lesson struct {
+	Begin     string `json:"begin"`
+	End       string `json:"end"`
+	Name      string `json:"name"`
+	ClassRoom string `json:"classroom"`
+}
+
+func (s *session) getTimeTable(date string, n int) (*TimeTable, error) {
 	var err error
+	var timeTable *TimeTable
+	if (n < 1) || (n > 7) {
+		err = fmt.Errorf("Invalid days number")
+		return timeTable, err
+	}
+	timeTable = &TimeTable{
+		Days: make([]DayTimeTable, 0, n),
+	}
+	for i := 0; i < n; i++ {
+		day, err := s.getDayTimeTable(date)
+		if err != nil {
+			return timeTable, err
+		}
+		timeTable.Days = append(timeTable.Days, *day)
+		date, err = incDate(date)
+		if err != nil {
+			return timeTable, err
+		}
+	}
+	return timeTable, err
+}
+
+func incDate(date string) (string, error) {
+	// Пока здесь пусто.
+	return "", nil
+}
+
+func (s *session) getDayTimeTable(date string) (*DayTimeTable, error) {
+	fmt.Println(date)
+	date, err := incDate(date)
+	fmt.Println(err)
+	fmt.Println(date)
+	fmt.Println()
+	//var err error
+	var dayTimeTable *DayTimeTable
 	switch s.serv.Type {
 	case cp.FirstType:
-		err = s.firstTypeLogin()
+		dayTimeTable, err = s.getDayTimeTableFirst(date)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.serv.Type)
 	}
-	return err
+	return dayTimeTable, err
 }
 
-// firstTypeLogin логинится к серверу первого типа и создает очередную сессию.
-func (s *session) firstTypeLogin() error {
-	// Создание сессии.
-	s.sess = gr.NewSession(nil)
-	p := "http://"
-	// Полчение формы авторизации.
-	// 0-ой Get-запрос.
-	response0, err := s.sess.Get(p+s.serv.Link+"/asp/ajax/getloginviewdata.asp", nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	// 1-ый Post-запрос.
-	response1, err := s.sess.Post(p+s.serv.Link+"/webapi/auth/getdata", nil)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = response1.Close()
-	}()
-	type FirstAnswer struct {
-		Lt   string `json:"lt"`
-		Ver  string `json:"ver"`
-		Salt string `json:"salt"`
-	}
-	fa := &FirstAnswer{}
-	if err = response1.JSON(fa); err != nil {
-		return err
-	}
-	// 2-ой Post-запрос.
-	pw := s.serv.Password
-	hasher := md5.New()
-	if _, err = hasher.Write([]byte(pw)); err != nil {
-		return err
-	}
-	pw = hex.EncodeToString(hasher.Sum(nil))
-	hasher = md5.New()
-	if _, err = hasher.Write([]byte(fa.Salt + pw)); err != nil {
-		return err
-	}
-	pw = hex.EncodeToString(hasher.Sum(nil))
-	requestOption := &gr.RequestOptions{
-		Data: map[string]string{
-			"CID":       "2",
-			"CN":        "1",
-			"LoginType": "1",
-			"PID":       "-1",
-			"PW":        pw[:len(s.serv.Password)],
-			"SCID":      "2",
-			"SFT":       "2",
-			"SID":       "77",
-			"UN":        s.serv.Login,
-			"lt":        fa.Lt,
-			"pw2":       pw,
-			"ver":       fa.Ver,
-		},
-		Headers: map[string]string{
-			"Referer": p + s.serv.Link + "/",
-		},
-	}
-	response2, err := s.sess.Post(p+s.serv.Link+"/asp/postlogin.asp", requestOption)
-	if err != nil {
-		return err
-	}
-	defer func() {
-		_ = response2.Close()
-	}()
-	fmt.Println(string(response2.Bytes()))
-	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
-	// находящуюся в теле ответа и найти в ней "AT".
-	parsedHTML, err := html.Parse(bytes.NewReader(response2.Bytes()))
-	if err != nil {
-		return err
-	}
-	var f func(*html.Node, string) string
-	f = func(node *html.Node, reqAttr string) string {
-		if node.Type == html.ElementNode {
-			for i := 0; i < len(node.Attr)-1; i++ {
-				tmp0 := node.Attr[i]
-				tmp1 := node.Attr[i+1]
-				if (tmp0.Key == "name") && (tmp0.Val == reqAttr) && (tmp1.Key == "value") {
-					return tmp1.Val
-				}
-			}
-		}
-		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			if str := f(c, reqAttr); str != "" {
-				return str
-			}
-		}
-		return ""
-	}
-
-	s.at = f(parsedHTML, "AT")
-	s.ver = f(parsedHTML, "VER")
-	if (s.at == "") || (s.ver == "") {
-		err = fmt.Errorf("Problems on school server: %s", s.serv.Link)
-		return err
-	}
-	return nil
-}
-
-type DayTimeTable struct {
-}
-
-type Lesson struct {
-	begin string
-	end   string
-}
-
-func (s *Session) getDayTimeTable(data string) {
-
-}
+//func (s *session) getSchoolMarks(date string) *School
