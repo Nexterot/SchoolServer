@@ -10,6 +10,7 @@ import (
 	"SchoolServer/libtelco/log"
 	"SchoolServer/libtelco/parser"
 	"runtime"
+	"time"
 )
 
 // Server struct содержит конфигурацию сервера.
@@ -36,5 +37,6 @@ func (serv *Server) Run() error {
 	serv.parser = parser.NewPool(serv.config.PoolSize,
 		serv.config.SchoolServers,
 		serv.logger)
+	time.Sleep(time.Duration(100) * time.Second)
 	return nil
 }

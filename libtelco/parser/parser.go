@@ -51,7 +51,10 @@ func NewPool(size int, servers []cp.SchoolServer, logger *log.Logger) *Pool {
 		<-ch
 	}
 	logger.Info("New Parsers Pool was successfully created")
+	// А сюда Андрей ты вставишь тесты парсера.
 	pool.sessions["62.117.74.43"].getDayTimeTable("06.03.2018")
+	pool.sessions["62.117.74.43"].getDayTimeTable("02.05.2018")
+	pool.sessions["62.117.74.43"].getDayTimeTable("12.12.2017")
 	return pool
 }
 
