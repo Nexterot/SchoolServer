@@ -63,7 +63,7 @@ func (s *session) timer() {
 // startSession подключается к серверу и держит с ним соединение всё отведенное время.
 // Как только время заканчивается (например, на 62.117.74.43 стоит убогое ограничение в 45 минут,
 // мы заново коннектимся).
-func (s *session) startSession() {
+func (s *session) startSession(ch chan<- struct{}) {
 	flag := false
 	for {
 		// Подключаемся к серверу.
@@ -80,6 +80,7 @@ func (s *session) startSession() {
 			if !flag {
 				s.logger.Info("New session was successfully created")
 				flag = true
+				ch <- struct{}{}
 			} else {
 				s.logger.Info("Session was successfully reloaded")
 			}
@@ -108,6 +109,7 @@ func (s *session) firstTypeLogin() error {
 	// Создание сессии.
 	s.sess = gr.NewSession(nil)
 	p := "http://"
+
 	// Полчение формы авторизации.
 	// 0-ой Get-запрос.
 	response0, err := s.sess.Get(p+s.serv.Link+"/asp/ajax/getloginviewdata.asp", nil)
@@ -117,6 +119,7 @@ func (s *session) firstTypeLogin() error {
 	defer func() {
 		_ = response0.Close()
 	}()
+
 	// 1-ый Post-запрос.
 	response1, err := s.sess.Post(p+s.serv.Link+"/webapi/auth/getdata", nil)
 	if err != nil {
@@ -134,6 +137,7 @@ func (s *session) firstTypeLogin() error {
 	if err = response1.JSON(fa); err != nil {
 		return err
 	}
+
 	// 2-ой Post-запрос.
 	pw := s.serv.Password
 	hasher := md5.New()
@@ -172,7 +176,7 @@ func (s *session) firstTypeLogin() error {
 	defer func() {
 		_ = response2.Close()
 	}()
-	fmt.Println(string(response2.Bytes()))
+
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней "AT".
 	parsedHTML, err := html.Parse(bytes.NewReader(response2.Bytes()))
@@ -197,24 +201,26 @@ func (s *session) firstTypeLogin() error {
 		}
 		return ""
 	}
-
 	s.at = f(parsedHTML, "AT")
 	s.ver = f(parsedHTML, "VER")
 	if (s.at == "") || (s.ver == "") {
-		err = fmt.Errorf("Problems on school server: %s", s.serv.Link)
-		return err
+		return fmt.Errorf("Problems on school server: %s", s.serv.Link)
 	}
+
 	return nil
 }
 
+// WeekTimeTable struct - расписание на неделю вперед.
 type WeekTimeTable struct {
 	WeekTimeTable []DayTimeTable
 }
 
+// DayTimeTable struct - расписание на день.
 type DayTimeTable struct {
 	Lessons []Lesson
 }
 
+// Lesson struct - один урок.
 type Lesson struct {
 	Begin     string
 	End       string
@@ -222,18 +228,64 @@ type Lesson struct {
 	ClassRoom string
 }
 
-func (s *session) getDayTimeTable(data string) error {
+func (s *session) getDayTimeTable(date string) (*DayTimeTable, error) {
 	var err error
+	var dayTimeTable *DayTimeTable
 	switch s.serv.Type {
 	case cp.FirstType:
-		err = s.getDayTimeTableFirst(data)
+		dayTimeTable, err = s.getDayTimeTableFirst(date)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.serv.Type)
 	}
-	return err
+	return dayTimeTable, err
 }
 
-func (s *session) getDayTimeTableFirst(data string) error {
+func (s *session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
+	p := "http://"
+	var dayTimeTable *DayTimeTable
 
-	return nil
+	// 0-ой Get-запрос.
+	RequestOption0 := &gr.RequestOptions{
+		Headers: map[string]string{
+			"at":      s.at,
+			"Referer": "http://62.117.74.43/asp/Calendar/DayViewS.asp",
+		},
+	}
+	_, err := s.sess.Get(p+"/asp/ajax/GetCalendar.asp?AT="+s.at+"&startDate=01.09.2017&endDate=31.08.2018", RequestOption0)
+	if err != nil {
+		return dayTimeTable, err
+	}
+
+	// 1-ый Post-запрос.
+	requestOption1 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.at,
+			"BackPage":  "/asp/Calendar/DayViewS.asp",
+			"DATE":      date,
+			"EventID":   "",
+			"EventType": "",
+			"FOO":       "",
+			"LoginType": "0",
+			"PCLID_UP":  "10169_0",
+			"SID":       "11198",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Referer": p + s.serv.Link + "/asp/Calendar/DayViewS.asp",
+		},
+	}
+	response, err := s.sess.Post(p+s.serv.Link+"/asp/Calendar/DayViewS.asp", requestOption1)
+	if err != nil {
+		return dayTimeTable, err
+	}
+	defer func() {
+		_ = response.Close()
+	}()
+
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней расписание на текущий день.
+
+	// Андрей, твоя задача по образу и подобию логина сделать вложенную функцию парсера и записать результат ее работы в dayTimeTable.
+
+	return dayTimeTable, nil
 }

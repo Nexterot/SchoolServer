@@ -3,7 +3,7 @@
     "postgres" : "postgres",
     "redis" : "redis",
     "maxProcs" : 2,
-    "poolSize" : 128,
+    "poolSize" : 4,
     "updateInterval" : 1800,
     "logFile" : "stdout",
     "schoolServers" : [
@@ -11,7 +11,7 @@
             "type" : 1,
             "link" : "62.117.74.43",
             "login" : "мкорнакова",
-            "password" : "121212"
+            "password" : "121212",
             "time" : 2700
         }
     ]
