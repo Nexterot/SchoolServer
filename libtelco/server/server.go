@@ -9,16 +9,17 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	"SchoolServer/libtelco/parser"
-	"fmt"
+	"SchoolServer/libtelco/rest-api"
 	"net/http"
 	"runtime"
 )
 
 // Server struct содержит конфигурацию сервера.
 type Server struct {
-	config *cp.Config
-	parser *parser.Pool
-	logger *log.Logger
+	config  *cp.Config
+	parser  *parser.Pool
+	restapi *restapi.RestAPI
+	logger  *log.Logger
 }
 
 // NewServer создает новый сервер.
@@ -39,12 +40,9 @@ func (serv *Server) Run() error {
 		serv.config.SchoolServers,
 		serv.logger)
 	// Запускаем гуся, работяги.
-	// Саша, на месте гуся ты должен поставить свой Rest API.
-	var f func(http.ResponseWriter, *http.Request)
-	f = func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "Welcome to the HomePage!")
-		fmt.Println("Endpoint Hit: homePage")
-	}
-	http.HandleFunc("/", f)
+	// Подключаем handler'ы из RestAPI
+	serv.restapi = restapi.NewRestAPI(serv.logger)
+	serv.restapi.BindHandlers()
+
 	return http.ListenAndServe(":8000", nil)
 }
