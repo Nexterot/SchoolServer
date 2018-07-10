@@ -12,7 +12,6 @@ import (
 	"SchoolServer/libtelco/rest-api"
 	"net/http"
 	"runtime"
-	"time"
 )
 
 // Server struct содержит конфигурацию сервера.
@@ -36,15 +35,15 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
+
 	// Запускаем пул.
 	serv.parser = parser.NewPool(serv.config.PoolSize,
 		serv.config.SchoolServers,
 		serv.logger)
+
 	// Подключаем handler'ы из RestAPI.
 	serv.restapi = restapi.NewRestAPI(serv.logger)
 	serv.restapi.BindHandlers()
 	// Запускаем гуся, работяги.
-	http.ListenAndServe(":8000", nil)
-	time.Sleep(time.Duration(100) * time.Second)
-	return nil
+	return http.ListenAndServe(":8000", nil)
 }

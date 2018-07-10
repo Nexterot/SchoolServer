@@ -1,4 +1,4 @@
-// Copyright (C) 2018 Mikhail Masyagin
+// Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
 
 /*
 Package parser - данный файл содержит в себе функции для обработки 1 типа сайтов.
@@ -11,6 +11,8 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"strings"
+	"unicode"
 
 	gr "github.com/levigross/grequests"
 	"golang.org/x/net/html"
@@ -178,8 +180,136 @@ func (s *session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней расписание на текущий день.
+	parsedHTML, err := html.Parse(bytes.NewReader(response.Bytes()))
+	if err != nil {
+		return dayTimeTable, err
+	}
 
-	// Андрей, твоя задача по образу и подобию логина сделать вложенную функцию парсера и записать результат ее работы в dayTimeTable.
+	// Объявляем нужные функции
+	// Получение даты дня, расписание которого мы парсим.
+	var getDate func(*html.Node) string
+	getDate = func(node *html.Node) string {
+		if node.Type == html.ElementNode {
+			for _, a := range node.Attr {
+				if a.Key == "class" && a.Val == "form-control date-input" {
+					for _, a2 := range node.Attr {
+						if a2.Key == "value" {
+							return a2.Val
 
+						}
+					}
+				}
+			}
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			if str := getDate(c); str != "" {
+				return str
+			}
+		}
+		return ""
+	}
+
+	// Находит node, в котором находится расписание.
+	var searchForLessonsNode func(*html.Node) *html.Node
+	searchForLessonsNode = func(node *html.Node) *html.Node {
+		if node.Type == html.ElementNode {
+			for _, a := range node.Attr {
+				if a.Key == "class" && a.Val == "schedule-table table table-bordered table-condensed print-block" {
+					return node
+				}
+			}
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			n := searchForLessonsNode(c)
+			if n != nil {
+				return n
+			}
+		}
+
+		return nil
+	}
+
+	// Проверяет, является ли строка временем урока.
+	var isDate func(str string) bool
+	isDate = func(str string) bool {
+		return len(strings.Split(str, ":")) == 3
+	}
+
+	// Получает всю информацию о уроках из переданного нода.
+	var getAllLessonsInfo func(node *html.Node, starts *[]string, ends *[]string, names *[]string, classrooms *[]string)
+	getAllLessonsInfo = func(node *html.Node, starts *[]string, ends *[]string, names *[]string, classrooms *[]string) {
+		if node != nil {
+			if isDate(node.Data) {
+				// Нашли строку, содержащую время некоторого урока.
+				str := node.Data
+
+				// Находим начало и конец урока в этой строке.
+				var start string
+				var end string
+				if unicode.IsDigit(rune(str[4])) {
+					start = str[:5]
+				} else {
+					start = str[:4]
+				}
+				if unicode.IsDigit(rune(str[len(str)-5])) {
+					end = str[len(str)-5:]
+				} else {
+					end = str[len(str)-4:]
+				}
+
+				*starts = append(*starts, start)
+				*ends = append(*ends, end)
+			} else if strings.Contains(node.Data, "Урок: ") {
+				// Нашли предмет и кабинет, в котором проходит урок.
+				s := strings.Split(node.Data, "[")
+				*names = append(*names, (s[0])[10:])
+				*classrooms = append(*classrooms, "["+s[1])
+			}
+			for c := node.FirstChild; c != nil; c = c.NextSibling {
+				getAllLessonsInfo(c, starts, ends, names, classrooms)
+			}
+		}
+	}
+
+	// Получает уроки.
+	var getLessons func(node *html.Node) *[]Lesson
+	getLessons = func(node *html.Node) *[]Lesson {
+		// Максимальное количество уроков.
+		n := 10
+
+		lessonsNode := searchForLessonsNode(node)
+
+		starts := make([]string, 0, n)
+		ends := make([]string, 0, n)
+		names := make([]string, 0, n)
+		classrooms := make([]string, 0, n)
+
+		getAllLessonsInfo(lessonsNode, &starts, &ends, &names, &classrooms)
+
+		lessons := make([]Lesson, 0, len(starts))
+		for i := 0; i < len(starts); i++ {
+			lessons = append(lessons, *new(Lesson))
+		}
+
+		for i := 0; i < len(starts); i++ {
+			lessons[i].Begin = starts[i]
+			lessons[i].End = ends[i]
+			lessons[i].Name = names[i]
+			lessons[i].ClassRoom = classrooms[i]
+		}
+
+		return &lessons
+	}
+
+	// Составляем расписание дня из распарсенного html-кода
+	var makeDayTimeTable func(node *html.Node) *DayTimeTable
+	makeDayTimeTable = func(node *html.Node) *DayTimeTable {
+		var day DayTimeTable
+		day.Date = getDate(node)
+		day.Lessons = *getLessons(node)
+		return &day
+	}
+
+	dayTimeTable = makeDayTimeTable(parsedHTML)
 	return dayTimeTable, nil
 }

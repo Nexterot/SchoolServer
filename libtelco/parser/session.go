@@ -137,12 +137,7 @@ func incDate(date string) (string, error) {
 }
 
 func (s *session) getDayTimeTable(date string) (*DayTimeTable, error) {
-	fmt.Println(date)
-	date, err := incDate(date)
-	fmt.Println(err)
-	fmt.Println(date)
-	fmt.Println()
-	//var err error
+	var err error
 	var dayTimeTable *DayTimeTable
 	switch s.serv.Type {
 	case cp.FirstType:
