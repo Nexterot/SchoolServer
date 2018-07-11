@@ -113,21 +113,43 @@ func (s *Session) GetDayTimeTable(date string) (*DayTimeTable, error) {
 Получение оценок.
 */
 
-// SchoolMarks struct содержит в себе оценки и ДЗ на текущую неделю.
-type SchoolMarks struct {
+// WeekSchoolMarks struct содержит в себе оценки и ДЗ на текущую неделю.
+type WeekSchoolMarks struct {
+	Data []DaySchoolMarks
 }
 
-// GetSchoolMarks возвращает оценки на текущую неделю.
-func (s *Session) GetSchoolMarks(date string) (*SchoolMarks, error) {
+// DaySchoolMarks struct содержит в себе оценки и ДЗ на текущий день.
+type DaySchoolMarks struct {
+	Date    string
+	Lessons []SchoolMark
+}
+
+// SchoolMark struct содержит в себе оценку и ДЗ по одному уроку.
+type SchoolMark struct {
+	AID    int
+	CID    int
+	TP     int
+	Status bool
+	InTime bool
+	Name   string
+	Author string
+	Title  string
+	Type   string
+	Mark   string
+	Weight string
+}
+
+// GetWeekSchoolMarks возвращает оценки на текущую неделю.
+func (s *Session) GetWeekSchoolMarks(date string) (*WeekSchoolMarks, error) {
 	var err error
-	var schoolMarks *SchoolMarks
+	var weekSchoolMarks *WeekSchoolMarks
 	switch s.Serv.Type {
 	case cp.FirstType:
-		schoolMarks, err = s.getSchoolMarksFirst(date)
+		weekSchoolMarks, err = s.getSchoolMarksFirst(date)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}
-	return schoolMarks, err
+	return weekSchoolMarks, err
 }
 
 /*
