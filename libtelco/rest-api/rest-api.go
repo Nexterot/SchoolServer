@@ -6,25 +6,30 @@ Package restapi содержит handler'ы для взаимодействия 
 package restapi
 
 import (
+	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
+	"encoding/json"
 	"math/rand"
 	"net/http"
+	"strconv"
 
 	"github.com/gorilla/sessions"
 )
 
 // RestAPI struct содержит конфигурацию Rest API.
 type RestAPI struct {
+	config *cp.Config
 	store  *sessions.CookieStore
 	logger *log.Logger
 }
 
 // NewRestAPI создает структуру для работы с Rest API.
-func NewRestAPI(logger *log.Logger) *RestAPI {
+func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	key := make([]byte, 32)
 	rand.Read(key)
 	logger.Info("Generated secure key: ", key)
 	return &RestAPI{
+		config: config,
 		store:  sessions.NewCookieStore(key),
 		logger: logger,
 	}
@@ -34,9 +39,9 @@ func NewRestAPI(logger *log.Logger) *RestAPI {
 func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/", rest.ErrorHandler)
 
-	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler)
+	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler) // done
 	http.HandleFunc("/check_permission", rest.Handler)
-	http.HandleFunc("/sign_in", rest.Handler)
+	http.HandleFunc("/sign_in", rest.SignInHandler) // in progress
 	http.HandleFunc("/log_out", rest.Handler)
 
 	http.HandleFunc("/get_tasks_and_marks", rest.Handler)
@@ -80,13 +85,61 @@ func (rest *RestAPI) ErrorHandler(respwr http.ResponseWriter, req *http.Request)
 	rest.logger.Info("Wrong request:", req.URL.EscapedPath())
 }
 
+// school используется в GetSchoolListHandler
+type school struct {
+	Name string `json:"name"`
+	Id   string `json:"id"`
+}
+
+// schoolListResponse используется в GetSchoolListHandler
+type schoolListResponse struct {
+	Schools []school `json:"schools"`
+}
+
 // GetSchoolListHandler обрабатывает запрос на получение списка обслуживаемых школ.
 func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetSchoolListHandler called (not implemented yet)")
+	rest.logger.Info("GetSchoolListHandler called")
 	if req.Method != "GET" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
 	}
+	schoolList := make([]school, len(rest.config.Schools))
+	for id, sch := range rest.config.Schools {
+		schoolList[id] = school{sch.Name, strconv.Itoa(id)}
+	}
+	resp := schoolListResponse{schoolList}
+	bytes, err := json.Marshal(resp)
+	if err != nil {
+		rest.logger.Error("Error marshalling list of schools. May be critical!")
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent list of schools: ", resp)
+}
+
+// SignInRequest используется в SignInHandler
+type SignInRequest struct {
+	Login   string `json:"login"`
+	Passkey string `json:"passkey"`
+	Id      string `json:"id"`
+}
+
+// SignInHandler обрабатывает вход в учетную запись на сайте школы
+func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("SignInHandler called (in development)")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	var rReq SignInRequest
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&rReq)
+	if err != nil {
+		// Тут надо ошибку отправлять клиенту
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	rest.logger.Info("Valid data:", rReq)
+
 }
 
 // Handler временный абстрактный handler для некоторых еще не реализованных
