@@ -303,33 +303,52 @@ func (s *Session) getFirstFinalMarkReport() (*FinalMarkReport, error) {
 	//var finalMarkReport *FinalMarkReport
 
 	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{}
-	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.at,
+			"LoginType": "0",
+			"RPTID":     "0",
+			"ThmID":     "1",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":                    "http://62.117.74.43",
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   "http://62.117.74.43/asp/Reports/Reports.asp",
+		},
+	}
+	kek, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println(string(kek.Bytes()))
+	fmt.Println("-----------------------------------------------------------------")
 
 	// 1-ый Post-запрос.
 	requestOption1 := &gr.RequestOptions{
 		Data: map[string]string{
 			"A":         "",
 			"AT":        s.at,
-			"BACK":      "/asp/Reports/StudentTotalMarks.asp",
+			"BACK":      "/asp/Reports/ReportStudentTotalMarks.asp",
 			"ISTF":      "0",
 			"LoginType": "0",
 			"NA":        "",
-			"PCLID":     "10171",
-			"PP":        "/asp/Reports/StudentTotalMarks.asp",
+			"PCLID":     "10169",
+			"PP":        "/asp/Reports/ReportStudentTotalMarks.asp",
 			"RP":        "0",
 			"RPTID":     "0",
 			"RT":        "0",
-			"SID":       "11207",
+			"SID":       "11198",
 			"TA":        "",
 			"ThmID":     "1",
 			"VER":       s.ver,
 		},
 		Headers: map[string]string{
-			"Referer": p + s.Serv.Link + "/asp/Reports/StudentTotalMarks.asp",
+			"Origin":           "http://62.117.74.43",
+			"X-Requested-With": "XMLHttpRequest",
+			"at":               s.at,
+			"Referer":          "http://62.117.74.43/asp/Reports/ReportStudentTotalMarks.asp",
 		},
 	}
 	response1, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/StudentTotalMarks.asp", requestOption1)
