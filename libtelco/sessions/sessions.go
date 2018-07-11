@@ -9,6 +9,7 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"fmt"
 	"sync"
+	"time"
 
 	gr "github.com/levigross/grequests"
 )
@@ -16,9 +17,10 @@ import (
 // Session struct содержит в себе описание сессии к одному из школьных серверов.
 type Session struct {
 	// Общая структура.
-	sess *gr.Session
-	Serv *cp.SchoolServer
-	mu   sync.Mutex
+	sess        *gr.Session
+	Serv        *cp.School
+	mu          sync.Mutex
+	lastRequest time.Time
 	// Для серверов первого типа.
 	at  string
 	ver string
@@ -26,13 +28,17 @@ type Session struct {
 
 // NewSession создает новую сессию на базе информации о школьном сервере,
 // к которому предстоит подключиться.
-func NewSession(server *cp.SchoolServer) *Session {
+func NewSession(server *cp.School) *Session {
 	return &Session{
 		sess: nil,
 		Serv: server,
 		mu:   sync.Mutex{},
 	}
 }
+
+/*
+Получение расписания.
+*/
 
 // Login логинится к серверу и создает очередную сессию.
 func (s *Session) Login() error {
@@ -46,18 +52,18 @@ func (s *Session) Login() error {
 	return err
 }
 
-// TimeTable struct - расписание на N дней (N = 1, 2, ..., 7).
+// TimeTable struct содержит в себе расписание на N дней (N = 1, 2, ..., 7).
 type TimeTable struct {
 	Days []DayTimeTable `json:"days"`
 }
 
-// DayTimeTable struct - расписание на день.
+// DayTimeTable struct содержит в себе расписание на день.
 type DayTimeTable struct {
 	Date    string   `json:"date"`
 	Lessons []Lesson `json:"lesson"`
 }
 
-// Lesson struct - один урок.
+// Lesson struct содержит в себе один урок.
 type Lesson struct {
 	Begin     string `json:"begin"`
 	End       string `json:"end"`
@@ -90,7 +96,7 @@ func (s *Session) GetTimeTable(date string, n int) (*TimeTable, error) {
 	return timeTable, err
 }
 
-// getDayTimeTable получает расписание на один день.
+// getDayTimeTable возвращает расписание на один день.
 func (s *Session) GetDayTimeTable(date string) (*DayTimeTable, error) {
 	var err error
 	var dayTimeTable *DayTimeTable
@@ -103,17 +109,42 @@ func (s *Session) GetDayTimeTable(date string) (*DayTimeTable, error) {
 	return dayTimeTable, err
 }
 
-// FinalMarkReport - отчет первого типа.
-type FinalMarkReport struct {
+/*
+Получение оценок.
+*/
+
+// SchoolMarks struct содержит в себе оценки и ДЗ на текущую неделю.
+type SchoolMarks struct {
+}
+
+// GetSchoolMarks возвращает оценки на текущую неделю.
+func (s *Session) GetSchoolMarks(date string) (*SchoolMarks, error) {
+	var err error
+	var schoolMarks *SchoolMarks
+	switch s.Serv.Type {
+	case cp.FirstType:
+		schoolMarks, err = s.getSchoolMarksFirst(date)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return schoolMarks, err
+}
+
+/*
+Получение отчетов.
+*/
+
+// TotalMarkReport struct - отчет первого типа.
+type TotalMarkReport struct {
 }
 
 // GetTotalMarkReport возвращает "Отчет об успеваемости".
-func (s *Session) GetTotalMarkReport() (*FinalMarkReport, error) {
+func (s *Session) GetTotalMarkReport() (*TotalMarkReport, error) {
 	var err error
-	var finalMarkReport *FinalMarkReport
+	var finalMarkReport *TotalMarkReport
 	switch s.Serv.Type {
 	case cp.FirstType:
-		finalMarkReport, err = s.getFirstFinalMarkReport()
+		finalMarkReport, err = s.getTotalMarkReportFirst()
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}

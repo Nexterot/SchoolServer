@@ -21,14 +21,14 @@ import (
 // - информация о лог-файле;
 // - параметры школьных серверов;
 type Config struct {
-	ServerAddr     string         `json:"serverAddr"`
-	Postgres       string         `json:"postgres"`
-	Redis          string         `json:"redis"`
-	MaxProcs       int            `json:"maxProcs"`
-	PoolSize       int            `json:"poolSize"`
-	UpdateInterval int            `json:"updateInterval"`
-	LogFile        string         `json:"logFile"`
-	SchoolServers  []SchoolServer `json:"schoolServers"`
+	ServerAddr     string   `json:"serverAddr"`
+	Postgres       string   `json:"postgres"`
+	Redis          string   `json:"redis"`
+	MaxProcs       int      `json:"maxProcs"`
+	PoolSize       int      `json:"poolSize"`
+	UpdateInterval int      `json:"updateInterval"`
+	LogFile        string   `json:"logFile"`
+	Schools        []School `json:"schools"`
 }
 
 // Типы серверов.
@@ -38,10 +38,11 @@ const (
 	SecondType  = iota
 )
 
-// SchoolServer содержит информацию об очередном школьном сервере.
-// Так как сервера бывают разные, то по полю Type мы определяем,
+// School содержит информацию об очередной школе.
+// Так как школьные сервера бывают разные, то по полю Type мы определяем,
 // какой именно парсер должен быть применен к серверу.
-type SchoolServer struct {
+type School struct {
+	Name     string `json:"name"`
 	Type     int    `json:"type"`
 	Link     string `json:"link"`
 	Time     int    `json:"time"`

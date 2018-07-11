@@ -6,13 +6,14 @@
     "poolSize" : 4,
     "updateInterval" : 1800,
     "logFile" : "stdout",
-    "schoolServers" : [
+    "schools" : [
         {
+            "name" : "Европейская гимназия",
             "type" : 1,
             "link" : "62.117.74.43",
+            "time" : 2700,
             "login" : "мкорнакова",
-            "password" : "121212",
-            "time" : 2700
+            "password" : "121212"
         }
     ]
 }

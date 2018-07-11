@@ -49,15 +49,16 @@ func main() {
 		"LogFile", config.LogFile,
 	)
 	// Вся информация о списке серверов.
-	logger.Info("List of servers")
-	for _, schoolServer := range config.SchoolServers {
-		logger.Info("Server",
-			"Type", schoolServer.Type,
-			"Link", schoolServer.Link,
-			"Login", schoolServer.Login,
-			"Password", schoolServer.Password,
+	logger.Info("List of schools")
+	for _, school := range config.Schools {
+		logger.Info("School",
+			"Name", school.Name,
+			"Type", school.Type,
+			"Link", school.Link,
+			"Time", school.Time,
 		)
 	}
+
 	// Запуск сервера.
 	server := server.NewServer(config, logger)
 	logger.Error("Fatal error occured, while running server", "error", server.Run())

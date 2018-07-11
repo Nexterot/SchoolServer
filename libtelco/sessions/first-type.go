@@ -298,9 +298,19 @@ func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 	return dayTimeTable, nil
 }
 
-func (s *Session) getFirstFinalMarkReport() (*FinalMarkReport, error) {
+func (s *Session) getSchoolMarksFirst(date string) (*SchoolMarks, error) {
+	// p := "http://"
+	var schoolMarks *SchoolMarks
+
+	// 0-ой Post-запрос.
+	// requestOption0 := &gr.RequestOptions{}
+
+	return schoolMarks, nil
+}
+
+func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 	p := "http://"
-	//var finalMarkReport *FinalMarkReport
+	// var totalMarkReport *TotalMarkReport
 
 	// 0-ой Post-запрос.
 	requestOptions0 := &gr.RequestOptions{
@@ -317,13 +327,10 @@ func (s *Session) getFirstFinalMarkReport() (*FinalMarkReport, error) {
 			"Referer":                   "http://62.117.74.43/asp/Reports/Reports.asp",
 		},
 	}
-	kek, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
+	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
 	if err != nil {
 		return nil, err
 	}
-
-	fmt.Println(string(kek.Bytes()))
-	fmt.Println("-----------------------------------------------------------------")
 
 	// 1-ый Post-запрос.
 	requestOption1 := &gr.RequestOptions{
