@@ -209,3 +209,21 @@ func (s *Session) GetAverageMarkReportDyn(dateBegin, dateEnd, Type string) (*Ave
 	}
 	return averageMarkReportDyn, err
 }
+
+// StudentGradeReport struct - отчет четвертого типа.
+type StudentGradeReport struct {
+	Data map[string][]int
+}
+
+// GetStudentGradeReport возвращает отчет об успеваемости ученика по предмету.
+func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) (*StudentGradeReport, error) {
+	var err error
+	var studentGradeReport *StudentGradeReport
+	switch s.Serv.Type {
+	case cp.FirstType:
+		studentGradeReport, err = s.getStudentGradeReportFirst(dateBegin, dateEnd, SubjectName)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return studentGradeReport, err
+}
