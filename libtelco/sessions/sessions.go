@@ -173,3 +173,39 @@ func (s *Session) GetTotalMarkReport() (*TotalMarkReport, error) {
 	}
 	return finalMarkReport, err
 }
+
+// AverageMarkReport struct - отчет второго типа.
+type AverageMarkReport struct {
+	Data map[string][]int
+}
+
+// GetAverageMarkReport возвращает средние баллы.
+func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type string) (*AverageMarkReport, error) {
+	var err error
+	var averageMarkReport *AverageMarkReport
+	switch s.Serv.Type {
+	case cp.FirstType:
+		averageMarkReport, err = s.getAverageMarkReportFirst(dateBegin, dateEnd, Type)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return averageMarkReport, err
+}
+
+// AverageMarkReportDyn struct - отчет третьего типа.
+type AverageMarkReportDyn struct {
+	Data map[string][]int
+}
+
+// GetAverageMarkReportDyn возвращает динамику среднего балла.
+func (s *Session) GetAverageMarkReportDyn(dateBegin, dateEnd, Type string) (*AverageMarkReportDyn, error) {
+	var err error
+	var averageMarkReportDyn *AverageMarkReportDyn
+	switch s.Serv.Type {
+	case cp.FirstType:
+		averageMarkReportDyn, err = s.getAverageMarkReportDynFirst(dateBegin, dateEnd, Type)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return averageMarkReportDyn, err
+}

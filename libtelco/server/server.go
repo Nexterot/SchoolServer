@@ -9,6 +9,8 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	api "SchoolServer/libtelco/rest-api"
+	// ss "SchoolServer/libtelco/sessions"
+
 	"net/http"
 	"runtime"
 )
@@ -24,7 +26,7 @@ type Server struct {
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
 	serv := &Server{
 		config: config,
-		api:    api.NewRestAPI(logger),
+		api:    api.NewRestAPI(logger, config),
 	}
 	return serv
 }
@@ -41,24 +43,17 @@ func (serv *Server) Run() error {
 		if err != nil {
 			fmt.Println(err)
 		}
-		data, err := kek.GetTotalMarkReport()
+		_, err = kek.GetAverageMarkReport("19.03.2018", "25.05.2018", "T")
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(data)
-		fmt.Println()
-		data1, err := kek.GetTimeTable("11.09.2017", 5)
+
+		_, err = kek.GetAverageMarkReportDyn("04.09.2017", "29.06.2018", "T")
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(data1)
-		fmt.Println()
-		data2, err := kek.GetWeekSchoolMarks("11.09.2017")
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(data2)
 	*/
+
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()
 	return http.ListenAndServe(serv.config.ServerAddr, nil)

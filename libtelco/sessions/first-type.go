@@ -484,7 +484,6 @@ func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 // первого типа.
 func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 	p := "http://"
-	// var totalMarkReport *TotalMarkReport
 
 	// 0-ой Post-запрос.
 	requestOptions0 := &gr.RequestOptions{
@@ -496,9 +495,9 @@ func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 			"VER":       s.ver,
 		},
 		Headers: map[string]string{
-			"Origin":                    "http://62.117.74.43",
+			"Origin":                    p + s.Serv.Link,
 			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   "http://62.117.74.43/asp/Reports/Reports.asp",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
 	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
@@ -526,10 +525,10 @@ func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 			"VER":       s.ver,
 		},
 		Headers: map[string]string{
-			"Origin":           "http://62.117.74.43",
+			"Origin":           p + s.Serv.Link,
 			"X-Requested-With": "XMLHttpRequest",
 			"at":               s.at,
-			"Referer":          "http://62.117.74.43/asp/Reports/ReportStudentTotalMarks.asp",
+			"Referer":          p + s.Serv.Link + "/asp/Reports/ReportStudentTotalMarks.asp",
 		},
 	}
 	response1, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/StudentTotalMarks.asp", requestOption1)
@@ -539,5 +538,145 @@ func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 	defer func() {
 		_ = response1.Close()
 	}()
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней оценки.
 	return totalMarkReportParser(bytes.NewReader(response1.Bytes()))
+}
+
+// getAverageMarkReportFirst возвращает средний балл.
+func (s *Session) getAverageMarkReportFirst(dateBegin, dateEnd, Type string) (*AverageMarkReport, error) {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.at,
+			"LoginType": "0",
+			"RPTID":     "1",
+			"ThmID":     "1",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+		},
+	}
+	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMark.asp", requestOptions0)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1-ый Post-запрос.
+	requestOptions1 := &gr.RequestOptions{
+		Data: map[string]string{
+			"A":         "",
+			"ADT":       dateBegin,
+			"AT":        s.at,
+			"BACK":      "/asp/Reports/ReportStudentAverageMark.asp",
+			"DDT":       dateEnd,
+			"LoginType": "0",
+			"MT":        Type,
+			"NA":        "",
+			"PCLID":     "10169",
+			"PP":        "/asp/Reports/ReportStudentAverageMark.asp",
+			"RP":        "",
+			"RPTID":     "1",
+			"RT":        "",
+			"SID":       "11198",
+			"TA":        "",
+			"ThmID":     "1",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":           p + s.Serv.Link,
+			"X-Requested-With": "XMLHttpRequest",
+			"at":               s.at,
+			"Referer":          p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMark.asp",
+		},
+	}
+	response1, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/StudentAverageMark.asp", requestOptions1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response1.Close()
+	}()
+
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней оценки.
+	// Сделай парсер.
+	fmt.Println(string(response1.Bytes()))
+	fmt.Println()
+	fmt.Println()
+	return nil, nil
+}
+
+// getAverageMarkReportDynFirst возвращает динамику среднего балла.
+func (s *Session) getAverageMarkReportDynFirst(dateBegin, dateEnd, Type string) (*AverageMarkReportDyn, error) {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.at,
+			"LoginType": "0",
+			"RPTID":     "2",
+			"ThmID":     "1",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+		},
+	}
+	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMarkDyn.asp", requestOptions0)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1-ый Post-запрос.
+	requestOptions1 := &gr.RequestOptions{
+		Data: map[string]string{
+			"A":         "",
+			"ADT":       dateBegin,
+			"AT":        s.at,
+			"BACK":      "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+			"DDT":       dateEnd,
+			"LoginType": "0",
+			"MT":        Type,
+			"NA":        "",
+			"PCLID":     "10169",
+			"PP":        "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+			"RP":        "",
+			"RPTID":     "2",
+			"RT":        "",
+			"SID":       "11198",
+			"TA":        "",
+			"ThmID":     "1",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":           p + s.Serv.Link,
+			"X-Requested-With": "XMLHttpRequest",
+			"at":               s.at,
+			"Referer":          p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+		},
+	}
+	response1, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/StudentAverageMarkDyn.asp", requestOptions1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response1.Close()
+	}()
+
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней оценки.
+	// Сделай парсер.
+	fmt.Println(string(response1.Bytes()))
+	fmt.Println()
+	fmt.Println()
+	return nil, nil
 }
