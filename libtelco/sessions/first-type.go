@@ -26,13 +26,10 @@ func (s *Session) firstTypeLogin() error {
 
 	// Полчение формы авторизации.
 	// 0-ой Get-запрос.
-	response0, err := s.sess.Get(p+s.Serv.Link+"/asp/ajax/getloginviewdata.asp", nil)
+	_, err := s.sess.Get(p+s.Serv.Link+"/asp/ajax/getloginviewdata.asp", nil)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = response0.Close()
-	}()
 
 	// 1-ый Post-запрос.
 	response1, err := s.sess.Post(p+s.Serv.Link+"/webapi/auth/getdata", nil)
@@ -124,6 +121,7 @@ func (s *Session) firstTypeLogin() error {
 	return nil
 }
 
+// getDayTimeTableFirst получает расписание на день с сервера первого типа.
 func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 	p := "http://"
 	var dayTimeTable *DayTimeTable
@@ -287,6 +285,7 @@ func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 	return dayTimeTable, nil
 }
 
+// getSchoolMarksFirst получает оценки с сервера первого типа.
 func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 	p := "http://"
 	var weekSchoolMarks *WeekSchoolMarks
@@ -313,6 +312,9 @@ func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		_ = response0.Close()
+	}()
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.
@@ -362,7 +364,7 @@ func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 	}
 
 	// Находит ID урока
-	findID := func(str string) (int, int, int) {
+	findID := func(str string) (int, int, int, error) {
 		var start int
 		var AID, CID, TP int
 		for i := 0; i < len(str); i++ {
@@ -372,26 +374,36 @@ func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 				for unicode.IsDigit(rune(str[i])) {
 					i++
 				}
-				AID, _ = strconv.Atoi(str[start:i])
+				var err error
+				AID, err = strconv.Atoi(str[start:i])
+				if err != nil {
+					return 0, 0, 0, err
+				}
 				i++
 				start = i
 				for unicode.IsDigit(rune(str[i])) {
 					i++
 				}
-				CID, _ = strconv.Atoi(str[start:i])
+				CID, err = strconv.Atoi(str[start:i])
+				if err != nil {
+					return 0, 0, 0, err
+				}
 				i++
 				start = i
 				for unicode.IsDigit(rune(str[i])) {
 					i++
 				}
-				TP, _ = strconv.Atoi(str[start:i])
+				TP, err = strconv.Atoi(str[start:i])
+				if err != nil {
+					return 0, 0, 0, err
+				}
 			}
 		}
-		return AID, CID, TP
+		return AID, CID, TP, nil
 	}
 
 	// Получает всю информацию о уроках из переданного нода.
-	getAllSchoolMarksInfo := func(node *html.Node) []DaySchoolMarks {
+	getAllSchoolMarksInfo := func(node *html.Node) ([]DaySchoolMarks, error) {
 		if node != nil {
 			days := make([]DaySchoolMarks, 0, 7)
 			lessons := make([]SchoolMark, 0, 10)
@@ -421,9 +433,6 @@ func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 
 						if c.Attr[0].Val == "#FFFFFF" {
 							lesson.InTime = true
-						} else {
-							// А надо ли???
-							lesson.InTime = false
 						}
 						lesson.Name = c2.FirstChild.Data
 
@@ -436,7 +445,11 @@ func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 						lesson.Title = c3.FirstChild.Data
 						for _, a := range c3.Attr {
 							if a.Key == "onclick" {
-								lesson.AID, lesson.CID, lesson.TP = findID(a.Val)
+								var err error
+								lesson.AID, lesson.CID, lesson.TP, err = findID(a.Val)
+								if err != nil {
+									return days, err
+								}
 								break
 							}
 						}
@@ -449,23 +462,26 @@ func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 			}
 			currentDay.Lessons = lessons
 			days = append(days, currentDay)
-			return days
+			return days, nil
 		}
-		return nil
+		return nil, nil
 	}
 
 	// Составляет таблицу с днями и их уроками
-	makeWeekSchoolMarks := func(node *html.Node) *WeekSchoolMarks {
+	makeWeekSchoolMarks := func(node *html.Node) (*WeekSchoolMarks, error) {
 		var days WeekSchoolMarks
+		var err error
 		lessonsNode := searchForSchoolMarksNode(node)
-		days.Data = getAllSchoolMarksInfo(lessonsNode)
-		return &days
+		days.Data, err = getAllSchoolMarksInfo(lessonsNode)
+		return &days, err
 	}
 
-	weekSchoolMarks = makeWeekSchoolMarks(parsedHTML)
-	return weekSchoolMarks, nil
+	weekSchoolMarks, err = makeWeekSchoolMarks(parsedHTML)
+	return weekSchoolMarks, err
 }
 
+// getTotalMarkReportFirst получает данные обо всех итоговых оценках с сервера
+// первого типа.
 func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 	p := "http://"
 	// var totalMarkReport *TotalMarkReport
@@ -523,8 +539,5 @@ func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 	defer func() {
 		_ = response1.Close()
 	}()
-
-	fmt.Println(string(response1.Bytes()))
-
-	return nil, nil
+	return totalMarkReportParser(bytes.NewReader(response1.Bytes()))
 }

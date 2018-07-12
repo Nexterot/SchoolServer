@@ -24,7 +24,7 @@ type Server struct {
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
 	serv := &Server{
 		config: config,
-		api:    api.NewRestAPI(logger, config),
+		api:    api.NewRestAPI(logger),
 	}
 	return serv
 }
@@ -34,22 +34,30 @@ func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
-	// Тесты.
 	/*
+		// Тесты.
 		kek := ss.NewSession(&serv.config.Schools[0])
 		err := kek.Login()
 		if err != nil {
 			fmt.Println(err)
 		}
-		data, err := kek.GetWeekSchoolMarks("11.09.2017")
+		data, err := kek.GetTotalMarkReport()
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(len(data.Data))
-		for _, i := range data.Data {
-			fmt.Println(i)
-			fmt.Println()
+		fmt.Println(data)
+		fmt.Println()
+		data1, err := kek.GetTimeTable("11.09.2017", 5)
+		if err != nil {
+			fmt.Println(err)
 		}
+		fmt.Println(data1)
+		fmt.Println()
+		data2, err := kek.GetWeekSchoolMarks("11.09.2017")
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(data2)
 	*/
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()

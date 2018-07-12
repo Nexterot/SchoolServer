@@ -83,7 +83,7 @@ func (s *Session) GetTimeTable(date string, n int) (*TimeTable, error) {
 		Days: make([]DayTimeTable, 0, n),
 	}
 	for i := 0; i < n; i++ {
-		day, err := s.GetDayTimeTable(date)
+		day, err := s.getDayTimeTable(date)
 		if err != nil {
 			return timeTable, err
 		}
@@ -97,7 +97,7 @@ func (s *Session) GetTimeTable(date string, n int) (*TimeTable, error) {
 }
 
 // getDayTimeTable возвращает расписание на один день.
-func (s *Session) GetDayTimeTable(date string) (*DayTimeTable, error) {
+func (s *Session) getDayTimeTable(date string) (*DayTimeTable, error) {
 	var err error
 	var dayTimeTable *DayTimeTable
 	switch s.Serv.Type {
@@ -158,6 +158,7 @@ func (s *Session) GetWeekSchoolMarks(date string) (*WeekSchoolMarks, error) {
 
 // TotalMarkReport struct - отчет первого типа.
 type TotalMarkReport struct {
+	Data map[string][]int
 }
 
 // GetTotalMarkReport возвращает "Отчет об успеваемости".
