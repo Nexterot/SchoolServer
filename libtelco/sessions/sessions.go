@@ -139,13 +139,13 @@ type SchoolMark struct {
 	Weight string
 }
 
-// GetWeekSchoolMarks возвращает оценки на текущую неделю.
+// GetWeekSchoolMarks возвращает оценки на заданную неделю.
 func (s *Session) GetWeekSchoolMarks(date string) (*WeekSchoolMarks, error) {
 	var err error
 	var weekSchoolMarks *WeekSchoolMarks
 	switch s.Serv.Type {
 	case cp.FirstType:
-		weekSchoolMarks, err = s.getSchoolMarksFirst(date)
+		weekSchoolMarks, err = s.getWeekSchoolMarksFirst(date)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}
@@ -161,7 +161,7 @@ type TotalMarkReport struct {
 	Data map[string][]int
 }
 
-// GetTotalMarkReport возвращает "Отчет об успеваемости".
+// GetTotalMarkReport возвращает успеваемость ученика.
 func (s *Session) GetTotalMarkReport() (*TotalMarkReport, error) {
 	var err error
 	var finalMarkReport *TotalMarkReport
@@ -179,7 +179,7 @@ type AverageMarkReport struct {
 	Data map[string][]int
 }
 
-// GetAverageMarkReport возвращает средние баллы.
+// GetAverageMarkReport возвращает средние баллы ученика.
 func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type string) (*AverageMarkReport, error) {
 	var err error
 	var averageMarkReport *AverageMarkReport
@@ -197,7 +197,7 @@ type AverageMarkReportDyn struct {
 	Data map[string][]int
 }
 
-// GetAverageMarkReportDyn возвращает динамику среднего балла.
+// GetAverageMarkReportDyn возвращает динамику среднего балла ученика.
 func (s *Session) GetAverageMarkReportDyn(dateBegin, dateEnd, Type string) (*AverageMarkReportDyn, error) {
 	var err error
 	var averageMarkReportDyn *AverageMarkReportDyn
@@ -254,17 +254,32 @@ func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*StudentTota
 type JournalAccessReport struct {
 }
 
-/*
-// GetJournalAccessReport возвращает отчет о посещениях ученика.
-func (s *Session) GetJournalAccessReport(dateBegin, dateEnd string) (*JournalAccessReport, error) {
+// GetJournalAccessReport возвращает отчет о доступе к журналу.
+func (s *Session) GetJournalAccessReport() (*JournalAccessReport, error) {
 	var err error
 	var studentTotalReport *JournalAccessReport
 	switch s.Serv.Type {
 	case cp.FirstType:
-		studentTotalReport, err = s.getJournalAccessReportFirst(dateBegin, dateEnd)
+		studentTotalReport, err = s.getJournalAccessReportFirst()
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}
 	return studentTotalReport, err
 }
-*/
+
+// ParentInfoLetterReport struct - отчет седьмого типа.
+type ParentInfoLetterReport struct {
+}
+
+// GetParentInfoLetterReport возвращает шаблон письма родителям.
+func (s *Session) GetParentInfoLetterReport(studentID, reportTypeID, periodID string) (*ParentInfoLetterReport, error) {
+	var err error
+	var parentInfoLetterRepport *ParentInfoLetterReport
+	switch s.Serv.Type {
+	case cp.FirstType:
+		parentInfoLetterRepport, err = s.getParentInfoLetterReportFirst(studentID, reportTypeID, periodID)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return parentInfoLetterRepport, err
+}

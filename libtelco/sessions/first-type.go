@@ -116,7 +116,7 @@ func (s *Session) firstTypeLogin() error {
 	return nil
 }
 
-// getDayTimeTableFirst получает расписание на день с сервера первого типа.
+// getDayTimeTableFirst возвращает расписание на один день c сервера первого типа.
 func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 	p := "http://"
 	var dayTimeTable *DayTimeTable
@@ -280,8 +280,8 @@ func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 	return dayTimeTable, nil
 }
 
-// getSchoolMarksFirst получает оценки с сервера первого типа.
-func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
+// getWeekSchoolMarksFirst возвращает оценки на заданную неделю с сервера первого типа.
+func (s *Session) getWeekSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 	p := "http://"
 	var weekSchoolMarks *WeekSchoolMarks
 
@@ -475,8 +475,7 @@ func (s *Session) getSchoolMarksFirst(date string) (*WeekSchoolMarks, error) {
 	return weekSchoolMarks, err
 }
 
-// getTotalMarkReportFirst получает данные обо всех итоговых оценках с сервера
-// первого типа.
+// getTotalMarkReportFirst возвращает успеваемость ученика с сервера первого типа.
 func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 	p := "http://"
 
@@ -538,7 +537,7 @@ func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 	return totalMarkReportParser(bytes.NewReader(response1.Bytes()))
 }
 
-// getAverageMarkReportFirst возвращает средний балл.
+// getAverageMarkReportFirst возвращает средние баллы ученика с сервера первого типа.
 func (s *Session) getAverageMarkReportFirst(dateBegin, dateEnd, Type string) (*AverageMarkReport, error) {
 	p := "http://"
 
@@ -607,7 +606,7 @@ func (s *Session) getAverageMarkReportFirst(dateBegin, dateEnd, Type string) (*A
 	return nil, nil
 }
 
-// getAverageMarkReportDynFirst возвращает динамику среднего балла.
+// getAverageMarkReportDynFirst возвращает динамику среднего балла ученика с сервера первого типа.
 func (s *Session) getAverageMarkReportDynFirst(dateBegin, dateEnd, Type string) (*AverageMarkReportDyn, error) {
 	p := "http://"
 
@@ -676,9 +675,8 @@ func (s *Session) getAverageMarkReportDynFirst(dateBegin, dateEnd, Type string) 
 	return nil, nil
 }
 
-// getStudentGradeReportFirst возвращает динамику среднего балла.
+// getStudentGradeReportFirst возвращает отчет об успеваемости ученика по предмету с сервера первого типа.
 func (s *Session) getStudentGradeReportFirst(dateBegin, dateEnd, SubjectName string) (*StudentGradeReport, error) {
-	// TODO: сделать нормально.
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -746,9 +744,8 @@ func (s *Session) getStudentGradeReportFirst(dateBegin, dateEnd, SubjectName str
 	return nil, nil
 }
 
-// getStudentTotalReportFirst возвращает динамику среднего балла.
+// getStudentTotalReportFirst возвращает отчет о посещениях ученика с сервера первого типа.
 func (s *Session) getStudentTotalReportFirst(dateBegin, dateEnd string) (*StudentTotalReport, error) {
-	// TODO: сделать нормально.
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -799,6 +796,141 @@ func (s *Session) getStudentTotalReportFirst(dateBegin, dateEnd string) (*Studen
 		},
 	}
 	response1, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/StudentTotal.asp", requestOptions1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response1.Close()
+	}()
+
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней оценки.
+	// Сделай парсер.
+	fmt.Println(string(response1.Bytes()))
+	fmt.Println()
+	fmt.Println()
+	return nil, nil
+}
+
+// getJournalAccessReportFirst возвращает отчет о доступе к журналу с сервера первого типа.
+func (s *Session) getJournalAccessReportFirst() (*JournalAccessReport, error) {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.at,
+			"LoginType": "0",
+			"RPTID":     "3",
+			"ThmID":     "2",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+		},
+	}
+	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotal.asp", requestOptions0)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1-ый Post-запрос.
+	requestOptions1 := &gr.RequestOptions{
+		Data: map[string]string{
+			"A":         "",
+			"AT":        s.at,
+			"BACK":      "/asp/Reports/ReportJournalAccess.asp",
+			"LoginType": "0",
+			"NA":        "",
+			"PCLID":     "10169_0",
+			"PP":        "/asp/Reports/ReportJournalAccess.asp",
+			"RP":        "",
+			"RPTID":     "3",
+			"RT":        "",
+			"SID":       "11198",
+			"TA":        "",
+			"ThmID":     "2",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":           p + s.Serv.Link,
+			"X-Requested-With": "XMLHttpRequest",
+			"at":               s.at,
+			"Referer":          p + s.Serv.Link + "/asp/Reports/ReportJournalAccess.asp",
+		},
+	}
+	response1, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/JournalAccess.asp", requestOptions1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response1.Close()
+	}()
+
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней оценки.
+	// Сделай парсер.
+	fmt.Println(string(response1.Bytes()))
+	fmt.Println()
+	fmt.Println()
+	return nil, nil
+}
+
+// getParentInfoLetterReportFirst возвращает шаблон письма родителям с сервера первого типа.
+func (s *Session) getParentInfoLetterReportFirst(studentID, reportTypeID, periodID string) (*ParentInfoLetterReport, error) {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.at,
+			"LoginType": "0",
+			"RPTID":     "4",
+			"ThmID":     "2",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+		},
+	}
+	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportParentInfoLetter.asp", requestOptions0)
+	if err != nil {
+		return nil, err
+	}
+
+	// 1-ый Post-запрос.
+	requestOptions1 := &gr.RequestOptions{
+		Data: map[string]string{
+			"A":          "",
+			"AT":         s.at,
+			"BACK":       "/asp/Reports/ReportParentInfoLetter.asp",
+			"LoginType":  "0",
+			"NA":         "",
+			"PCLID":      "10169",
+			"PP":         "/asp/Reports/ReportParentInfoLetter.asp",
+			"RP":         "",
+			"RPTID":      "4",
+			"RT":         "",
+			"ReportType": "1",
+			"SID":        "11198",
+			"TA":         "",
+			"TERMID":     "10067",
+			"ThmID":      "2",
+			"VER":        s.ver,
+			"drWeek":     "",
+		},
+		Headers: map[string]string{
+			"Origin":           p + s.Serv.Link,
+			"X-Requested-With": "XMLHttpRequest",
+			"at":               s.at,
+			"Referer":          p + s.Serv.Link + "/asp/Reports/ReportParentInfoLetter.asp",
+		},
+	}
+	response1, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ParentInfoLetter.asp", requestOptions1)
 	if err != nil {
 		return nil, err
 	}
