@@ -52,11 +52,6 @@ func (s *Session) firstTypeLogin() error {
 	// 2-ой Post-запрос.
 	pw := s.Serv.Password
 	hasher := md5.New()
-	if _, err = hasher.Write([]byte(pw)); err != nil {
-		return err
-	}
-	pw = hex.EncodeToString(hasher.Sum(nil))
-	hasher = md5.New()
 	if _, err = hasher.Write([]byte(fa.Salt + pw)); err != nil {
 		return err
 	}

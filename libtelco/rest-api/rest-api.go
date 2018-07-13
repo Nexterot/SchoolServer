@@ -8,19 +8,26 @@ package restapi
 import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
+	ss "SchoolServer/libtelco/sessions"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"math/rand"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/sessions"
 )
 
 // RestAPI struct содержит конфигурацию Rest API.
+// sessionsMap содержит отображения идентификаторов сессий Rest API
+// в объекты сессий на удаленном сервере.
 type RestAPI struct {
-	config *cp.Config
-	store  *sessions.CookieStore
-	logger *log.Logger
+	config      *cp.Config
+	store       *sessions.CookieStore
+	logger      *log.Logger
+	sessionsMap map[string]*ss.Session
 }
 
 // NewRestAPI создает структуру для работы с Rest API.
@@ -29,9 +36,10 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	rand.Read(key)
 	logger.Info("Generated secure key: ", key)
 	return &RestAPI{
-		config: config,
-		store:  sessions.NewCookieStore(key),
-		logger: logger,
+		config:      config,
+		store:       sessions.NewCookieStore(key),
+		logger:      logger,
+		sessionsMap: make(map[string]*ss.Session),
 	}
 }
 
@@ -41,7 +49,7 @@ func (rest *RestAPI) BindHandlers() {
 
 	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler) // done
 	http.HandleFunc("/check_permission", rest.Handler)
-	http.HandleFunc("/sign_in", rest.SignInHandler) // in progress
+	http.HandleFunc("/sign_in", rest.SignInHandler) // done
 	http.HandleFunc("/log_out", rest.Handler)
 
 	http.HandleFunc("/get_tasks_and_marks", rest.Handler)
@@ -110,7 +118,7 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 	resp := schoolListResponse{schoolList}
 	bytes, err := json.Marshal(resp)
 	if err != nil {
-		rest.logger.Error("Error marshalling list of schools. May be critical!")
+		rest.logger.Error("Error marshalling list of schools")
 	}
 	respwr.Write(bytes)
 	rest.logger.Info("Sent list of schools: ", resp)
@@ -123,23 +131,68 @@ type SignInRequest struct {
 	Id      string `json:"id"`
 }
 
+// SessionResponse используется в SignInHandler
+type SessionResponse struct {
+	SessionID string `json:"session_id"`
+}
+
 // SignInHandler обрабатывает вход в учетную запись на сайте школы
 func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("SignInHandler called (in development)")
+	rest.logger.Info("SignInHandler called")
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
 	}
+	// Чтение запроса от клиента
 	var rReq SignInRequest
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&rReq)
 	if err != nil {
-		// Тут надо ошибку отправлять клиенту
+		respwr.WriteHeader(http.StatusBadRequest)
 		rest.logger.Error("Malformed request data")
 		return
 	}
+	schoolId, _ := strconv.Atoi(rReq.Id)
+	if schoolId >= len(rest.config.Schools) {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("No school with such id: ", rReq.Id)
+		return
+	}
 	rest.logger.Info("Valid data:", rReq)
-
+	school := rest.config.Schools[schoolId]
+	school.Login = rReq.Login
+	school.Password = rReq.Passkey
+	// Создание удаленной сессии
+	newRemoteSession := ss.NewSession(&school)
+	if err = newRemoteSession.Login(); err != nil {
+		rest.logger.Error("Error remote signing in")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Если удаленная авторизация прошла успешно, создать локальную сессию
+	// и привязать к ней удаленную сессию
+	timeString := time.Now().String()
+	hasher := md5.New()
+	if _, err = hasher.Write([]byte(timeString)); err != nil {
+		rest.logger.Error("Md5 hashing error: ", err)
+		return
+	}
+	newSessionId := hex.EncodeToString(hasher.Sum(nil))
+	newLocalSession, err := rest.store.Get(req, newSessionId)
+	if err != nil {
+		rest.logger.Error("Error creating new local session")
+		return
+	}
+	rest.sessionsMap[newSessionId] = newRemoteSession
+	newLocalSession.Save(req, respwr)
+	// Высылаем клиенту его session_id для дальнейшего общения
+	resp := SessionResponse{newSessionId}
+	bytes, err := json.Marshal(resp)
+	if err != nil {
+		rest.logger.Error("Error marshalling response with session_id")
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Successfully signed in as user: ", rReq.Login)
 }
 
 // Handler временный абстрактный handler для некоторых еще не реализованных

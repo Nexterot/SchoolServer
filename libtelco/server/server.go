@@ -9,8 +9,8 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	api "SchoolServer/libtelco/rest-api"
-	ss "SchoolServer/libtelco/sessions"
-	"fmt"
+	//ss "SchoolServer/libtelco/sessions"
+	//"fmt"
 
 	"net/http"
 	"runtime"
@@ -38,11 +38,13 @@ func (serv *Server) Run() error {
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
 	// Тесты.
-	kek := ss.NewSession(&serv.config.Schools[0])
-	err := kek.Login()
-	if err != nil {
-		fmt.Println(err)
-	}
+	/*
+		kek := ss.NewSession(&serv.config.Schools[0])
+		err := kek.Login()
+		if err != nil {
+			fmt.Println(err)
+		}
+	*/
 	/*
 		_, err = kek.GetAverageMarkReport("19.03.2018", "25.05.2018", "T")
 		if err != nil {
@@ -60,10 +62,12 @@ func (serv *Server) Run() error {
 		}
 	*/
 
-	_, err = kek.GetStudentTotalReport("01.09.2017", "31.08.2018")
-	if err != nil {
-		fmt.Println(err)
-	}
+	/*
+		_, err = kek.GetStudentTotalReport("01.09.2017", "31.08.2018")
+		if err != nil {
+			fmt.Println(err)
+		}
+	*/
 
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()
