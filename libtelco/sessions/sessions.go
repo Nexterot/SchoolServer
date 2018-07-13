@@ -227,3 +227,44 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) 
 	}
 	return studentGradeReport, err
 }
+
+// StudentTotalReport struct - отчет пятого типа.
+type StudentTotalReport struct {
+	Data map[string][]int
+}
+
+// GetStudentTotalReport возвращает отчет о посещениях ученика.
+func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*StudentTotalReport, error) {
+	var err error
+	var studentTotalReport *StudentTotalReport
+	switch s.Serv.Type {
+	case cp.FirstType:
+		studentTotalReport, err = s.getStudentTotalReportFirst(dateBegin, dateEnd)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return studentTotalReport, err
+}
+
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+// StudentTotalReport struct - отчет шестого типа пока что пропускаем.
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+// JournalAccessReport struct - отчет седьмого типа.
+type JournalAccessReport struct {
+}
+
+/*
+// GetJournalAccessReport возвращает отчет о посещениях ученика.
+func (s *Session) GetJournalAccessReport(dateBegin, dateEnd string) (*JournalAccessReport, error) {
+	var err error
+	var studentTotalReport *JournalAccessReport
+	switch s.Serv.Type {
+	case cp.FirstType:
+		studentTotalReport, err = s.getJournalAccessReportFirst(dateBegin, dateEnd)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return studentTotalReport, err
+}
+*/
