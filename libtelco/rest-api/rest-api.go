@@ -185,13 +185,12 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	}
 	rest.sessionsMap[newSessionId] = newRemoteSession
 	newLocalSession.Save(req, respwr)
-	// Высылаем клиенту его session_id для дальнейшего общения
-	resp := SessionResponse{newSessionId}
-	bytes, err := json.Marshal(resp)
-	if err != nil {
-		rest.logger.Error("Error marshalling response with session_id")
+	// Устанавливаем в куки значение sessionId
+	expiration := time.Now().Add(365 * 24 * time.Hour)
+	cookie := http.Cookie{
+		Name: "sessionId", Value: newSessionId, Expires: expiration,
 	}
-	respwr.Write(bytes)
+	http.SetCookie(respwr, &cookie)
 	rest.logger.Info("Successfully signed in as user: ", rReq.Login)
 }
 
