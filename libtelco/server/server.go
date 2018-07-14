@@ -9,6 +9,7 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	api "SchoolServer/libtelco/rest-api"
+	//ss "SchoolServer/libtelco/sessions"
 
 	"net/http"
 	"runtime"
@@ -34,6 +35,15 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
+
+	/*
+		// Тесты.
+		kek := ss.NewSession(&serv.config.Schools[0])
+		err := kek.Login()
+		if err != nil {
+			fmt.Println(err)
+		}
+	*/
 
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()

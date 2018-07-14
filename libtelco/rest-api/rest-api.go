@@ -35,11 +35,9 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	key := make([]byte, 32)
 	rand.Read(key)
 	logger.Info("Generated secure key: ", key)
-	newStore := sessions.NewCookieStore(key)
-	newStore.MaxAge(86400 * 365)
 	return &RestAPI{
 		config:      config,
-		store:       newStore,
+		store:       sessions.NewCookieStore(key),
 		logger:      logger,
 		sessionsMap: make(map[string]*ss.Session),
 	}
@@ -52,7 +50,7 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler) // done
 	http.HandleFunc("/check_permission", rest.Handler)
 	http.HandleFunc("/sign_in", rest.SignInHandler) // done
-	http.HandleFunc("/log_out", rest.LogOutHandler)
+	http.HandleFunc("/log_out", rest.Handler)
 
 	http.HandleFunc("/get_tasks_and_marks", rest.Handler)
 	http.HandleFunc("/get_lesson_description", rest.Handler)
@@ -126,41 +124,6 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 	rest.logger.Info("Sent list of schools: ", resp)
 }
 
-// LogOutHandler обрабатывает удаление сессии клиента и отвязку устройства
-func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("LogOutHandler called (in development)")
-	if req.Method != "GET" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
-		respwr.WriteHeader(http.StatusBadRequest)
-		return
-	}
-
-	/* TODO
-	не чистить sessionMap, сохранять в БД идентификатор последней сессии,
-	чтобы можно было к случае logout+login восстановить удаленную сессию
-	по имени пользователя
-	*/
-
-	// Если кука есть, удалить локальную и удаленную сессии
-	sessionName := cookie.Value
-	session, err := rest.store.Get(req, sessionName)
-	if err != nil {
-		rest.logger.Info("Error getting session: ", sessionName)
-		return
-	}
-	delete(rest.sessionsMap, sessionName)
-	session.Options.MaxAge = -1
-	session.Save(req, respwr)
-	respwr.WriteHeader(http.StatusOK)
-	rest.logger.Info("Successful logout for session ", sessionName)
-}
-
 // SignInRequest используется в SignInHandler
 type SignInRequest struct {
 	Login   string `json:"login"`
@@ -214,18 +177,18 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		rest.logger.Error("Md5 hashing error: ", err)
 		return
 	}
-	newSessionName := hex.EncodeToString(hasher.Sum(nil))
-	newLocalSession, err := rest.store.Get(req, newSessionName)
+	newSessionId := hex.EncodeToString(hasher.Sum(nil))
+	newLocalSession, err := rest.store.Get(req, newSessionId)
 	if err != nil {
 		rest.logger.Error("Error creating new local session")
 		return
 	}
-	rest.sessionsMap[newSessionName] = newRemoteSession
+	rest.sessionsMap[newSessionId] = newRemoteSession
 	newLocalSession.Save(req, respwr)
-	// Устанавливаем в куки значение sessionName
+	// Устанавливаем в куки значение sessionId
 	expiration := time.Now().Add(365 * 24 * time.Hour)
 	cookie := http.Cookie{
-		Name: "sessionName", Value: newSessionName, Expires: expiration,
+		Name: "sessionId", Value: newSessionId, Expires: expiration,
 	}
 	http.SetCookie(respwr, &cookie)
 	rest.logger.Info("Successfully signed in as user: ", rReq.Login)
