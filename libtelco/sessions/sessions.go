@@ -20,7 +20,7 @@ type Session struct {
 	sess        *gr.Session
 	Serv        *cp.School
 	mu          sync.Mutex
-	lastRequest time.Time
+	LastRequest time.Time
 	// Для серверов первого типа.
 	at  string
 	ver string
@@ -176,7 +176,8 @@ func (s *Session) GetTotalMarkReport() (*TotalMarkReport, error) {
 
 // AverageMarkReport struct - отчет второго типа.
 type AverageMarkReport struct {
-	Data map[string][]int
+	Student map[string]string
+	Class   map[string]string
 }
 
 // GetAverageMarkReport возвращает средние баллы ученика.
@@ -192,27 +193,53 @@ func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type string) (*Averag
 	return averageMarkReport, err
 }
 
-// AverageMarkReportDyn struct - отчет третьего типа.
-type AverageMarkReportDyn struct {
-	Data map[string][]int
+// AverageMarkDynReport struct - отчет третьего типа.
+type AverageMarkDynReport struct {
+	Data []AverageMarkDynReportNote
+}
+
+// AverageMarkDynReportNote struct - одна запись в отчёте "Динамика среднего балла".
+type AverageMarkDynReportNote struct {
+	// Дата срезовой работы/Четверть/Полугодие
+	Date string
+
+	// Кол-во срезовых работ ученика
+	StudentWorksAmount int
+
+	// Средний балл ученика
+	StudentAverageMark string
+
+	// Кол-во срезовых работ класса
+	ClassWorksAmount int
+
+	// Средний балл класса
+	ClassAverageMark string
 }
 
 // GetAverageMarkReportDyn возвращает динамику среднего балла ученика.
-func (s *Session) GetAverageMarkReportDyn(dateBegin, dateEnd, Type string) (*AverageMarkReportDyn, error) {
+func (s *Session) GetAverageMarkReportDyn(dateBegin, dateEnd, Type string) (*AverageMarkDynReport, error) {
 	var err error
-	var averageMarkReportDyn *AverageMarkReportDyn
+	var averageMarkDynReport *AverageMarkDynReport
 	switch s.Serv.Type {
 	case cp.FirstType:
-		averageMarkReportDyn, err = s.getAverageMarkReportDynFirst(dateBegin, dateEnd, Type)
+		averageMarkDynReport, err = s.getAverageMarkDynReportFirst(dateBegin, dateEnd, Type)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}
-	return averageMarkReportDyn, err
+	return averageMarkDynReport, err
 }
 
 // StudentGradeReport struct - отчет четвертого типа.
 type StudentGradeReport struct {
-	Data map[string][]int
+	Data []StudentGradeReportNote
+}
+
+// StudentGradeReportNote struct - одна запись в отчете об успеваемости.
+type StudentGradeReportNote struct {
+	Type             string
+	Theme            string
+	DateOfCompletion string
+	Mark             int
 }
 
 // GetStudentGradeReport возвращает отчет об успеваемости ученика по предмету.
@@ -232,6 +259,35 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) 
 type StudentTotalReport struct {
 	Data map[string][]int
 }
+
+/*
+// Один день в отчёте об успеваемости и посещаемости
+type Day struct {
+	// Номер дня
+	Number int
+
+	// Оценки, "точки", пропуски в этот день по предметам
+	Marks map[string][]string
+}
+
+// Один месяц в отчёте об успеваемости и посещаемости
+type Month struct {
+	// Имя месяцы
+	Name string
+
+	// Дни в этом месяце для данного отчёта
+	Days []Day
+}
+
+// Отчёт об успеваемости и посещаемости
+type StudentTotalReport struct {
+	// Часть отчёта без среднего балла
+	MainTable []Month
+
+	// Средний балл по предметам
+	AverageMarks map[string]string
+}
+*/
 
 // GetStudentTotalReport возвращает отчет о посещениях ученика.
 func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*StudentTotalReport, error) {
