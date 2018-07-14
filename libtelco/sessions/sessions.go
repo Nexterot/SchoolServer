@@ -260,6 +260,35 @@ type StudentTotalReport struct {
 	Data map[string][]int
 }
 
+/*
+// Один день в отчёте об успеваемости и посещаемости
+type Day struct {
+	// Номер дня
+	Number int
+
+	// Оценки, "точки", пропуски в этот день по предметам
+	Marks map[string][]string
+}
+
+// Один месяц в отчёте об успеваемости и посещаемости
+type Month struct {
+	// Имя месяцы
+	Name string
+
+	// Дни в этом месяце для данного отчёта
+	Days []Day
+}
+
+// Отчёт об успеваемости и посещаемости
+type StudentTotalReport struct {
+	// Часть отчёта без среднего балла
+	MainTable []Month
+
+	// Средний балл по предметам
+	AverageMarks map[string]string
+}
+*/
+
 // GetStudentTotalReport возвращает отчет о посещениях ученика.
 func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*StudentTotalReport, error) {
 	var err error
