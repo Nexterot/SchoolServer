@@ -16,6 +16,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	//"SchoolServer/libtelco/db
 
 	"github.com/gorilla/sessions"
 )
@@ -28,6 +29,7 @@ type RestAPI struct {
 	store       *sessions.CookieStore
 	logger      *log.Logger
 	sessionsMap map[string]*ss.Session
+	//db		*db.Database
 }
 
 // NewRestAPI создает структуру для работы с Rest API.
@@ -42,6 +44,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		store:       newStore,
 		logger:      logger,
 		sessionsMap: make(map[string]*ss.Session),
+		//db	   : db.NewDatabase(),
 	}
 }
 
@@ -52,9 +55,9 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler) // done
 	http.HandleFunc("/check_permission", rest.Handler)
 	http.HandleFunc("/sign_in", rest.SignInHandler) // done
-	http.HandleFunc("/log_out", rest.LogOutHandler)
+	http.HandleFunc("/log_out", rest.LogOutHandler) // done
 
-	http.HandleFunc("/get_tasks_and_marks", rest.Handler)
+	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler) // done
 	http.HandleFunc("/get_lesson_description", rest.Handler)
 	http.HandleFunc("/mark_as_done", rest.Handler)
 	http.HandleFunc("/unmark_as_done", rest.Handler)
@@ -126,9 +129,70 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 	rest.logger.Info("Sent list of schools: ", resp)
 }
 
+// tasksMarksRequest используется в GetTasksAndMarksHandler
+type tasksMarksRequest struct {
+	Week string `json:"week"`
+	Id   string `json:"id"`
+}
+
+// GetTasksAndMarksHandler возвращает задания и оценки на неделю
+func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("getTasksAndMarksHandler called (almost done)")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq tasksMarksRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	//
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating new one (not implemented yet)")
+		// TODO сходить в БД за логином и паролем, и создать новую сессию
+	}
+	day := rReq.Week
+	timeTable, err := remoteSession.GetTimeTable(day, 7)
+	if err != nil {
+		rest.logger.Error("Unable to get timetable: ", err)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	bytes, err := json.Marshal(timeTable)
+	if err != nil {
+		rest.logger.Error("Error marshalling timeTable")
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent tasks and marks for a week: ", timeTable)
+}
+
 // LogOutHandler обрабатывает удаление сессии клиента и отвязку устройства
 func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("LogOutHandler called (in development)")
+	rest.logger.Info("LogOutHandler called")
 	if req.Method != "GET" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -140,6 +204,7 @@ func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	sessionName := cookie.Value
 
 	/* TODO
 	не чистить sessionMap, сохранять в БД идентификатор последней сессии,
@@ -148,7 +213,6 @@ func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request
 	*/
 
 	// Если кука есть, удалить локальную и удаленную сессии
-	sessionName := cookie.Value
 	session, err := rest.store.Get(req, sessionName)
 	if err != nil {
 		rest.logger.Info("Error getting session: ", sessionName)
@@ -166,11 +230,6 @@ type SignInRequest struct {
 	Login   string `json:"login"`
 	Passkey string `json:"passkey"`
 	Id      string `json:"id"`
-}
-
-// SessionResponse используется в SignInHandler
-type SessionResponse struct {
-	SessionID string `json:"session_id"`
 }
 
 // SignInHandler обрабатывает вход в учетную запись на сайте школы
