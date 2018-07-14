@@ -258,11 +258,23 @@ func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 			lessons = append(lessons, *new(Lesson))
 		}
 
-		for i := 0; i < len(starts); i++ {
-			lessons[i].Begin = starts[i]
-			lessons[i].End = ends[i]
-			lessons[i].Name = names[i]
-			lessons[i].ClassRoom = classrooms[i]
+		if len(starts) != 0 && len(names) == 0 && len(classrooms) == 0 {
+			// Случай, когда в расписании указаны каникулы
+			infoNode := lessonsNode.FirstChild.NextSibling.FirstChild.NextSibling.FirstChild
+			date := infoNode.FirstChild.Data
+			infoNode = infoNode.NextSibling.FirstChild
+			event := infoNode.Data + infoNode.NextSibling.FirstChild.Data
+			s := strings.Split(date, "-")
+			lessons[0].Begin = s[0][:len(s[0])-2]
+			lessons[0].End = s[1][2:]
+			lessons[0].Name = event
+		} else {
+			for i := 0; i < len(starts); i++ {
+				lessons[i].Begin = starts[i]
+				lessons[i].End = ends[i]
+				lessons[i].Name = names[i]
+				lessons[i].ClassRoom = classrooms[i]
+			}
 		}
 
 		return lessons

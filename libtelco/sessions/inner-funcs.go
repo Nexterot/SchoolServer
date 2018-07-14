@@ -143,7 +143,6 @@ func totalMarkReportParser(r io.Reader) (*TotalMarkReport, error) {
 		data := make(map[string][]int)
 		formTotalMarkReport(tableNode, data)
 		report.Data = data
-
 		return &report, nil
 	}
 
@@ -371,4 +370,147 @@ func studentGradeReportParser(r io.Reader) (*StudentGradeReport, error) {
 	}
 
 	return makeStudentGradeReportTable(parsedHTML)
+}
+
+// studentTotalReportParser возвращает отчет о посещениях ученика.
+// находится в inner-funcs, так как отчеты на всех серверах одинаковые.
+func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
+	parsedHTML, err := html.Parse(r)
+	if err != nil {
+		return nil, err
+	}
+	// Находит нод с табличкой
+	var findStudentTotalTableNode func(*html.Node) *html.Node
+	findStudentTotalTableNode = func(node *html.Node) *html.Node {
+		if node.Type == html.ElementNode {
+			for _, a := range node.Attr {
+				if a.Key == "class" && a.Val == "table-print" {
+					return node
+				}
+			}
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			n := findStudentTotalTableNode(c)
+			if n != nil {
+				return n
+			}
+		}
+		return nil
+	}
+	// Разделяет строку по пробелу
+	splitBySpace := func(str string) []string {
+		strings := make([]string, 0, 3)
+		start := 0
+		for i := 0; i < len(str); i++ {
+			if str[i] == 194 || str[i] == 160 {
+				if i < len(str)-1 && str[i+1] == 160 {
+					strings = append(strings, str[start:i])
+					start = i + 2
+				}
+			}
+		}
+		if start < len(str) {
+			strings = append(strings, str[start:])
+		}
+		return strings
+	}
+	// Формирует отчёт
+	formStudentTotalReportTable := func(node *html.Node) ([]Month, map[string]string, error) {
+		months := make([]Month, 0, 3)
+		averageMarks := make(map[string]string)
+		if node != nil {
+			// Добавляем месяцы
+			monthNode := node.FirstChild.FirstChild.FirstChild
+			for monthNode = monthNode.NextSibling; len(monthNode.Attr) == 1 && monthNode.Attr[0].Key == "colspan"; monthNode = monthNode.NextSibling {
+				month := *new(Month)
+				month.Name = monthNode.FirstChild.Data
+				numberOfDaysInMonth, err := strconv.Atoi(monthNode.Attr[0].Val)
+				if err != nil {
+					return months, averageMarks, err
+				}
+				month.Days = make([]Day, numberOfDaysInMonth)
+				months = append(months, month)
+			}
+			// Добавляем дни
+			dayNode := node.FirstChild.FirstChild.NextSibling
+			// Текущий месяц в months
+			currentMonth := 0
+			// Сколько дней добавили для текущего месяца
+			dayNumberInMonth := 0
+			// Всего дней в отчёте
+			overallNumberOfDays := 0
+			for dayNode = dayNode.FirstChild; dayNode != nil; dayNode = dayNode.NextSibling {
+				if dayNumberInMonth == len(months[currentMonth].Days) {
+					currentMonth++
+					dayNumberInMonth = 0
+				}
+				day := *new(Day)
+				day.Number, err = strconv.Atoi(dayNode.FirstChild.Data)
+				day.Marks = make(map[string][]string)
+				if err != nil {
+					return months, averageMarks, err
+				}
+				months[currentMonth].Days[dayNumberInMonth] = day
+
+				dayNumberInMonth++
+				overallNumberOfDays++
+			}
+			// Идём по остальной части таблицы
+			noteNode := node.FirstChild.FirstChild.NextSibling
+			for noteNode = noteNode.NextSibling; noteNode != nil; noteNode = noteNode.NextSibling {
+				currentMonth = 0
+				dayNumberInMonth = 0
+				c := noteNode.FirstChild
+				subjectName := c.FirstChild.Data
+				for i := 0; i < overallNumberOfDays; i++ {
+					if dayNumberInMonth == len(months[currentMonth].Days) {
+						currentMonth++
+						dayNumberInMonth = 0
+					}
+					c = c.NextSibling
+					var marks []string
+					if c.FirstChild.FirstChild != nil {
+						for c2 := c.FirstChild; c2 != nil; c2 = c2.NextSibling {
+							var s []string
+							if c2.FirstChild != nil {
+								s = splitBySpace(c2.FirstChild.Data)
+							} else {
+								s = splitBySpace(c2.Data)
+							}
+							for k := 0; k < len(s); k++ {
+								marks = append(marks, s[k])
+							}
+						}
+					} else {
+						marks = splitBySpace(c.FirstChild.Data)
+					}
+					// Избавляемся от строк из непечатаемых символом
+					finalMarks := make([]string, 0, 1)
+					for el := range marks {
+						if len([]byte(marks[el])) != 0 {
+							finalMarks = append(finalMarks, marks[el])
+						}
+					}
+					if len(finalMarks) != 0 {
+						months[currentMonth].Days[dayNumberInMonth].Marks[subjectName] = finalMarks
+					}
+
+					dayNumberInMonth++
+				}
+				averageMarks[subjectName] = c.NextSibling.FirstChild.Data
+			}
+		} else {
+			return months, averageMarks, errors.New("Node is nil in func formStudentTotalReportTable")
+		}
+
+		return months, averageMarks, nil
+	}
+	// Создаёт отчёт
+	makeStudentTotalReportTable := func(node *html.Node) (*StudentTotalReport, error) {
+		var report StudentTotalReport
+		tableNode := findStudentTotalTableNode(node)
+		report.MainTable, report.AverageMarks, err = formStudentTotalReportTable(tableNode)
+		return &report, err
+	}
+	return makeStudentTotalReportTable(parsedHTML)
 }

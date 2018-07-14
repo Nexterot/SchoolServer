@@ -115,13 +115,13 @@ func (s *Session) getDayTimeTable(date string) (*DayTimeTable, error) {
 
 // WeekSchoolMarks struct содержит в себе оценки и ДЗ на текущую неделю.
 type WeekSchoolMarks struct {
-	Data []DaySchoolMarks
+	Data []DaySchoolMarks `json:"days"`
 }
 
 // DaySchoolMarks struct содержит в себе оценки и ДЗ на текущий день.
 type DaySchoolMarks struct {
-	Date    string
-	Lessons []SchoolMark
+	Date    string       `json:"date"`
+	Lessons []SchoolMark `json:"lessons"`
 }
 
 // SchoolMark struct содержит в себе оценку и ДЗ по одному уроку.
@@ -129,14 +129,16 @@ type SchoolMark struct {
 	AID    int
 	CID    int
 	TP     int
-	Status bool
-	InTime bool
-	Name   string
-	Author string
-	Title  string
-	Type   string
-	Mark   string
-	Weight string
+	Status bool   `json:"statuc"`
+	InTime bool   `json:"inTime"`
+	Name   string `json:"name"`
+	Author string `json:"author"`
+	Title  string `json:"title"`
+	Type   string `json:"type"`
+	Mark   string `json:"mark"`
+	Weight string `json:"weight"`
+	// Временный костыль.
+	ID int `json:"id"`
 }
 
 // GetWeekSchoolMarks возвращает оценки на заданную неделю.
@@ -156,9 +158,14 @@ func (s *Session) GetWeekSchoolMarks(date string) (*WeekSchoolMarks, error) {
 Получение отчетов.
 */
 
+// REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // TotalMarkReport struct - отчет первого типа.
 type TotalMarkReport struct {
 	Data map[string][]int
+}
+
+type TotalMarkReportSubject struct {
+	Data map[string]int
 }
 
 // GetTotalMarkReport возвращает успеваемость ученика.
@@ -174,6 +181,7 @@ func (s *Session) GetTotalMarkReport() (*TotalMarkReport, error) {
 	return finalMarkReport, err
 }
 
+// REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // AverageMarkReport struct - отчет второго типа.
 type AverageMarkReport struct {
 	Student map[string]string
@@ -200,24 +208,15 @@ type AverageMarkDynReport struct {
 
 // AverageMarkDynReportNote struct - одна запись в отчёте "Динамика среднего балла".
 type AverageMarkDynReportNote struct {
-	// Дата срезовой работы/Четверть/Полугодие
-	Date string
-
-	// Кол-во срезовых работ ученика
+	Date               string
 	StudentWorksAmount int
-
-	// Средний балл ученика
 	StudentAverageMark string
-
-	// Кол-во срезовых работ класса
-	ClassWorksAmount int
-
-	// Средний балл класса
-	ClassAverageMark string
+	ClassWorksAmount   int
+	ClassAverageMark   string
 }
 
-// GetAverageMarkReportDyn возвращает динамику среднего балла ученика.
-func (s *Session) GetAverageMarkReportDyn(dateBegin, dateEnd, Type string) (*AverageMarkDynReport, error) {
+// GetAverageMarkDynReport возвращает динамику среднего балла ученика.
+func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type string) (*AverageMarkDynReport, error) {
 	var err error
 	var averageMarkDynReport *AverageMarkDynReport
 	switch s.Serv.Type {
@@ -255,39 +254,24 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) 
 	return studentGradeReport, err
 }
 
+// REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // StudentTotalReport struct - отчет пятого типа.
 type StudentTotalReport struct {
-	Data map[string][]int
-}
-
-/*
-// Один день в отчёте об успеваемости и посещаемости
-type Day struct {
-	// Номер дня
-	Number int
-
-	// Оценки, "точки", пропуски в этот день по предметам
-	Marks map[string][]string
-}
-
-// Один месяц в отчёте об успеваемости и посещаемости
-type Month struct {
-	// Имя месяцы
-	Name string
-
-	// Дни в этом месяце для данного отчёта
-	Days []Day
-}
-
-// Отчёт об успеваемости и посещаемости
-type StudentTotalReport struct {
-	// Часть отчёта без среднего балла
-	MainTable []Month
-
-	// Средний балл по предметам
+	MainTable    []Month
 	AverageMarks map[string]string
 }
-*/
+
+// Day struct - один день в отчёте об успеваемости и посещаемости
+type Day struct {
+	Number int
+	Marks  map[string][]string
+}
+
+// Month struct - один месяц в отчёте об успеваемости и посещаемости
+type Month struct {
+	Name string
+	Days []Day
+}
 
 // GetStudentTotalReport возвращает отчет о посещениях ученика.
 func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*StudentTotalReport, error) {

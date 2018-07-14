@@ -360,11 +360,7 @@ func (s *Session) getStudentTotalReportFirst(dateBegin, dateEnd string) (*Studen
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.
-	// Сделай парсер.
-	fmt.Println(string(response1.Bytes()))
-	fmt.Println()
-	fmt.Println()
-	return nil, nil
+	return studentTotalReportParser(bytes.NewReader(response1.Bytes()))
 }
 
 // getJournalAccessReportFirst возвращает отчет о доступе к журналу с сервера первого типа.
