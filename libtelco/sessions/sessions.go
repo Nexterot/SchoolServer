@@ -50,6 +50,8 @@ func NewSession(server *cp.School) *Session {
 
 // Login логинится к серверу и создает очередную сессию.
 func (s *Session) Login() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:
@@ -66,6 +68,8 @@ func (s *Session) Login() error {
 
 // GetChildrenMap получает мапу детей в их {UID, CLID}.
 func (s *Session) GetChildrenMap() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:
@@ -101,6 +105,8 @@ type Lesson struct {
 
 // GetTimeTable возвращает расписание на n дней, начиная с текущего.
 func (s *Session) GetTimeTable(date string, n int) (*TimeTable, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var timeTable *TimeTable
 	if (n < 1) || (n > 7) {
@@ -126,6 +132,8 @@ func (s *Session) GetTimeTable(date string, n int) (*TimeTable, error) {
 
 // getDayTimeTable возвращает расписание на один день.
 func (s *Session) getDayTimeTable(date string) (*DayTimeTable, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var dayTimeTable *DayTimeTable
 	switch s.Serv.Type {
@@ -171,6 +179,8 @@ type SchoolMark struct {
 
 // GetWeekSchoolMarks возвращает оценки на заданную неделю.
 func (s *Session) GetWeekSchoolMarks(date string) (*WeekSchoolMarks, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var weekSchoolMarks *WeekSchoolMarks
 	switch s.Serv.Type {
@@ -202,6 +212,8 @@ type TotalMarkReportSubject struct {
 
 // GetTotalMarkReport возвращает успеваемость ученика.
 func (s *Session) GetTotalMarkReport() (*TotalMarkReport, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var finalMarkReport *TotalMarkReport
 	switch s.Serv.Type {
@@ -226,6 +238,8 @@ type AverageMarkReport struct {
 
 // GetAverageMarkReport возвращает средние баллы ученика.
 func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type string) (*AverageMarkReport, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var averageMarkReport *AverageMarkReport
 	switch s.Serv.Type {
@@ -257,6 +271,8 @@ type AverageMarkDynReportNote struct {
 
 // GetAverageMarkDynReport возвращает динамику среднего балла ученика.
 func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type string) (*AverageMarkDynReport, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var averageMarkDynReport *AverageMarkDynReport
 	switch s.Serv.Type {
@@ -287,6 +303,8 @@ type StudentGradeReportNote struct {
 
 // GetStudentGradeReport возвращает отчет об успеваемости ученика по предмету.
 func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) (*StudentGradeReport, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var studentGradeReport *StudentGradeReport
 	switch s.Serv.Type {
@@ -323,6 +341,8 @@ type Month struct {
 
 // GetStudentTotalReport возвращает отчет о посещениях ученика.
 func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*StudentTotalReport, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var studentTotalReport *StudentTotalReport
 	switch s.Serv.Type {
@@ -352,6 +372,8 @@ type JournalAccessReport struct {
 
 // GetJournalAccessReport возвращает отчет о доступе к журналу.
 func (s *Session) GetJournalAccessReport() (*JournalAccessReport, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var studentTotalReport *JournalAccessReport
 	switch s.Serv.Type {
@@ -373,6 +395,8 @@ type ParentInfoLetterReport struct {
 
 // GetParentInfoLetterReport возвращает шаблон письма родителям.
 func (s *Session) GetParentInfoLetterReport(studentID, reportTypeID, periodID string) (*ParentInfoLetterReport, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var parentInfoLetterRepport *ParentInfoLetterReport
 	switch s.Serv.Type {
