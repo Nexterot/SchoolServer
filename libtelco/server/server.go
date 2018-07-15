@@ -9,7 +9,8 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	api "SchoolServer/libtelco/rest-api"
-	//ss "SchoolServer/libtelco/sessions"
+	ss "SchoolServer/libtelco/sessions"
+	"fmt"
 
 	"net/http"
 	"runtime"
@@ -36,27 +37,13 @@ func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
-	/*
-		// Тесты.
-		kek := ss.NewSession(&serv.config.Schools[0])
-		flag, err := kek.Ping()
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(flag)
-		fmt.Println()
+	// Тесты.
+	kek := ss.NewSession(&serv.config.Schools[0])
 
-		err = kek.Login()
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		flag, err = kek.Ping()
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(flag)
-	*/
+	err := kek.Login()
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()

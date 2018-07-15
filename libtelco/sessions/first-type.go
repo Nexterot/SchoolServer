@@ -18,6 +18,8 @@ import (
 	"golang.org/x/net/html"
 )
 
+//
+
 // loginFirst логинится к серверу первого типа и создает очередную сессию.
 func (s *Session) loginFirst() error {
 	// Создание сессии.
@@ -81,6 +83,7 @@ func (s *Session) loginFirst() error {
 	defer func() {
 		_ = response2.Close()
 	}()
+	fmt.Println(string(response2.Bytes()))
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней "AT".
@@ -111,34 +114,6 @@ func (s *Session) loginFirst() error {
 	if (s.at == "") || (s.ver == "") {
 		return fmt.Errorf("Problems on school server: %s", s.Serv.Link)
 	}
-
-	return nil
-}
-
-// getUIDFirst получает UID пользователя, а также его тип с сервера первого типа.
-func (s *Session) getUIDFirst() error {
-	p := "http://"
-
-	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"UID": "11200",
-			"VER": s.ver,
-			"AT":  s.at,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link,
-		},
-	}
-	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/MySettings/MySettings.asp", requestOptions0)
-	if err != nil {
-		return err
-	}
-	// Если мы дошли до этого места, то можно начать писать парсер.
-	// Андрей, напиши парсер.
-	fmt.Println(string(response0.Bytes()))
 	return nil
 }
 
@@ -165,46 +140,17 @@ func (s *Session) getChildrenMapFirst() error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
+		return err
+	}
 	// Если мы дошли до этого места, то можно начать писать парсер.
 	// Андрей, напиши парсер.
 	// Пока не уверен как сделать, но что-нибудь придумаю.
 	fmt.Println(string(response0.Bytes()))
 	return nil
-}
-
-// getCLIDFirst получает ID класса ученика с сервера первого типа.
-func (s *Session) getCLIDFirst() error {
-	return nil
-}
-
-// pingFirst пытается зайти на главную страницу сервера. Если это удаётся,
-// возвращается true, иначе false.
-func (s *Session) pingFirst() (bool, error) {
-	p := "http://"
-
-	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"UID": "11200",
-			"VER": s.ver,
-			"AT":  s.at,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link,
-		},
-	}
-	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/MySettings/MySettings.asp", requestOptions0)
-	if err != nil {
-		return false, err
-	}
-	body := string(response0.Bytes())
-	if (response0.StatusCode == 400) &&
-		(strings.Contains(body, "HTTP Error 400. The request has an invalid header name.")) {
-		return false, nil
-	}
-	return true, nil
 }
 
 // getDayTimeTableFirst возвращает расписание на один день c сервера первого типа.
@@ -222,8 +168,8 @@ func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 			"EventType": "",
 			"FOO":       "",
 			"LoginType": "0",
-			"PCLID_UP":  "10169_0",
-			"SID":       "11198",
+			"PCLID_UP":  "",
+			"SID":       "11207",
 			"VER":       s.ver,
 		},
 		Headers: map[string]string{
@@ -237,7 +183,9 @@ func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 	defer func() {
 		_ = response0.Close()
 	}()
-
+	if err := s.checkResponse(response0); err != nil {
+		return nil, err
+	}
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней расписание на текущий день.
 	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
@@ -413,7 +361,9 @@ func (s *Session) getWeekSchoolMarksFirst(date string) (*WeekSchoolMarks, error)
 	defer func() {
 		_ = response0.Close()
 	}()
-
+	if err := s.checkResponse(response0); err != nil {
+		return nil, err
+	}
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.
 	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
@@ -576,4 +526,13 @@ func (s *Session) getWeekSchoolMarksFirst(date string) (*WeekSchoolMarks, error)
 
 	weekSchoolMarks, err = makeWeekSchoolMarks(parsedHTML)
 	return weekSchoolMarks, err
+}
+
+func (s *Session) checkResponseFirst(response *gr.Response) error {
+	body := string(response.Bytes())
+	if (response.StatusCode == 400) &&
+		(strings.Contains(body, "HTTP Error 400. The request has an invalid header name.")) {
+		return fmt.Errorf("You was logged out from server")
+	}
+	return nil
 }

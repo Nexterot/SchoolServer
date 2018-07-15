@@ -31,8 +31,14 @@ func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
-	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
 	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
 		return nil, err
 	}
 
@@ -45,7 +51,7 @@ func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 			"ISTF":      "0",
 			"LoginType": "0",
 			"NA":        "",
-			"PCLID":     "10169",
+			"PCLID":     "",
 			"PP":        "/asp/Reports/ReportStudentTotalMarks.asp",
 			"RP":        "0",
 			"RPTID":     "0",
@@ -69,6 +75,9 @@ func (s *Session) getTotalMarkReportFirst() (*TotalMarkReport, error) {
 	defer func() {
 		_ = response1.Close()
 	}()
+	if err := s.checkResponse(response1); err != nil {
+		return nil, err
+	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.
@@ -94,8 +103,14 @@ func (s *Session) getAverageMarkReportFirst(dateBegin, dateEnd, Type string) (*A
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
-	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMark.asp", requestOptions0)
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMark.asp", requestOptions0)
 	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
 		return nil, err
 	}
 
@@ -110,7 +125,7 @@ func (s *Session) getAverageMarkReportFirst(dateBegin, dateEnd, Type string) (*A
 			"LoginType": "0",
 			"MT":        Type,
 			"NA":        "",
-			"PCLID":     "10169",
+			"PCLID":     "",
 			"PP":        "/asp/Reports/ReportStudentAverageMark.asp",
 			"RP":        "",
 			"RPTID":     "1",
@@ -134,6 +149,9 @@ func (s *Session) getAverageMarkReportFirst(dateBegin, dateEnd, Type string) (*A
 	defer func() {
 		_ = response1.Close()
 	}()
+	if err := s.checkResponse(response1); err != nil {
+		return nil, err
+	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.
@@ -159,8 +177,14 @@ func (s *Session) getAverageMarkDynReportFirst(dateBegin, dateEnd, Type string) 
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
-	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMarkDyn.asp", requestOptions0)
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMarkDyn.asp", requestOptions0)
 	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
 		return nil, err
 	}
 
@@ -175,7 +199,7 @@ func (s *Session) getAverageMarkDynReportFirst(dateBegin, dateEnd, Type string) 
 			"LoginType": "0",
 			"MT":        Type,
 			"NA":        "",
-			"PCLID":     "10169",
+			"PCLID":     "",
 			"PP":        "/asp/Reports/ReportStudentAverageMarkDyn.asp",
 			"RP":        "",
 			"RPTID":     "2",
@@ -199,6 +223,9 @@ func (s *Session) getAverageMarkDynReportFirst(dateBegin, dateEnd, Type string) 
 	defer func() {
 		_ = response1.Close()
 	}()
+	if err := s.checkResponse(response1); err != nil {
+		return nil, err
+	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.
@@ -224,8 +251,14 @@ func (s *Session) getStudentGradeReportFirst(dateBegin, dateEnd, SubjectName str
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
-	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", requestOptions0)
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", requestOptions0)
 	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
 		return nil, err
 	}
 
@@ -256,8 +289,14 @@ func (s *Session) getStudentGradeReportFirst(dateBegin, dateEnd, SubjectName str
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentGrades.asp",
 		},
 	}
-	_, err = s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", requestOptions1)
+	response1, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", requestOptions1)
 	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response1.Close()
+	}()
+	if err := s.checkResponse(response1); err != nil {
 		return nil, err
 	}
 
@@ -296,6 +335,9 @@ func (s *Session) getStudentGradeReportFirst(dateBegin, dateEnd, SubjectName str
 	defer func() {
 		_ = response2.Close()
 	}()
+	if err := s.checkResponse(response2); err != nil {
+		return nil, err
+	}
 	return studentGradeReportParser(bytes.NewReader(response2.Bytes()))
 }
 
@@ -318,8 +360,14 @@ func (s *Session) getStudentTotalReportFirst(dateBegin, dateEnd string) (*Studen
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
-	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotal.asp", requestOptions0)
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotal.asp", requestOptions0)
 	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
 		return nil, err
 	}
 
@@ -333,7 +381,7 @@ func (s *Session) getStudentTotalReportFirst(dateBegin, dateEnd string) (*Studen
 			"DDT":       dateEnd,
 			"LoginType": "0",
 			"NA":        "",
-			"PCLID":     "10169",
+			"PCLID":     "",
 			"PP":        "/asp/Reports/ReportStudentTotal.asp",
 			"RP":        "",
 			"RPTID":     "1",
@@ -357,6 +405,9 @@ func (s *Session) getStudentTotalReportFirst(dateBegin, dateEnd string) (*Studen
 	defer func() {
 		_ = response1.Close()
 	}()
+	if err := s.checkResponse(response1); err != nil {
+		return nil, err
+	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.
@@ -382,8 +433,14 @@ func (s *Session) getJournalAccessReportFirst() (*JournalAccessReport, error) {
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
-	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotal.asp", requestOptions0)
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotal.asp", requestOptions0)
 	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
 		return nil, err
 	}
 
@@ -395,7 +452,7 @@ func (s *Session) getJournalAccessReportFirst() (*JournalAccessReport, error) {
 			"BACK":      "/asp/Reports/ReportJournalAccess.asp",
 			"LoginType": "0",
 			"NA":        "",
-			"PCLID":     "10169_0",
+			"PCLID":     "",
 			"PP":        "/asp/Reports/ReportJournalAccess.asp",
 			"RP":        "",
 			"RPTID":     "3",
@@ -419,6 +476,9 @@ func (s *Session) getJournalAccessReportFirst() (*JournalAccessReport, error) {
 	defer func() {
 		_ = response1.Close()
 	}()
+	if err := s.checkResponse(response1); err != nil {
+		return nil, err
+	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.
@@ -448,8 +508,14 @@ func (s *Session) getParentInfoLetterReportFirst(studentID, reportTypeID, period
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
-	_, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportParentInfoLetter.asp", requestOptions0)
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportParentInfoLetter.asp", requestOptions0)
 	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
 		return nil, err
 	}
 
@@ -461,7 +527,7 @@ func (s *Session) getParentInfoLetterReportFirst(studentID, reportTypeID, period
 			"BACK":       "/asp/Reports/ReportParentInfoLetter.asp",
 			"LoginType":  "0",
 			"NA":         "",
-			"PCLID":      "10169",
+			"PCLID":      "",
 			"PP":         "/asp/Reports/ReportParentInfoLetter.asp",
 			"RP":         "",
 			"RPTID":      "4",
@@ -488,6 +554,9 @@ func (s *Session) getParentInfoLetterReportFirst(studentID, reportTypeID, period
 	defer func() {
 		_ = response1.Close()
 	}()
+	if err := s.checkResponse(response1); err != nil {
+		return nil, err
+	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней оценки.

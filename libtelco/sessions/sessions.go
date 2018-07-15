@@ -26,21 +26,12 @@ type Session struct {
 	Serv        *cp.School
 	mu          sync.Mutex
 	LastRequest time.Time
-	UID         string
 	Type        int
-	// Только для детей.
-	CLID string
 	// Только для родителей.
-	ChildrenUIDS *map[string]string
+	ChildrenIDS *map[string]string
 	// Для серверов первого типа.
 	at  string
 	ver string
-}
-
-// Child struct содержит в себе описание аккаунта ребенка для родителя.
-type Child struct {
-	UID  string
-	CLID string
 }
 
 // NewSession создает новую сессию на базе информации о школьном сервере,
@@ -70,22 +61,6 @@ func (s *Session) Login() error {
 }
 
 /*
-Получение UID.
-*/
-
-// GetUID получает UID пользователя, а также его тип.
-func (s *Session) GetUID() error {
-	var err error
-	switch s.Serv.Type {
-	case cp.FirstType:
-		err = s.getUIDFirst()
-	default:
-		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
-	}
-	return err
-}
-
-/*
 Получение списка детей.
 */
 
@@ -99,40 +74,6 @@ func (s *Session) GetChildrenMap() error {
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}
 	return err
-}
-
-/*
-Получение ID класса.
-*/
-
-// GetCLID получает ID класса ученика.
-func (s *Session) GetCLID() error {
-	var err error
-	switch s.Serv.Type {
-	case cp.FirstType:
-		err = s.getChildrenMapFirst()
-	default:
-		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
-	}
-	return err
-}
-
-/*
-"Пингование" сессии.
-*/
-
-// Ping пытается зайти на главную страницу сервера. Если это удаётся,
-// возвращается true, иначе false.
-func (s *Session) Ping() (bool, error) {
-	var err error
-	flag := false
-	switch s.Serv.Type {
-	case cp.FirstType:
-		flag, err = s.pingFirst()
-	default:
-		flag, err = false, fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
-	}
-	return flag, err
 }
 
 /*
@@ -441,4 +382,14 @@ func (s *Session) GetParentInfoLetterReport(studentID, reportTypeID, periodID st
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}
 	return parentInfoLetterRepport, err
+}
+
+// checkPage проверяет, была ли ошибка при запросе.
+func (s *Session) checkResponse(response *gr.Response) error {
+	switch s.Serv.Type {
+	case cp.FirstType:
+		return s.checkResponseFirst(response)
+	default:
+		return fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
 }
