@@ -14,6 +14,11 @@ import (
 	gr "github.com/levigross/grequests"
 )
 
+const (
+	parent = iota
+	child  = iota
+)
+
 // Session struct содержит в себе описание сессии к одному из школьных серверов.
 type Session struct {
 	// Общая структура.
@@ -21,9 +26,21 @@ type Session struct {
 	Serv        *cp.School
 	mu          sync.Mutex
 	LastRequest time.Time
+	UID         string
+	Type        int
+	// Только для детей.
+	CLID string
+	// Только для родителей.
+	ChildrenUIDS *map[string]string
 	// Для серверов первого типа.
 	at  string
 	ver string
+}
+
+// Child struct содержит в себе описание аккаунта ребенка для родителя.
+type Child struct {
+	UID  string
+	CLID string
 }
 
 // NewSession создает новую сессию на базе информации о школьном сервере,
@@ -45,7 +62,55 @@ func (s *Session) Login() error {
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:
-		err = s.firstTypeLogin()
+		err = s.loginFirst()
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return err
+}
+
+/*
+Получение UID.
+*/
+
+// GetUID получает UID пользователя, а также его тип.
+func (s *Session) GetUID() error {
+	var err error
+	switch s.Serv.Type {
+	case cp.FirstType:
+		err = s.getUIDFirst()
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return err
+}
+
+/*
+Получение списка детей.
+*/
+
+// GetChildrenMap получает мапу детей в их {UID, CLID}.
+func (s *Session) GetChildrenMap() error {
+	var err error
+	switch s.Serv.Type {
+	case cp.FirstType:
+		err = s.getChildrenMapFirst()
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return err
+}
+
+/*
+Получение ID класса.
+*/
+
+// GetCLID получает ID класса ученика.
+func (s *Session) GetCLID() error {
+	var err error
+	switch s.Serv.Type {
+	case cp.FirstType:
+		err = s.getChildrenMapFirst()
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}
@@ -63,7 +128,7 @@ func (s *Session) Ping() (bool, error) {
 	flag := false
 	switch s.Serv.Type {
 	case cp.FirstType:
-		flag, err = s.firstTypePing()
+		flag, err = s.pingFirst()
 	default:
 		flag, err = false, fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}

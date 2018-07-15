@@ -18,8 +18,8 @@ import (
 	"golang.org/x/net/html"
 )
 
-// firstTypeLogin логинится к серверу первого типа и создает очередную сессию.
-func (s *Session) firstTypeLogin() error {
+// loginFirst логинится к серверу первого типа и создает очередную сессию.
+func (s *Session) loginFirst() error {
 	// Создание сессии.
 	p := "http://"
 
@@ -115,9 +115,71 @@ func (s *Session) firstTypeLogin() error {
 	return nil
 }
 
-// firstTypePing пытается зайти на главную страницу сервера. Если это удаётся,
+// getUIDFirst получает UID пользователя, а также его тип с сервера первого типа.
+func (s *Session) getUIDFirst() error {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"UID": "11200",
+			"VER": s.ver,
+			"AT":  s.at,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link,
+		},
+	}
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/MySettings/MySettings.asp", requestOptions0)
+	if err != nil {
+		return err
+	}
+	// Если мы дошли до этого места, то можно начать писать парсер.
+	// Андрей, напиши парсер.
+	fmt.Println(string(response0.Bytes()))
+	return nil
+}
+
+// getChildrenMapFirst получает мапу детей в их {UID, CLID} с сервера первого типа.
+func (s *Session) getChildrenMapFirst() error {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.at,
+			"LoginType": "0",
+			"RPTID":     "0",
+			"ThmID":     "1",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+		},
+	}
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
+	if err != nil {
+		return err
+	}
+	// Если мы дошли до этого места, то можно начать писать парсер.
+	// Андрей, напиши парсер.
+	// Пока не уверен как сделать, но что-нибудь придумаю.
+	fmt.Println(string(response0.Bytes()))
+	return nil
+}
+
+// getCLIDFirst получает ID класса ученика с сервера первого типа.
+func (s *Session) getCLIDFirst() error {
+	return nil
+}
+
+// pingFirst пытается зайти на главную страницу сервера. Если это удаётся,
 // возвращается true, иначе false.
-func (s *Session) firstTypePing() (bool, error) {
+func (s *Session) pingFirst() (bool, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -138,7 +200,7 @@ func (s *Session) firstTypePing() (bool, error) {
 		return false, err
 	}
 	body := string(response0.Bytes())
-	if (response0.StatusCode != 200) &&
+	if (response0.StatusCode == 400) &&
 		(strings.Contains(body, "HTTP Error 400. The request has an invalid header name.")) {
 		return false, nil
 	}
