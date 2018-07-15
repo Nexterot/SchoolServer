@@ -9,7 +9,7 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	api "SchoolServer/libtelco/rest-api"
-	// ss "SchoolServer/libtelco/sessions"
+	//ss "SchoolServer/libtelco/sessions"
 
 	"net/http"
 	"runtime"
@@ -39,15 +39,23 @@ func (serv *Server) Run() error {
 	/*
 		// Тесты.
 		kek := ss.NewSession(&serv.config.Schools[0])
-		err := kek.Login()
+		flag, err := kek.Ping()
 		if err != nil {
 			fmt.Println(err)
 		}
-		data, err := kek.GetStudentTotalReport("18.10.2017", "07.04.2018")
+		fmt.Println(flag)
+		fmt.Println()
+
+		err = kek.Login()
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(data)
+
+		flag, err = kek.Ping()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(flag)
 	*/
 
 	// Подключаем handler'ы из RestAPI.

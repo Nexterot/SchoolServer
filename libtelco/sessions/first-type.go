@@ -21,7 +21,6 @@ import (
 // firstTypeLogin логинится к серверу первого типа и создает очередную сессию.
 func (s *Session) firstTypeLogin() error {
 	// Создание сессии.
-	s.sess = gr.NewSession(nil)
 	p := "http://"
 
 	// Полчение формы авторизации.
@@ -114,6 +113,36 @@ func (s *Session) firstTypeLogin() error {
 	}
 
 	return nil
+}
+
+// firstTypePing пытается зайти на главную страницу сервера. Если это удаётся,
+// возвращается true, иначе false.
+func (s *Session) firstTypePing() (bool, error) {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"UID": "11200",
+			"VER": s.ver,
+			"AT":  s.at,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link,
+		},
+	}
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/MySettings/MySettings.asp", requestOptions0)
+	if err != nil {
+		return false, err
+	}
+	body := string(response0.Bytes())
+	if (response0.StatusCode != 200) &&
+		(strings.Contains(body, "HTTP Error 400. The request has an invalid header name.")) {
+		return false, nil
+	}
+	return true, nil
 }
 
 // getDayTimeTableFirst возвращает расписание на один день c сервера первого типа.

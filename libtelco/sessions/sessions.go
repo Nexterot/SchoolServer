@@ -30,14 +30,14 @@ type Session struct {
 // к которому предстоит подключиться.
 func NewSession(server *cp.School) *Session {
 	return &Session{
-		sess: nil,
+		sess: gr.NewSession(nil),
 		Serv: server,
 		mu:   sync.Mutex{},
 	}
 }
 
 /*
-Получение расписания.
+Вход в систему.
 */
 
 // Login логинится к серверу и создает очередную сессию.
@@ -51,6 +51,28 @@ func (s *Session) Login() error {
 	}
 	return err
 }
+
+/*
+"Пингование" сессии.
+*/
+
+// Ping пытается зайти на главную страницу сервера. Если это удаётся,
+// возвращается true, иначе false.
+func (s *Session) Ping() (bool, error) {
+	var err error
+	flag := false
+	switch s.Serv.Type {
+	case cp.FirstType:
+		flag, err = s.firstTypePing()
+	default:
+		flag, err = false, fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return flag, err
+}
+
+/*
+Получение расписания.
+*/
 
 // TimeTable struct содержит в себе расписание на N дней (N = 1, 2, ..., 7).
 type TimeTable struct {
@@ -77,7 +99,7 @@ func (s *Session) GetTimeTable(date string, n int) (*TimeTable, error) {
 	var timeTable *TimeTable
 	if (n < 1) || (n > 7) {
 		err = fmt.Errorf("Invalid days number")
-		return timeTable, err
+		return nil, err
 	}
 	timeTable = &TimeTable{
 		Days: make([]DayTimeTable, 0, n),
@@ -90,7 +112,7 @@ func (s *Session) GetTimeTable(date string, n int) (*TimeTable, error) {
 		timeTable.Days = append(timeTable.Days, *day)
 		date, err = incDate(date)
 		if err != nil {
-			return timeTable, err
+			return nil, err
 		}
 	}
 	return timeTable, err
@@ -158,6 +180,10 @@ func (s *Session) GetWeekSchoolMarks(date string) (*WeekSchoolMarks, error) {
 Получение отчетов.
 */
 
+/*
+1 тип.
+*/
+
 // REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // TotalMarkReport struct - отчет первого типа.
 type TotalMarkReport struct {
@@ -181,6 +207,10 @@ func (s *Session) GetTotalMarkReport() (*TotalMarkReport, error) {
 	return finalMarkReport, err
 }
 
+/*
+2 тип.
+*/
+
 // REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // AverageMarkReport struct - отчет второго типа.
 type AverageMarkReport struct {
@@ -200,6 +230,10 @@ func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type string) (*Averag
 	}
 	return averageMarkReport, err
 }
+
+/*
+3 тип.
+*/
 
 // AverageMarkDynReport struct - отчет третьего типа.
 type AverageMarkDynReport struct {
@@ -228,6 +262,10 @@ func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type string) (*Ave
 	return averageMarkDynReport, err
 }
 
+/*
+4 тип.
+*/
+
 // StudentGradeReport struct - отчет четвертого типа.
 type StudentGradeReport struct {
 	Data []StudentGradeReportNote
@@ -253,6 +291,10 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) 
 	}
 	return studentGradeReport, err
 }
+
+/*
+5 тип.
+*/
 
 // REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // StudentTotalReport struct - отчет пятого типа.
@@ -286,9 +328,17 @@ func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*StudentTota
 	return studentTotalReport, err
 }
 
+/*
+6 тип.
+*/
+
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // StudentTotalReport struct - отчет шестого типа пока что пропускаем.
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+/*
+7 тип.
+*/
 
 // JournalAccessReport struct - отчет седьмого типа.
 type JournalAccessReport struct {
@@ -306,6 +356,10 @@ func (s *Session) GetJournalAccessReport() (*JournalAccessReport, error) {
 	}
 	return studentTotalReport, err
 }
+
+/*
+8 тип.
+*/
 
 // ParentInfoLetterReport struct - отчет седьмого типа.
 type ParentInfoLetterReport struct {
