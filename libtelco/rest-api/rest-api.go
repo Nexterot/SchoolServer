@@ -57,7 +57,7 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/sign_in", rest.SignInHandler)                   // done
 	http.HandleFunc("/log_out", rest.LogOutHandler)                   // done
 
-	http.HandleFunc("/get_tasks_and_marks", rest.Handler)
+	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler) // done
 	http.HandleFunc("/get_lesson_description", rest.Handler)
 	http.HandleFunc("/mark_as_done", rest.Handler)
 	http.HandleFunc("/unmark_as_done", rest.Handler)
@@ -173,8 +173,8 @@ type tasksMarksRequest struct {
 }
 
 // GetTasksAndMarksHandler возвращает задания и оценки на неделю
-func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetScheduleHandler called")
+func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("GetTasksAndMarksHandler called")
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -225,12 +225,96 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 		// }
 	}
 	// TODO Если удаленная сессия есть, но не залогинена, снова войти
-	day := rReq.Week
-	if day == "" {
-		day = time.Now().Format("02.01.2006")
+	week := rReq.Week
+	if week == "" {
+		week = time.Now().Format("02.01.2006")
 	}
-	timeTable, err := remoteSession.GetTimeTable(day, 7)
+	weekMarks, err := remoteSession.GetWeekSchoolMarks(week)
 	if err != nil {
+		rest.logger.Info("Unable to get week tasks and marks: ", err)
+		// TODO Добавить повторную авторизацию для удаленной сессии
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	bytes, err := json.Marshal(weekMarks)
+	if err != nil {
+		rest.logger.Error("Error marshalling weekMarks")
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent tasks and marks for a week: ", weekMarks)
+}
+
+// scheduleRequest используется в GetScheduleHandler
+type scheduleRequest struct {
+	Days string `json:"days"`
+	Id   string `json:"id"`
+}
+
+// GetScheduleHandler возвращает расписание на неделю
+func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("GetScheduleHandler called")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq scheduleRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating one (not implemented yet)")
+		// сходить в БД за логином и паролем, создать новую сессию и войти
+		// userName := session.Values["userName"]
+		// school, err := db.GetAuthData(userName)
+		// if err != nil {
+		// TODO попросить пользователя войти
+		// rest.logger.Error("Error reading database")
+		// return
+		// }
+		// remoteSession = ss.NewSession(school)
+		// if err = remoteSession.Login(); err != nil {
+		// rest.logger.Error("Error remote signing in")
+		// return
+		// }
+	}
+	// TODO Если удаленная сессия есть, но не залогинена, снова войти
+	days, err := strconv.Atoi(rReq.Days)
+	if err != nil {
+		rest.logger.Error("Invalid param days specified: ", err)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	today := time.Now().Format("02.01.2006")
+
+	timeTable, err := remoteSession.GetTimeTable(today, days)
+	if err != nil {
+		// TODO Добавить повторную авторизацию для удаленной сессии
 		rest.logger.Error("Unable to get schedule: ", err)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
@@ -278,8 +362,8 @@ func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request
 	rest.logger.Info("Successful logout for session ", sessionName)
 }
 
-// SignInRequest используется в SignInHandler
-type SignInRequest struct {
+// signInRequest используется в SignInHandler
+type signInRequest struct {
 	Login   string `json:"login"`
 	Passkey string `json:"passkey"`
 	Id      string `json:"id"`
@@ -294,7 +378,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	}
 	// TODO вызывать checkPermision
 	// Чтение запроса от клиента
-	var rReq SignInRequest
+	var rReq signInRequest
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&rReq)
 	if err != nil {
