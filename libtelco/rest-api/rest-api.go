@@ -66,7 +66,7 @@ func (rest *RestAPI) BindHandlers() {
 
 	http.HandleFunc("/get_schedule", rest.GetScheduleHandler) // done
 
-	http.HandleFunc("/get_report_student_total_mark", rest.Handler)
+	http.HandleFunc("/get_report_student_total_marks", rest.GetReportStudentTotalMarksHandler) // done
 	http.HandleFunc("/get_report_student_average_mark", rest.Handler)
 	http.HandleFunc("/get_report_student_average_mark_dyn", rest.Handler)
 	http.HandleFunc("/get_report_student_grades_lesson_list", rest.Handler)
@@ -133,6 +133,80 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 // ErrorHandler обрабатывает некорректные запросы.
 func (rest *RestAPI) ErrorHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("Wrong request:", req.URL.EscapedPath())
+}
+
+// GetReportStudentTotalMarksRequest используется в GetReportStudentTotalMarksHandler
+type GetReportStudentTotalMarksRequest struct {
+	Id string `json:"id"`
+}
+
+// GetReportStudentTotalMarksHandler обрабатывает запрос на получение отчета
+// об успеваемости и посещаемости
+func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("GetReportStudentTotalMarksHandler called")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq GetReportStudentTotalMarksRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating one (not implemented yet)")
+		// сходить в БД за логином и паролем, создать новую сессию и войти
+		// userName := session.Values["userName"]
+		// school, err := db.GetAuthData(userName)
+		// if err != nil {
+		// TODO попросить пользователя войти
+		// rest.logger.Error("Error reading database")
+		// return
+		// }
+		// remoteSession = ss.NewSession(school)
+		// if err = remoteSession.Login(); err != nil {
+		// rest.logger.Error("Error remote signing in")
+		// return
+		// }
+	}
+	// TODO Если удаленная сессия есть, но не залогинена, снова войти
+	totalMarkReport, err := remoteSession.GetTotalMarkReport()
+	if err != nil {
+		rest.logger.Info("Unable to get total marks report: ", err)
+		// TODO Добавить повторную авторизацию для удаленной сессии
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	bytes, err := json.Marshal(totalMarkReport)
+	if err != nil {
+		rest.logger.Error("Error marshalling totalMarkReport")
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent total marks report: ", totalMarkReport)
 }
 
 // school используется в GetSchoolListHandler
