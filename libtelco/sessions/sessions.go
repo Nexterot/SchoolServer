@@ -132,8 +132,6 @@ func (s *Session) GetTimeTable(date string, n int) (*TimeTable, error) {
 
 // getDayTimeTable возвращает расписание на один день.
 func (s *Session) getDayTimeTable(date string) (*DayTimeTable, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	var err error
 	var dayTimeTable *DayTimeTable
 	switch s.Serv.Type {

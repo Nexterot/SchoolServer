@@ -83,7 +83,6 @@ func (s *Session) loginFirst() error {
 	defer func() {
 		_ = response2.Close()
 	}()
-	fmt.Println(string(response2.Bytes()))
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней "AT".
