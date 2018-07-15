@@ -57,14 +57,14 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/sign_in", rest.SignInHandler)                   // done
 	http.HandleFunc("/log_out", rest.LogOutHandler)                   // done
 
-	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler) // done
+	http.HandleFunc("/get_tasks_and_marks", rest.Handler)
 	http.HandleFunc("/get_lesson_description", rest.Handler)
 	http.HandleFunc("/mark_as_done", rest.Handler)
 	http.HandleFunc("/unmark_as_done", rest.Handler)
 
 	http.HandleFunc("/get_posts", rest.Handler)
 
-	http.HandleFunc("/get_schedule", rest.Handler)
+	http.HandleFunc("/get_schedule", rest.GetScheduleHandler) // done
 
 	http.HandleFunc("/get_report_student_total_mark", rest.Handler)
 	http.HandleFunc("/get_report_student_average_mark", rest.Handler)
@@ -173,8 +173,8 @@ type tasksMarksRequest struct {
 }
 
 // GetTasksAndMarksHandler возвращает задания и оценки на неделю
-func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("getTasksAndMarksHandler called (almost done)")
+func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("GetScheduleHandler called")
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -231,7 +231,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	}
 	timeTable, err := remoteSession.GetTimeTable(day, 7)
 	if err != nil {
-		rest.logger.Error("Unable to get timetable: ", err)
+		rest.logger.Error("Unable to get schedule: ", err)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -240,7 +240,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 		rest.logger.Error("Error marshalling timeTable")
 	}
 	respwr.Write(bytes)
-	rest.logger.Info("Sent tasks and marks for a week: ", timeTable)
+	rest.logger.Info("Sent schedule for a week: ", timeTable)
 }
 
 // LogOutHandler обрабатывает удаление сессии клиента и отвязку устройства
