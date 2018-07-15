@@ -52,10 +52,10 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/", rest.ErrorHandler)
 
-	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler) // done
-	http.HandleFunc("/check_permission", rest.Handler)
-	http.HandleFunc("/sign_in", rest.SignInHandler) // done
-	http.HandleFunc("/log_out", rest.LogOutHandler) // done
+	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler)    // done
+	http.HandleFunc("/check_permission", rest.CheckPermissionHandler) // done
+	http.HandleFunc("/sign_in", rest.SignInHandler)                   // done
+	http.HandleFunc("/log_out", rest.LogOutHandler)                   // done
 
 	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler) // done
 	http.HandleFunc("/get_lesson_description", rest.Handler)
@@ -91,6 +91,43 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/create_message_in_topic", rest.Handler)
 
 	http.HandleFunc("/change_password", rest.Handler)
+}
+
+// checkPermissionRequest используется в CheckPermissionHandler
+type checkPermissionRequest struct {
+	Login string `json:"login"`
+	Id    string `json:"id"`
+}
+
+// checkPermissionResponse используется в CheckPermissionHandler
+type checkPermissionResponse struct {
+	Permission string `json:"permission"`
+}
+
+// CheckPermissionHandler проверяет, есть ли разрешение на работу с школой
+func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("CheckPermissionHandler called")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Чтение json'a
+	var rReq checkPermissionRequest
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	// TODO лазать в БД за соответствующим полем
+	resp := checkPermissionResponse{"true"}
+	bytes, err := json.Marshal(resp)
+	if err != nil {
+		rest.logger.Error("Error marshalling permission check response")
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent permission check response: ", resp)
 }
 
 // ErrorHandler обрабатывает некорректные запросы.
@@ -169,13 +206,29 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 		rest.logger.Error("Malformed request data")
 		return
 	}
-	//
+	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one (not implemented yet)")
-		// TODO сходить в БД за логином и паролем, и создать новую сессию
+		rest.logger.Info("No remote session, creating one (not implemented yet)")
+		// сходить в БД за логином и паролем, создать новую сессию и войти
+		// userName := session.Values["userName"]
+		// school, err := db.GetAuthData(userName)
+		// if err != nil {
+		// TODO попросить пользователя войти
+		// rest.logger.Error("Error reading database")
+		// return
+		// }
+		// remoteSession = ss.NewSession(school)
+		// if err = remoteSession.Login(); err != nil {
+		// rest.logger.Error("Error remote signing in")
+		// return
+		// }
 	}
+	// TODO Если удаленная сессия есть, но не залогинена, снова войти
 	day := rReq.Week
+	if day == "" {
+		day = time.Now().Format("02.01.2006")
+	}
 	timeTable, err := remoteSession.GetTimeTable(day, 7)
 	if err != nil {
 		rest.logger.Error("Unable to get timetable: ", err)
@@ -239,6 +292,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
 	}
+	// TODO вызывать checkPermision
 	// Чтение запроса от клиента
 	var rReq SignInRequest
 	decoder := json.NewDecoder(req.Body)
@@ -280,6 +334,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		return
 	}
 	rest.sessionsMap[newSessionName] = newRemoteSession
+	newLocalSession.Values["userName"] = rReq.Login
 	newLocalSession.Save(req, respwr)
 	// Устанавливаем в куки значение sessionName
 	expiration := time.Now().Add(365 * 24 * time.Hour)
