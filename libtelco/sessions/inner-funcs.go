@@ -201,19 +201,29 @@ func averageMarkReportParser(r io.Reader) (*AverageMarkReport, error) {
 	}
 
 	// Создаёт отчёт
-	makeAverageMarkReportTable := func(node *html.Node) *AverageMarkReport {
+	makeAverageMarkReportTable := func(node *html.Node) (*AverageMarkReport, error) {
 		var report AverageMarkReport
 		tableNode := findAverageMarkTableNode(node)
 		studentReport := make(map[string]string)
 		classReport := make(map[string]string)
 		formAverageMarkReportTable(tableNode, studentReport, classReport)
-		report.Student = studentReport
-		report.Class = classReport
+		for k, v := range studentReport {
+			v1, err := strconv.ParseFloat(v, 32)
+			if err != nil {
+				return nil, err
+			}
+			v2, err := strconv.ParseFloat(classReport[k], 32)
+			if err != nil {
+				return nil, err
+			}
+			innerReport := AverageMarkReportNote{k, float32(v1), float32(v2)}
+			report.Table = append(report.Table, innerReport)
+		}
 
-		return &report
+		return &report, nil
 	}
 
-	return makeAverageMarkReportTable(parsedHTML), nil
+	return makeAverageMarkReportTable(parsedHTML)
 }
 
 // averageMarkDynReportParser возвращает динамику среднего балла ученика.

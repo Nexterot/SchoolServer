@@ -205,7 +205,7 @@ type TotalMarkReport struct {
 	Table []TotalMarkReportNote `json:"table"`
 }
 
-// TotalMarkReportNote struct -
+// TotalMarkReportNote struct - подотчет об одном предмете.
 type TotalMarkReportNote struct {
 	Subject string `json:"subject"`
 	Period1 int    `json:"period1"`
@@ -236,11 +236,16 @@ func (s *Session) GetTotalMarkReport() (*TotalMarkReport, error) {
 2 тип.
 */
 
-// REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // AverageMarkReport struct - отчет второго типа.
 type AverageMarkReport struct {
-	Student map[string]string
-	Class   map[string]string
+	Table []AverageMarkReportNote `json:"table"`
+}
+
+// AverageMarkReportNote - подотчет об одном предмете.
+type AverageMarkReportNote struct {
+	Subject     string  `json:"subject"`
+	StudentMark float32 `json:"studentMark"`
+	ClassMark   float32 `json:"classMark"`
 }
 
 // GetAverageMarkReport возвращает средние баллы ученика.
