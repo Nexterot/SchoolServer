@@ -142,7 +142,10 @@ func totalMarkReportParser(r io.Reader) (*TotalMarkReport, error) {
 		tableNode := findNode(node)
 		data := make(map[string][]int)
 		formTotalMarkReport(tableNode, data)
-		report.Data = data
+		for k, v := range data {
+			innerReport := TotalMarkReportNote{k, v[0], v[1], v[2], v[3], v[4], v[5], v[6]}
+			report.Table = append(report.Table, innerReport)
+		}
 		return &report, nil
 	}
 

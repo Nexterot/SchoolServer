@@ -200,14 +200,21 @@ func (s *Session) GetWeekSchoolMarks(date string) (*WeekSchoolMarks, error) {
 1 тип.
 */
 
-// REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // TotalMarkReport struct - отчет первого типа.
 type TotalMarkReport struct {
-	Data map[string][]int
+	Table []TotalMarkReportNote `json:"table"`
 }
 
-type TotalMarkReportSubject struct {
-	Data map[string]int
+// TotalMarkReportNote struct -
+type TotalMarkReportNote struct {
+	Subject string `json:"subject"`
+	Period1 int    `json:"period1"`
+	Period2 int    `json:"period2"`
+	Period3 int    `json:"period3"`
+	Period4 int    `json:"period4"`
+	Year    int    `json:"year"`
+	Exam    int    `json:"exam"`
+	Final   int    `json:"final"`
 }
 
 // GetTotalMarkReport возвращает успеваемость ученика.
