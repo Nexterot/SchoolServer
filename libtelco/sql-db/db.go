@@ -5,6 +5,7 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"SchoolServer/libtelco/config-parser"
 	"strconv"
+	"errors"
 )
 
 type Database struct  {
@@ -66,11 +67,11 @@ func (db *Database) GetUserAuthData(userName string) (*configParser.School, erro
 	var user User
 	db.UsersDB.Where("login = ?",userName).First(&user);
 	if user.ID==0 {
-		return &configParser.School{},new("User with name "+userName+" doesn't exist")
+		return &configParser.School{},errors.New("User with name "+userName+" doesn't exist")
 	}
 	db.SchoolsDB.First(&school, user.SchoolID)
 	if school.ID==0 {
-		return &configParser.School{},new("School with ID "+strconv.Itoa(user.SchoolID)+" doesn't exist")
+		return &configParser.School{},errors.New("School with ID "+strconv.Itoa(user.SchoolID)+" doesn't exist")
 	}
 	return &configParser.School{Link:school.Address,Login:userName,Password:user.Password,},nil
 	//*cp.School –  указатель на структуру School из “SchoolServer/libtelco/config-parser“,
