@@ -34,13 +34,11 @@ func NewDatabase() *Database {//создает новую структуру Dat
 	if err!=nil {
 		panic(err)
 	}
-	defer udb.Close()
 	//вот здесь надо разобраться где мы храним БД и туда всё направить
 	sdb,err :=gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=schools")
 	if err!=nil {
 		panic(err)
 	}
-	defer sdb.Close()
 	return &Database{udb,sdb}
 }
 
