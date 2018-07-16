@@ -194,7 +194,7 @@ type SchoolMark struct {
 	AID    int
 	CID    int
 	TP     int
-	Status bool   `json:"statuc"`
+	Status bool   `json:"status"`
 	InTime bool   `json:"inTime"`
 	Name   string `json:"name"`
 	Author string `json:"author"`
@@ -298,16 +298,16 @@ func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type string) (*Averag
 
 // AverageMarkDynReport struct - отчет третьего типа.
 type AverageMarkDynReport struct {
-	Data []AverageMarkDynReportNote
+	Data []AverageMarkDynReportNote `json:"data"`
 }
 
 // AverageMarkDynReportNote struct - одна запись в отчёте "Динамика среднего балла".
 type AverageMarkDynReportNote struct {
-	Date               string
-	StudentWorksAmount int
-	StudentAverageMark string
-	ClassWorksAmount   int
-	ClassAverageMark   string
+	Date               string `json:"date"`
+	StudentWorksAmount int    `json:"studworksam"`
+	StudentAverageMark string `json:"studavmark"`
+	ClassWorksAmount   int    `json:"classworksam"`
+	ClassAverageMark   string `json:"classavmark"`
 }
 
 // GetAverageMarkDynReport возвращает динамику среднего балла ученика.
@@ -331,15 +331,15 @@ func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type string) (*Ave
 
 // StudentGradeReport struct - отчет четвертого типа.
 type StudentGradeReport struct {
-	Data []StudentGradeReportNote
+	Data []StudentGradeReportNote `json:"data"`
 }
 
 // StudentGradeReportNote struct - одна запись в отчете об успеваемости.
 type StudentGradeReportNote struct {
-	Type             string
-	Theme            string
-	DateOfCompletion string
-	Mark             int
+	Type             string `json:"type"`
+	Theme            string `json:"theme"`
+	DateOfCompletion string `json:"dateofcompl"`
+	Mark             int    `json:"mark"`
 }
 
 // GetStudentGradeReport возвращает отчет об успеваемости ученика по предмету.

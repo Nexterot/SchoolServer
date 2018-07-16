@@ -267,7 +267,7 @@ func (s *Session) getLessonsMapFirst() (*LessonsMap, error) {
 			for n := idNode.FirstChild; n != nil; n = n.NextSibling {
 				if len(n.Attr) != 0 {
 					for _, a := range n.Attr {
-						if a.Key == "value" {
+						if a.Key == "valлue" {
 							subjectsIDsMap[n.FirstChild.Data] = a.Val
 							if _, err = strconv.Atoi(a.Val); err != nil {
 								return nil, err
