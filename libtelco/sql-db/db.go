@@ -6,6 +6,7 @@ import (
 	"SchoolServer/libtelco/config-parser"
 	"strconv"
 	"errors"
+	"fmt"
 )
 
 type Database struct  {
@@ -29,16 +30,22 @@ type School struct {
 }
 
 func NewDatabase() *Database {//создает новую структуру Database и возвращает указатель на неё.
-	//предполагается, что базы users и schools уже есть, и в них колонки как поля в User и School
 	//вот здесь надо разобраться где мы храним БД и туда всё направить
+	//предполагаем что такие бд уже есть
 	udb,err :=gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=users sslmode=disable")
 	if err!=nil {
 		panic(err)
+	}
+	if !udb.HasTable(&User{}){//если вдруг нет таблицы со школьниками, то создаём
+		udb.CreateTable(&User{})
 	}
 	//вот здесь надо разобраться где мы храним БД и туда всё направить
 	sdb,err :=gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=schools sslmode=disable")
 	if err!=nil {
 		panic(err)
+	}
+	if !sdb.HasTable(&School{}){//если вдруг нет таблицы со школами, то создаём
+		sdb.CreateTable(&School{})
 	}
 	return &Database{udb,sdb}
 }
@@ -64,9 +71,9 @@ func (db *Database) GetUserAuthData(userName string) (*configParser.School, erro
 	//возвращает данные для повторной авторизации пользователя с именем userName
 	var school School
 	var user User
-	db.UsersDB.Where("login = ?",userName).First(&user);
+	db.UsersDB.Where("login = ?",userName).First(&user)
 	if user.ID==0 {
-		return &configParser.School{},errors.New("User with name "+userName+" doesn't exist")
+		return &configParser.School{},fmt.Errorf("User with name "+userName+" doesn't exist")
 	}
 	db.SchoolsDB.First(&school, user.SchoolID)
 	if school.ID==0 {
