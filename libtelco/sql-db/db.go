@@ -29,6 +29,7 @@ type School struct {
 }
 
 func NewDatabase() *Database {//создает новую структуру Database и возвращает указатель на неё.
+	//предполагается, что базы users и schools уже есть, и в них колонки как поля в User и School
 	//вот здесь надо разобраться где мы храним БД и туда всё направить
 	udb,err :=gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=users")
 	if err!=nil {
