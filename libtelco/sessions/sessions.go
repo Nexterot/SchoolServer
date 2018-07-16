@@ -82,6 +82,36 @@ func (s *Session) GetChildrenMap() error {
 }
 
 /*
+Получение списка предметов.
+*/
+
+// LessonsMap struct содержит в себе список пар {предмет, id}
+type LessonsMap struct {
+	Data []LessonMap
+}
+
+// LessonMap struct содержит в себе имя предмета и его id.
+type LessonMap struct {
+	name string
+	id   string
+}
+
+// GetLessonsMap возвращает список пар {предмет, id}
+func (s *Session) GetLessonsMap() (*LessonsMap, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var err error
+	var lessonsMap *LessonsMap
+	switch s.Serv.Type {
+	case cp.FirstType:
+		lessonsMap, err = s.getLessonsMapFirst()
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return lessonsMap, err
+}
+
+/*
 Получение расписания.
 */
 

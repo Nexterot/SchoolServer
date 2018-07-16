@@ -205,6 +205,94 @@ func (s *Session) getChildrenMapFirst() error {
 	return err
 }
 
+func (s *Session) getLessonsMapFirst() (*LessonsMap, error) {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.at,
+			"LoginType": "0",
+			"RPTID":     "0",
+			"ThmID":     "1",
+			"VER":       s.ver,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+		},
+	}
+	response0, err := s.sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := s.checkResponse(response0); err != nil {
+		return nil, err
+	}
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней отображение из предметов в их ID.
+	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
+	if err != nil {
+		return nil, err
+	}
+	var getSubjectsIDNode func(*html.Node) *html.Node
+	getSubjectsIDNode = func(node *html.Node) *html.Node {
+		if node.Type == html.ElementNode {
+			if node.Data == "select" {
+				for _, a := range node.Attr {
+					if (a.Key == "name") && (a.Val == "SCLID") {
+						return node
+					}
+				}
+			}
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			n := getSubjectsIDNode(c)
+			if n != nil {
+				return n
+			}
+		}
+
+		return nil
+	}
+
+	getSubjectsIDs := func(node *html.Node) (map[string]string, error) {
+		subjectsIDsMap := make(map[string]string)
+		idNode := getSubjectsIDNode(node)
+		if idNode != nil {
+			for n := idNode.FirstChild; n != nil; n = n.NextSibling {
+				if len(n.Attr) != 0 {
+					for _, a := range n.Attr {
+						if a.Key == "value" {
+							subjectsIDsMap[n.FirstChild.Data] = a.Val
+							if _, err = strconv.Atoi(a.Val); err != nil {
+								return nil, err
+							}
+						}
+					}
+				}
+			}
+		} else {
+			return nil, fmt.Errorf("Couldn't find SubjectsIDs Node")
+		}
+		return subjectsIDsMap, nil
+	}
+
+	subjectsIDsMap, err := getSubjectsIDs(parsedHTML)
+	if err != nil {
+		return nil, err
+	}
+	var lm LessonsMap
+	for k, v := range subjectsIDsMap {
+		lm.Data = append(lm.Data, LessonMap{k, v})
+	}
+	return &lm, nil
+}
+
 // getDayTimeTableFirst возвращает расписание на один день c сервера первого типа.
 func (s *Session) getDayTimeTableFirst(date string) (*DayTimeTable, error) {
 	p := "http://"
