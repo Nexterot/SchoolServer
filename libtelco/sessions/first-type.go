@@ -85,7 +85,7 @@ func (s *Session) loginFirst() error {
 	}()
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
-	// находящуюся в теле ответа и найти в ней "AT".
+	// находящуюся в теле ответа и найти в ней "AT" и "VER".
 	parsedHTML, err := html.Parse(bytes.NewReader(response2.Bytes()))
 	if err != nil {
 		return err
@@ -145,11 +145,64 @@ func (s *Session) getChildrenMapFirst() error {
 	if err := s.checkResponse(response0); err != nil {
 		return err
 	}
-	// Если мы дошли до этого места, то можно начать писать парсер.
-	// Андрей, напиши парсер.
-	// Пока не уверен как сделать, но что-нибудь придумаю.
-	fmt.Println(string(response0.Bytes()))
-	return nil
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней отображение из детей в их ID.
+	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
+	if err != nil {
+		return err
+	}
+
+	var getChildrenIDNode func(*html.Node) *html.Node
+	getChildrenIDNode = func(node *html.Node) *html.Node {
+		if node.Type == html.ElementNode {
+			if node.Data == "select" {
+				for _, a := range node.Attr {
+					if a.Key == "name" && a.Val == "SID" {
+						return node
+					}
+				}
+			}
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			n := getChildrenIDNode(c)
+			if n != nil {
+				return n
+			}
+		}
+
+		return nil
+	}
+
+	getChildrenIDs := func(node *html.Node) (map[string]string, error) {
+		childrenIDs := make(map[string]string)
+		idNode := getChildrenIDNode(node)
+		if idNode != nil {
+			for n := idNode.FirstChild; n != nil; n = n.NextSibling {
+				if len(n.Attr) != 0 {
+					for _, a := range n.Attr {
+						if a.Key == "value" {
+							childrenIDs[n.FirstChild.Data] = a.Val
+							if _, err := strconv.Atoi(a.Val); err != nil {
+								return childrenIDs, nil
+							}
+						}
+					}
+				}
+			}
+		} else {
+			return childrenIDs, fmt.Errorf("Couldn't find children IDs Node")
+		}
+
+		return childrenIDs, err
+	}
+
+	s.ChildrenIDS, err = getChildrenIDs(parsedHTML)
+	if len(s.ChildrenIDS) == 0 {
+		s.Type = child
+	} else {
+		s.Type = parent
+	}
+	return err
 }
 
 // getDayTimeTableFirst возвращает расписание на один день c сервера первого типа.

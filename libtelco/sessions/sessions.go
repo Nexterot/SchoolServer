@@ -28,7 +28,7 @@ type Session struct {
 	LastRequest time.Time
 	Type        int
 	// Только для родителей.
-	ChildrenIDS *map[string]string
+	ChildrenIDS map[string]string
 	// Для серверов первого типа.
 	at  string
 	ver string
@@ -38,9 +38,10 @@ type Session struct {
 // к которому предстоит подключиться.
 func NewSession(server *cp.School) *Session {
 	return &Session{
-		sess: gr.NewSession(nil),
-		Serv: server,
-		mu:   sync.Mutex{},
+		sess:        gr.NewSession(nil),
+		Serv:        server,
+		mu:          sync.Mutex{},
+		ChildrenIDS: nil,
 	}
 }
 
