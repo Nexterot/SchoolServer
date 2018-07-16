@@ -10,57 +10,51 @@ import (
 )
 
 type Database struct  {
-	UsersDB *gorm.DB // вас вообще не должно волновать как эти поля называются
-	SchoolsDB *gorm.DB
+	SchoolServerDB *gorm.DB //указатель на гормовскую дб
 }
 
 
 type User struct {
 	gorm.Model
-	Login string
-	Password string
-	SchoolID int // у гимназии кирилла 1 должно быть
-	Permission bool
+	Login string //логин пользователя
+	Password string //зашифрованный пароль пользователя
+	SchoolID int //ид школы как в дб для школ
+	Permission bool //разрешение
 }
 
 type School struct {
 	gorm.Model
-	Address string
-	Permission bool
+	Address string //интернет адрес сервера
+	Permission bool //разрешение
 }
 
 func NewDatabase() *Database {//создает новую структуру Database и возвращает указатель на неё.
-	//вот здесь надо разобраться где мы храним БД и туда всё направить
-	//предполагаем что такие бд уже есть
-	udb,err :=gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=users sslmode=disable")
+	//открываем дб
+	sdb,err :=gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=schoolserverdb sslmode=disable")
 	if err!=nil {
 		panic(err)
 	}
-	if !udb.HasTable(&User{}){//если вдруг нет таблицы со школьниками, то создаём
-		udb.CreateTable(&User{})
+	if !sdb.HasTable(&User{}){ //добавляем таблицу с пользователями, если её нет
+		sdb.CreateTable(&User{})
 	}
-	//вот здесь надо разобраться где мы храним БД и туда всё направить
-	sdb,err :=gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=schools sslmode=disable")
-	if err!=nil {
-		panic(err)
-	}
-	if !sdb.HasTable(&School{}){//если вдруг нет таблицы со школами, то создаём
+
+	if !sdb.HasTable(&School{}){ //добавляем таблицу со школами, если её нет
 		sdb.CreateTable(&School{})
 	}
-	return &Database{udb,sdb}
+	return &Database{SchoolServerDB:sdb}
 }
 
 func (db *Database) UpdateUser(login string, passkey string, id int/*было стринг но я решил: в  интах проще*/) bool {
 	//обновляет данные о пользователе. Если пользователя с таким именем нет в БД, создаёт.
 	var user User
-	db.UsersDB.Where("login = ?",login).First(&user)
+	db.SchoolServerDB.Find(&User{}).Where("login = ?",login).First(&user) //ищем пользователя в лб по логину
 	if user.ID>0 { //существует
 		user.Password=passkey
 		user.SchoolID=id
-		db.UsersDB.Save(&user)
+		db.SchoolServerDB.Save(&user) //обновляем данные
 		return true
-	}else {
-		db.UsersDB.Create(&User{Login:login,Password:passkey,SchoolID:id,Permission:true})
+	}else { //не существует
+		db.SchoolServerDB.Create(&User{Login:login,Password:passkey,SchoolID:id,Permission:true})
 		return false
 	}
 	//возвращаемое значение:
@@ -71,11 +65,11 @@ func (db *Database) GetUserAuthData(userName string) (*configParser.School, erro
 	//возвращает данные для повторной авторизации пользователя с именем userName
 	var school School
 	var user User
-	db.UsersDB.Where("login = ?",userName).First(&user)
-	if user.ID==0 {
+	db.SchoolServerDB.Find(&User{}).Where("login = ?",userName).First(&user) //ищем пользователя по логину
+	if user.ID==0 { //нет такого пользователя
 		return &configParser.School{},fmt.Errorf("User with name "+userName+" doesn't exist")
 	}
-	db.SchoolsDB.First(&school, user.SchoolID)
+	db.SchoolServerDB.Find(&School{}).First(&school, user.SchoolID) //ищем школу пользователя по ид
 	if school.ID==0 {
 		return &configParser.School{},errors.New("School with ID "+strconv.Itoa(user.SchoolID)+" doesn't exist")
 	}
@@ -93,7 +87,7 @@ func (db *Database) GetPermission(userName string, schoolId int/*было стр
 		user User
 		school School
 	)
-	db.UsersDB.Where("login = ?",userName).First(&user)
-	db.SchoolsDB.First(&school,schoolId)
-	return user.Permission||school.Permission;//ало сань тут точно ИЛИ а не И? 
+	db.SchoolServerDB.Find(&User{}).Where("login = ?",userName).First(&user) //ищем пользователя по логину
+	db.SchoolServerDB.Find(&School{}).First(&school,schoolId) //ищем школу по ид
+	return user.Permission||school.Permission;
 }
