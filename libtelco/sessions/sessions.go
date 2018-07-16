@@ -361,23 +361,30 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) 
 5 тип.
 */
 
-// REDO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 // StudentTotalReport struct - отчет пятого типа.
 type StudentTotalReport struct {
 	MainTable    []Month
-	AverageMarks map[string]string
+	AverageMarks []SubjectAverageMark
 }
 
-// Day struct - один день в отчёте об успеваемости и посещаемости
+type SubjectMarks struct {
+	Name  string
+	Marks []string
+}
+
 type Day struct {
-	Number int
-	Marks  map[string][]string
+	Number   int
+	Subjects []SubjectMarks
 }
 
-// Month struct - один месяц в отчёте об успеваемости и посещаемости
 type Month struct {
 	Name string
 	Days []Day
+}
+
+type SubjectAverageMark struct {
+	Name string
+	Mark string
 }
 
 // GetStudentTotalReport возвращает отчет о посещениях ученика.

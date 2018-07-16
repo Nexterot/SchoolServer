@@ -392,31 +392,34 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	// Находит нод с табличкой
-	var findStudentTotalTableNode func(*html.Node) *html.Node
-	findStudentTotalTableNode = func(node *html.Node) *html.Node {
+	var findPerformanceAndAttendanceTableNode func(*html.Node) *html.Node
+	findPerformanceAndAttendanceTableNode = func(node *html.Node) *html.Node {
 		if node.Type == html.ElementNode {
 			for _, a := range node.Attr {
-				if a.Key == "class" && a.Val == "table-print" {
+				if (a.Key == "class") && (a.Val == "table-print") {
 					return node
 				}
 			}
 		}
 		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			n := findStudentTotalTableNode(c)
+			n := findPerformanceAndAttendanceTableNode(c)
 			if n != nil {
 				return n
 			}
 		}
+
 		return nil
 	}
+
 	// Разделяет строку по пробелу
 	splitBySpace := func(str string) []string {
 		strings := make([]string, 0, 3)
 		start := 0
 		for i := 0; i < len(str); i++ {
-			if str[i] == 194 || str[i] == 160 {
-				if i < len(str)-1 && str[i+1] == 160 {
+			if (str[i] == 194) || (str[i] == 160) {
+				if (i < len(str)-1) && (str[i+1] == 160) {
 					strings = append(strings, str[start:i])
 					start = i + 2
 				}
@@ -425,12 +428,15 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 		if start < len(str) {
 			strings = append(strings, str[start:])
 		}
+
 		return strings
 	}
+
 	// Формирует отчёт
-	formStudentTotalReportTable := func(node *html.Node) ([]Month, map[string]string, error) {
+	formStudentTotalReportTable := func(node *html.Node) ([]Month, []SubjectAverageMark, error) {
 		months := make([]Month, 0, 3)
-		averageMarks := make(map[string]string)
+		averageMarks := make([]SubjectAverageMark, 0, 10)
+
 		if node != nil {
 			// Добавляем месяцы
 			monthNode := node.FirstChild.FirstChild.FirstChild
@@ -444,6 +450,7 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 				month.Days = make([]Day, numberOfDaysInMonth)
 				months = append(months, month)
 			}
+
 			// Добавляем дни
 			dayNode := node.FirstChild.FirstChild.NextSibling
 			// Текущий месяц в months
@@ -457,9 +464,10 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 					currentMonth++
 					dayNumberInMonth = 0
 				}
+
 				day := *new(Day)
 				day.Number, err = strconv.Atoi(dayNode.FirstChild.Data)
-				day.Marks = make(map[string][]string)
+				day.Subjects = make([]SubjectMarks, 0, 1)
 				if err != nil {
 					return months, averageMarks, err
 				}
@@ -468,6 +476,7 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 				dayNumberInMonth++
 				overallNumberOfDays++
 			}
+
 			// Идём по остальной части таблицы
 			noteNode := node.FirstChild.FirstChild.NextSibling
 			for noteNode = noteNode.NextSibling; noteNode != nil; noteNode = noteNode.NextSibling {
@@ -480,6 +489,7 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 						currentMonth++
 						dayNumberInMonth = 0
 					}
+
 					c = c.NextSibling
 					var marks []string
 					if c.FirstChild.FirstChild != nil {
@@ -492,11 +502,13 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 							}
 							for k := 0; k < len(s); k++ {
 								marks = append(marks, s[k])
+
 							}
 						}
 					} else {
 						marks = splitBySpace(c.FirstChild.Data)
 					}
+
 					// Избавляемся от строк из непечатаемых символом
 					finalMarks := make([]string, 0, 1)
 					for el := range marks {
@@ -505,12 +517,19 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 						}
 					}
 					if len(finalMarks) != 0 {
-						months[currentMonth].Days[dayNumberInMonth].Marks[subjectName] = finalMarks
+						subjectMarks := *new(SubjectMarks)
+						subjectMarks.Name = subjectName
+						subjectMarks.Marks = finalMarks
+
+						months[currentMonth].Days[dayNumberInMonth].Subjects = append(months[currentMonth].Days[dayNumberInMonth].Subjects, subjectMarks)
 					}
 
 					dayNumberInMonth++
 				}
-				averageMarks[subjectName] = c.NextSibling.FirstChild.Data
+				averageSubjectMark := *new(SubjectAverageMark)
+				averageSubjectMark.Name = subjectName
+				averageSubjectMark.Mark = c.NextSibling.FirstChild.Data
+				averageMarks = append(averageMarks, averageSubjectMark)
 			}
 		} else {
 			return months, averageMarks, errors.New("Node is nil in func formStudentTotalReportTable")
@@ -518,12 +537,21 @@ func studentTotalReportParser(r io.Reader) (*StudentTotalReport, error) {
 
 		return months, averageMarks, nil
 	}
+
 	// Создаёт отчёт
 	makeStudentTotalReportTable := func(node *html.Node) (*StudentTotalReport, error) {
 		var report StudentTotalReport
-		tableNode := findStudentTotalTableNode(node)
+		tableNode := findPerformanceAndAttendanceTableNode(node)
 		report.MainTable, report.AverageMarks, err = formStudentTotalReportTable(tableNode)
+
 		return &report, err
 	}
-	return makeStudentTotalReportTable(parsedHTML)
+
+	var report *StudentTotalReport
+	report, err = makeStudentTotalReportTable(parsedHTML)
+	if err != nil {
+		return nil, err
+	}
+
+	return report, nil
 }
