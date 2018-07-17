@@ -9,14 +9,15 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	ss "SchoolServer/libtelco/sessions"
+	db "SchoolServer/libtelco/sql-db"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
-	//"SchoolServer/libtelco/db
 
 	"github.com/gorilla/sessions"
 )
@@ -29,8 +30,12 @@ type RestAPI struct {
 	store       *sessions.CookieStore
 	logger      *log.Logger
 	sessionsMap map[string]*ss.Session
-	//db		*db.Database
+	db          *db.Database
 }
+
+// logOutError представляет объект ошибки когда клиент пытается выполнить запрос,
+// а удаленная сессия была прервана
+var logOutError = fmt.Errorf("You was logged out from server")
 
 // NewRestAPI создает структуру для работы с Rest API.
 func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
@@ -44,7 +49,8 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		store:       newStore,
 		logger:      logger,
 		sessionsMap: make(map[string]*ss.Session),
-		//db	   : db.NewDatabase(),
+		// TODO вызывать db.NewDatabase(logger)
+		db: db.NewDatabase(),
 	}
 }
 
@@ -101,7 +107,7 @@ type checkPermissionRequest struct {
 
 // checkPermissionResponse используется в CheckPermissionHandler
 type checkPermissionResponse struct {
-	Permission string `json:"permission"`
+	Permission bool `json:"permission"`
 }
 
 // CheckPermissionHandler проверяет, есть ли разрешение на работу с школой
@@ -121,7 +127,16 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 		return
 	}
 	// TODO лазать в БД за соответствующим полем
-	resp := checkPermissionResponse{"true"}
+	id, err := strconv.Atoi(rReq.Id)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Invalid id param specified")
+		return
+	}
+	// TODO проверку ошибки из вызова db.GetPermission
+	perm := rest.db.GetPermission(rReq.Login, id)
+	rest.logger.Info("Getting check permission from db: ", perm)
+	resp := checkPermissionResponse{perm}
 	bytes, err := json.Marshal(resp)
 	if err != nil {
 		rest.logger.Error("Error marshalling permission check response")
@@ -141,9 +156,10 @@ type getReportStudentTotalMarksRequest struct {
 }
 
 // GetReportStudentTotalMarksHandler обрабатывает запрос на получение отчета
-// об успеваемости и посещаемости
+// об итоговых оценках
 func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("GetReportStudentTotalMarksHandler called")
+	// TODO добавить переключение между детьми
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -178,28 +194,47 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating one (not implemented yet)")
-		// сходить в БД за логином и паролем, создать новую сессию и войти
-		// userName := session.Values["userName"]
-		// school, err := db.GetAuthData(userName)
-		// if err != nil {
-		// TODO попросить пользователя войти
-		// rest.logger.Error("Error reading database")
-		// return
-		// }
-		// remoteSession = ss.NewSession(school)
-		// if err = remoteSession.Login(); err != nil {
-		// rest.logger.Error("Error remote signing in")
-		// return
-		// }
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		school, err := rest.db.GetUserAuthData(userName.(string))
+		if err != nil {
+			rest.logger.Error("Error reading database")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
 	}
-	// TODO Если удаленная сессия есть, но не залогинена, снова войти
 	totalMarkReport, err := remoteSession.GetTotalMarkReport()
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		rest.logger.Info("Unable to get total marks report: ", err)
-		// TODO Добавить повторную авторизацию для удаленной сессии
-		respwr.WriteHeader(http.StatusInternalServerError)
-		return
+		if err == logOutError {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			school, err := rest.db.GetUserAuthData(userName.(string))
+			if err != nil {
+				rest.logger.Error("Error reading database")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get schedule: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 	bytes, err := json.Marshal(totalMarkReport)
 	if err != nil {
@@ -223,6 +258,7 @@ type getReportStudentAverageMarkRequest struct {
 // о среднем балле
 func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("GetReportStudentTotalMarksHandler called")
+	// TODO добавить переключение между детьми
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -257,28 +293,47 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating one (not implemented yet)")
-		// сходить в БД за логином и паролем, создать новую сессию и войти
-		// userName := session.Values["userName"]
-		// school, err := db.GetAuthData(userName)
-		// if err != nil {
-		// TODO попросить пользователя войти
-		// rest.logger.Error("Error reading database")
-		// return
-		// }
-		// remoteSession = ss.NewSession(school)
-		// if err = remoteSession.Login(); err != nil {
-		// rest.logger.Error("Error remote signing in")
-		// return
-		// }
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		school, err := rest.db.GetUserAuthData(userName.(string))
+		if err != nil {
+			rest.logger.Error("Error reading database")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
 	}
-	// TODO Если удаленная сессия есть, но не залогинена, снова войти
 	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type)
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		rest.logger.Info("Unable to get average marks report: ", err)
-		// TODO Добавить повторную авторизацию для удаленной сессии
-		respwr.WriteHeader(http.StatusInternalServerError)
-		return
+		if err == logOutError {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			school, err := rest.db.GetUserAuthData(userName.(string))
+			if err != nil {
+				rest.logger.Error("Error reading database")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get schedule: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 	bytes, err := json.Marshal(averageMarkReport)
 	if err != nil {
@@ -308,6 +363,8 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
 	}
+	// TODO Лезть в БД, а не в конфиг
+	// TODO в ТЗ поменялся формат ответа, добавилось поле "website"
 	schoolList := make([]school, len(rest.config.Schools))
 	for id, sch := range rest.config.Schools {
 		schoolList[id] = school{sch.Name, strconv.Itoa(id)}
@@ -364,32 +421,51 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating one (not implemented yet)")
-		// сходить в БД за логином и паролем, создать новую сессию и войти
-		// userName := session.Values["userName"]
-		// school, err := db.GetAuthData(userName)
-		// if err != nil {
-		// TODO попросить пользователя войти
-		// rest.logger.Error("Error reading database")
-		// return
-		// }
-		// remoteSession = ss.NewSession(school)
-		// if err = remoteSession.Login(); err != nil {
-		// rest.logger.Error("Error remote signing in")
-		// return
-		// }
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		school, err := rest.db.GetUserAuthData(userName.(string))
+		if err != nil {
+			rest.logger.Error("Error reading database")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
 	}
-	// TODO Если удаленная сессия есть, но не залогинена, снова войти
 	week := rReq.Week
 	if week == "" {
 		week = time.Now().Format("02.01.2006")
 	}
 	weekMarks, err := remoteSession.GetWeekSchoolMarks(week)
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		rest.logger.Info("Unable to get week tasks and marks: ", err)
-		// TODO Добавить повторную авторизацию для удаленной сессии
-		respwr.WriteHeader(http.StatusInternalServerError)
-		return
+		if err == logOutError {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			school, err := rest.db.GetUserAuthData(userName.(string))
+			if err != nil {
+				rest.logger.Error("Error reading database")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get schedule: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 	bytes, err := json.Marshal(weekMarks)
 	if err != nil {
@@ -444,37 +520,54 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating one (not implemented yet)")
-		// сходить в БД за логином и паролем, создать новую сессию и войти
-		// userName := session.Values["userName"]
-		// school, err := db.GetAuthData(userName)
-		// if err != nil {
-		// TODO попросить пользователя войти
-		// rest.logger.Error("Error reading database")
-		// return
-		// }
-		// remoteSession = ss.NewSession(school)
-		// if err = remoteSession.Login(); err != nil {
-		// rest.logger.Error("Error remote signing in")
-		// return
-		// }
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		school, err := rest.db.GetUserAuthData(userName.(string))
+		if err != nil {
+			rest.logger.Error("Error reading database")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
 	}
-	// TODO Если удаленная сессия есть, но не залогинена, снова войти
 	days, err := strconv.Atoi(rReq.Days)
 	if err != nil {
 		rest.logger.Error("Invalid param days specified: ", err)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-
 	today := time.Now().Format("02.01.2006")
-
 	timeTable, err := remoteSession.GetTimeTable(today, days)
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		// TODO Добавить повторную авторизацию для удаленной сессии
-		rest.logger.Error("Unable to get schedule: ", err)
-		respwr.WriteHeader(http.StatusInternalServerError)
-		return
+		if err == logOutError {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			school, err := rest.db.GetUserAuthData(userName.(string))
+			if err != nil {
+				rest.logger.Error("Error reading database")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get schedule: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 	bytes, err := json.Marshal(timeTable)
 	if err != nil {
@@ -535,7 +628,6 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
 	}
-	// TODO вызывать checkPermision
 	// Чтение запроса от клиента
 	var rReq signInRequest
 	decoder := json.NewDecoder(req.Body)
@@ -545,13 +637,21 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		rest.logger.Error("Malformed request data")
 		return
 	}
-	schoolId, _ := strconv.Atoi(rReq.Id)
-	if schoolId >= len(rest.config.Schools) {
+	schoolId, err := strconv.Atoi(rReq.Id)
+	if err != nil {
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("No school with such id: ", rReq.Id)
+		rest.logger.Error("Invalid param id specified: ", rReq.Id)
+		return
+	}
+	// Проверка доступа пользователя к сервису
+	perm := rest.db.GetPermission(rReq.Login, schoolId)
+	if !perm {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Info("Access to service denied!")
 		return
 	}
 	rest.logger.Info("Valid data:", rReq)
+	// TODO доставать адрес школы из БД, а не из конфига
 	school := rest.config.Schools[schoolId]
 	school.Login = rReq.Login
 	school.Password = rReq.Passkey
@@ -563,19 +663,21 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		return
 	}
 	// Если удаленная авторизация прошла успешно, создать локальную сессию
-	// и привязать к ней удаленную сессию
 	timeString := time.Now().String()
 	hasher := md5.New()
 	if _, err = hasher.Write([]byte(timeString)); err != nil {
 		rest.logger.Error("Md5 hashing error: ", err)
+		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	newSessionName := hex.EncodeToString(hasher.Sum(nil))
 	newLocalSession, err := rest.store.Get(req, newSessionName)
 	if err != nil {
 		rest.logger.Error("Error creating new local session")
+		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// ... и привязать к ней удаленную сессию
 	rest.sessionsMap[newSessionName] = newRemoteSession
 	newLocalSession.Values["userName"] = rReq.Login
 	newLocalSession.Save(req, respwr)
@@ -585,7 +687,13 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		Name: "sessionName", Value: newSessionName, Expires: expiration,
 	}
 	http.SetCookie(respwr, &cookie)
-	rest.logger.Info("Successfully signed in as user: ", rReq.Login)
+	// Обновляем базу данных
+	isUserNew := !rest.db.UpdateUser(rReq.Login, rReq.Passkey, schoolId)
+	userType := "existing"
+	if isUserNew {
+		userType = "new"
+	}
+	rest.logger.Info("Successfully signed in as "+userType+" user: ", rReq.Login)
 }
 
 // Handler временный абстрактный handler для некоторых еще не реализованных
