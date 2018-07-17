@@ -1,17 +1,18 @@
 package db
 
-import (
+import  (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"SchoolServer/libtelco/config-parser"
 	"strconv"
 	"errors"
 	"fmt"
-	"log"
+	"SchoolServer/libtelco/log"
 )
 
 type Database struct  {
 	SchoolServerDB *gorm.DB //указатель на гормовскую дб
+	Logger *log.Logger
 }
 
 
@@ -25,6 +26,7 @@ type User struct {
 
 type School struct {
 	gorm.Model
+	Name string
 	Address string //интернет адрес сервера
 	Permission bool //разрешение
 }
@@ -43,49 +45,55 @@ type SchoolList struct {
 func NewDatabase(log* log.Logger) (*Database,error) {//создает новую структуру Database и возвращает указатель на неё.
 	//открываем дб
 	sdb,err :=gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=schoolserverdb sslmode=disable")
-	log.Println("Connecting to DB")
+	log.Info("Connecting to DB")
 	if err!=nil {
+		log.Error(err.Error())
 		return &Database{},errors.New("Can't connect to database")
 	}
 	if !sdb.HasTable(&User{}){ //добавляем таблицу с пользователями, если её нет
 		err:=sdb.CreateTable(&User{}).Error
-		log.Println("Creating 'users' table")
+		log.Info("Creating 'users' table")
 		if err!=nil {
+			log.Error(err.Error())
 			return &Database{},err
 		}
 	}
 
 	if !sdb.HasTable(&School{}){ //добавляем таблицу со школами, если её нет
 		err:=sdb.CreateTable(&School{}).Error
-		log.Println("Creating 'schools' table")
+		log.Info("Creating 'schools' table")
 		if err!=nil {
+			log.Error(err.Error())
 			return &Database{},err
 		}
 	}
-	return &Database{SchoolServerDB:sdb},nil
+	return &Database{SchoolServerDB:sdb,Logger:log},nil
 }
 
-func (db *Database) UpdateUser(login string, passkey string, id int,log* log.Logger) (bool,error) {
+func (db *Database) UpdateUser(login string, passkey string, id int) (bool,error) {
 	//обновляет данные о пользователе. Если пользователя с таким именем нет в БД, создаёт.
 	var user User
 	err:=db.SchoolServerDB.Find(&User{}).Where("login = ?",login).First(&user).Error //ищем пользователя в дб по логину
 	if err!=nil {
+		db.Logger.Info(err.Error())
 		return false,err
 	}
-	log.Printf("Finding user %s in DB\n",login)
+	db.Logger.Info("Finding user ",login," in DB\n")
 	if user.ID>0 { //существует
 		user.Password=passkey
 		user.SchoolID=id
 		err=db.SchoolServerDB.Save(&user).Error //обновляем данные
-		log.Printf("Updating user %s in DB\n",login)
+		db.Logger.Info("Updating user ",login," in DB\n")
 		if err!=nil {
+			db.Logger.Info(err.Error())
 			return false,err
 		}
 		return true,nil
 	}else { //не существует
 		err=db.SchoolServerDB.Create(&User{Login:login,Password:passkey,SchoolID:id,Permission:true}).Error
-		log.Printf("Creating user %s in DB\n",login)
+		db.Logger.Info("Creating user ",login," in DB\n")
 		if err!=nil {
+			db.Logger.Error(err.Error())
 			return false,err
 		}
 		return false,nil
@@ -94,24 +102,28 @@ func (db *Database) UpdateUser(login string, passkey string, id int,log* log.Log
 	//true, если пользователь ранее существовал, false иначе
 }
 
-func (db *Database) GetUserAuthData(userName string,log* log.Logger) (*configParser.School, error){
+func (db *Database) GetUserAuthData(userName string) (*configParser.School, error){
 	//возвращает данные для повторной авторизации пользователя с именем userName
 	var school School
 	var user User
 	err:=db.SchoolServerDB.Find(&User{}).Where("login = ?",userName).First(&user).Error //ищем пользователя по логину
-	log.Printf("Finding user %s in DB\n",userName)
+	db.Logger.Info("Finding user ",userName,"in DB\n")
 	if err!=nil {
+		db.Logger.Error(err.Error())
 		return &configParser.School{},err
 	}
 	if user.ID==0 { //нет такого пользователя
-		return &configParser.School{},fmt.Errorf("User with name "+userName+" doesn't exist")
+		db.Logger.Error("User with name "+userName+" doesn't exist");
+		return &configParser.School{},fmt.Errorf("User with name %s doesn't exist",userName)
 	}
 	err=db.SchoolServerDB.Find(&School{}).First(&school, user.SchoolID).Error //ищем школу пользователя по ид
-	log.Printf("Finding school %d in DB\n",user.SchoolID);
+	db.Logger.Info("Finding school ",user.SchoolID," in DB");
 	if err!=nil {
+		db.Logger.Error(err.Error())
 		return &configParser.School{},err
 	}
 	if school.ID==0 {
+		db.Logger.Error("School with ID ",user.SchoolID," doesn't exist")
 		return &configParser.School{},errors.New("School with ID "+strconv.Itoa(user.SchoolID)+" doesn't exist")
 	}
 	return &configParser.School{Link:school.Address,Login:userName,Password:user.Password,},nil
@@ -129,14 +141,51 @@ func (db *Database) GetPermission(userName string, schoolId int,log* log.Logger)
 		school School
 	)
 	err:=db.SchoolServerDB.Find(&User{}).Where("login = ?",userName).First(&user).Error //ищем пользователя по логину
-	log.Printf("Finding user %s in DB",userName)
+	db.Logger.Info("Finding user %s in DB",userName)
 	if err!=nil {
+		db.Logger.Error(err.Error())
 		return false,err
 	}
 	err=db.SchoolServerDB.Find(&School{}).First(&school,schoolId).Error //ищем школу по ид
-	log.Printf("Finding school %d in DB",schoolId)
+	db.Logger.Info("Finding school %d in DB",schoolId)
 	if err!=nil {
+		db.Logger.Error(err.Error())
 		return false,err
 	}
 	return user.Permission||school.Permission,nil;
 }
+/*
+//возвращает информацию о всех поддерживаемых школах.
+//возвращаемые значения:
+//*SchoolList представляет собой указатель на заполненную json-сериализуемую
+//структуру, соответствующую структуре ответа на 1.1 Запрос списка школ из ТЗ.
+//error – объект ошибки, если она была, nil иначе
+func (db *Database) GetSchools() (*SchoolList, error) {
+	schDB:=db.SchoolServerDB.Find(&School{})
+	db.Logger.Info("Getting schools table")
+	err:=schDB.Error
+	if err!=nil {
+		db.Logger.Error(err.Error())
+		return &SchoolList{},err
+	}
+	var s School
+	sz:=0
+	db.Logger.Info("Counting table size")
+	for i:=1;;i++{
+		err=db.SchoolServerDB.First(&s,i).Error
+		fmt.Println(i)
+		if (0==s.ID){
+			sz=i-1
+			break
+		}
+	}
+	db.Logger.Info("Table size is equal to",sz)
+	var SList SchoolList
+	SList.Schools=make([]school,sz)
+	for i:=1;i<=sz;i++{
+		db.SchoolServerDB.First(&s,i)
+		db.Logger.Info("Getting school with id ",i)
+		SList.Schools[i-1]=school{Name:s.Name,Id:strconv.Itoa(int(s.ID)),Website:s.Address}
+	}
+	return &SList,nil
+	}*/
