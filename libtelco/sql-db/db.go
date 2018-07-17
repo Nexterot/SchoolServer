@@ -26,9 +26,9 @@ type User struct {
 
 type School struct {
 	gorm.Model
-	Name string
-	Address string //интернет адрес сервера
-	Permission bool //разрешение
+	Name		string //название школы
+	Address 	string //интернет адрес сервера
+	Permission 	bool //разрешение
 }
 
 type school struct {
@@ -154,7 +154,7 @@ func (db *Database) GetPermission(userName string, schoolId int,log* log.Logger)
 	}
 	return user.Permission||school.Permission,nil;
 }
-/*
+
 //возвращает информацию о всех поддерживаемых школах.
 //возвращаемые значения:
 //*SchoolList представляет собой указатель на заполненную json-сериализуемую
@@ -168,24 +168,39 @@ func (db *Database) GetSchools() (*SchoolList, error) {
 		db.Logger.Error(err.Error())
 		return &SchoolList{},err
 	}
-	var s School
 	sz:=0
 	db.Logger.Info("Counting table size")
 	for i:=1;;i++{
-		err=db.SchoolServerDB.First(&s,i).Error
-		fmt.Println(i)
-		if (0==s.ID){
-			sz=i-1
-			break
+		err=db.SchoolServerDB.First(&School{},i).Error
+		if err!=nil {
+			if err.Error()=="record not found"{
+				sz=i-1
+				break
+			} else {
+				db.Logger.Error(err.Error())
+				return &SchoolList{},err
+			}
 		}
 	}
 	db.Logger.Info("Table size is equal to",sz)
 	var SList SchoolList
+	var s School
 	SList.Schools=make([]school,sz)
+	schTable:=db.SchoolServerDB.Find(&School{})
+	err=schTable.Error
+	if err!=nil {
+		db.Logger.Error(err.Error())
+		return &SchoolList{},err
+	}
 	for i:=1;i<=sz;i++{
-		db.SchoolServerDB.First(&s,i)
+		s.ID=uint(i)
+		err=schTable.Where("id = ?", i).First(&s).Error
 		db.Logger.Info("Getting school with id ",i)
+		if err!=nil {
+			db.Logger.Error(err.Error())
+			return &SchoolList{},err
+		}
 		SList.Schools[i-1]=school{Name:s.Name,Id:strconv.Itoa(int(s.ID)),Website:s.Address}
 	}
 	return &SList,nil
-	}*/
+	}
