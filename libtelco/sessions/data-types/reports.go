@@ -78,28 +78,28 @@ type StudentGradeReportNote struct {
 
 // StudentTotalReport struct - отчет пятого типа.
 type StudentTotalReport struct {
-	MainTable    []Month
-	AverageMarks []SubjectAverageMark
+	MainTable    []Month              `json:"maintable"`
+	AverageMarks []SubjectAverageMark `json:"averagemarks"`
 }
 
 type SubjectMarks struct {
-	Name  string
-	Marks []string
+	Name  string   `json:"name"`
+	Marks []string `json:"marks"`
 }
 
 type Day struct {
-	Number   int
-	Subjects []SubjectMarks
+	Number   int            `json:"number"`
+	Subjects []SubjectMarks `json:"subjects"`
 }
 
 type Month struct {
-	Name string
-	Days []Day
+	Name string `json:"name"`
+	Days []Day  `json:"days"`
 }
 
 type SubjectAverageMark struct {
-	Name string
-	Mark float32
+	Name string  `json:"name"`
+	Mark float32 `json:"mark"`
 }
 
 /*
@@ -116,18 +116,18 @@ type SubjectAverageMark struct {
 
 // JournalAccessReport struct - отчет седьмого типа.
 type JournalAccessReport struct {
-	Data []JournalAccessReportNote
+	Data []JournalAccessReportNote `json:"data"`
 }
 
 // JournalAccessReportNote struct - одна запись в отчёте о доступе к классному журналу
 type JournalAccessReportNote struct {
-	Class      int
-	Subject    string
-	Date       string
-	User       string
-	LessonDate string
-	Period     string
-	Action     string
+	Class      int    `json:"class"`
+	Subject    string `json:"subject"`
+	Date       string `json:"date"`
+	User       string `json:"user"`
+	LessonDate string `json:"lessondate"`
+	Period     string `json:"period"`
+	Action     string `json:"action"`
 }
 
 /*
@@ -136,13 +136,13 @@ type JournalAccessReportNote struct {
 
 // ParentInfoLetterReport struct - отчет восьмого типа.
 type ParentInfoLetterReport struct {
-	Data []ParentInfoLetterReportNote
+	Data []ParentInfoLetterReportNote `json:"data"`
 }
 
 // ParentInfoLetterReportNote struct - одна запись в отчёте "Информационное письмо для родителей"
 type ParentInfoLetterReportNote struct {
-	Name          string
-	Marks         []int
-	AverageMark   float32
-	MarkForPeriod int
+	Name          string  `json:"name"`
+	Marks         []int   `json:"marks"`
+	AverageMark   float32 `json:"averagemark"`
+	MarkForPeriod int     `json:"markforperiod"`
 }
