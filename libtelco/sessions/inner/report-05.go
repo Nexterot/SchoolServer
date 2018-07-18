@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"strings"
 
 	"golang.org/x/net/html"
 )
@@ -152,7 +153,11 @@ func StudentTotalReportParser(r io.Reader) (*dt.StudentTotalReport, error) {
 				}
 				averageSubjectMark := *new(dt.SubjectAverageMark)
 				averageSubjectMark.Name = subjectName
-				averageSubjectMark.Mark = c.NextSibling.FirstChild.Data
+				v, err := strconv.ParseFloat(strings.Replace(c.NextSibling.FirstChild.Data, ",", ".", 1), 32)
+				if err != nil {
+					v = -1.0
+				}
+				averageSubjectMark.Mark = float32(v)
 				averageMarks = append(averageMarks, averageSubjectMark)
 			}
 		} else {

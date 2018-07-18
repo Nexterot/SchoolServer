@@ -48,11 +48,11 @@ type AverageMarkDynReport struct {
 
 // AverageMarkDynReportNote struct - одна запись в отчёте "Динамика среднего балла".
 type AverageMarkDynReportNote struct {
-	Date               string `json:"date"`
-	StudentWorksAmount int    `json:"studworksam"`
-	StudentAverageMark string `json:"studavmark"`
-	ClassWorksAmount   int    `json:"classworksam"`
-	ClassAverageMark   string `json:"classavmark"`
+	Date               string  `json:"date"`
+	StudentWorksAmount int     `json:"studworksam"`
+	StudentAverageMark float32 `json:"studavmark"`
+	ClassWorksAmount   int     `json:"classworksam"`
+	ClassAverageMark   float32 `json:"classavmark"`
 }
 
 /*
@@ -99,7 +99,7 @@ type Month struct {
 
 type SubjectAverageMark struct {
 	Name string
-	Mark string
+	Mark float32
 }
 
 /*
@@ -116,12 +116,33 @@ type SubjectAverageMark struct {
 
 // JournalAccessReport struct - отчет седьмого типа.
 type JournalAccessReport struct {
+	Data []JournalAccessReportNote
+}
+
+// JournalAccessReportNote struct - одна запись в отчёте о доступе к классному журналу
+type JournalAccessReportNote struct {
+	Class      int
+	Subject    string
+	Date       string
+	User       string
+	LessonDate string
+	Period     string
+	Action     string
 }
 
 /*
 08 тип.
 */
 
-// ParentInfoLetterReport struct - отчет седьмого типа.
+// ParentInfoLetterReport struct - отчет восьмого типа.
 type ParentInfoLetterReport struct {
+	Data []ParentInfoLetterReportNote
+}
+
+// ParentInfoLetterReportNote struct - одна запись в отчёте "Информационное письмо для родителей"
+type ParentInfoLetterReportNote struct {
+	Name          string
+	Marks         []int
+	AverageMark   float32
+	MarkForPeriod int
 }

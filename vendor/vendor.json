@@ -45,10 +45,22 @@
 			"revisionTime": "2018-06-06T15:52:11Z"
 		},
 		{
+			"checksumSHA1": "2eA8YQR7HpZKH9OCJDjfxaU2hxk=",
+			"path": "github.com/jinzhu/gorm",
+			"revision": "0fd395ab37aefd2d50854f0556a4311dccc6f45a",
+			"revisionTime": "2018-06-25T05:07:53Z"
+		},
+		{
 			"checksumSHA1": "0Pry12nZ6UQBd1iXEtszySSfFpI=",
 			"path": "github.com/jinzhu/gorm/dialects/postgres",
 			"revision": "0fd395ab37aefd2d50854f0556a4311dccc6f45a",
 			"revisionTime": "2018-06-25T05:07:53Z"
+		},
+		{
+			"checksumSHA1": "mfb/EusMwfajCPq0lwLWM/pvqI4=",
+			"path": "github.com/jinzhu/inflection",
+			"revision": "04140366298a54a039076d798123ffa108fff46c",
+			"revisionTime": "2018-03-08T03:36:59Z"
 		},
 		{
 			"checksumSHA1": "FEAHzwQhwPrKpaEz3yPimQB/Ios=",
@@ -181,6 +193,10 @@
 			"path": "github.com/pkg/errors",
 			"revision": "816c9085562cd7ee03e7f8188a1cfd942858cded",
 			"revisionTime": "2018-03-11T21:45:15Z"
+		},
+		{
+			"path": "github.comjinzhugorm",
+			"revision": ""
 		},
 		{
 			"checksumSHA1": "1c4mJK7gaUXt0/442AqB4Trn+kM=",

@@ -52,8 +52,17 @@ func StudentGradeReportParser(r io.Reader) (*dt.StudentGradeReport, error) {
 				c = c.NextSibling
 				perfNote.Mark, err = strconv.Atoi(c.FirstChild.Data)
 				if err != nil {
-					return notes, err
+					perfNote.Mark = -1
 				}
+				notes = append(notes, perfNote)
+			}
+			if noteNode != nil {
+				perfNote := *new(dt.StudentGradeReportNote)
+				perfNote.Type = ""
+				c := noteNode.FirstChild.NextSibling
+				perfNote.Theme = c.FirstChild.FirstChild.FirstChild.Data
+				c = c.NextSibling
+				perfNote.DateOfCompletion = c.FirstChild.FirstChild.FirstChild.Data
 				notes = append(notes, perfNote)
 			}
 		}

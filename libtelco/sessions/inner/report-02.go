@@ -4,6 +4,7 @@ import (
 	dt "SchoolServer/libtelco/sessions/data-types"
 	"io"
 	"strconv"
+	"strings"
 
 	"golang.org/x/net/html"
 )
@@ -64,11 +65,11 @@ func AverageMarkReportParser(r io.Reader) (*dt.AverageMarkReport, error) {
 		classReport := make(map[string]string)
 		formAverageMarkReportTable(tableNode, studentReport, classReport)
 		for k, v := range studentReport {
-			v1, err := strconv.ParseFloat(v, 32)
+			v1, err := strconv.ParseFloat(strings.Replace(v, ",", ".", 1), 32)
 			if err != nil {
 				v1 = -1.0
 			}
-			v2, err := strconv.ParseFloat(classReport[k], 32)
+			v2, err := strconv.ParseFloat(strings.Replace(classReport[k], ",", ".", 1), 32)
 			if err != nil {
 				v2 = -1.0
 			}

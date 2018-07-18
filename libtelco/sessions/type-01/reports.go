@@ -10,7 +10,6 @@ import (
 	"SchoolServer/libtelco/sessions/inner"
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
-	"fmt"
 
 	gr "github.com/levigross/grequests"
 )
@@ -523,11 +522,7 @@ func GetJournalAccessReport(s *ss.Session) (*dt.JournalAccessReport, error) {
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней отчет о доступе к журналу.
-	// Сделай парсер.
-	fmt.Println(string(response1.Bytes()))
-	fmt.Println()
-	fmt.Println()
-	return nil, nil
+	return inner.JournalAccessReportParser(bytes.NewReader(response1.Bytes()))
 }
 
 /*
@@ -605,9 +600,5 @@ func GetParentInfoLetterReport(s *ss.Session, studentID, reportTypeID, periodID 
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней шаблон письма родителям.
-	// Сделай парсер.
-	fmt.Println(string(response1.Bytes()))
-	fmt.Println()
-	fmt.Println()
-	return nil, nil
+	return inner.ParentInfoLetterReportParser(bytes.NewReader(response1.Bytes()))
 }

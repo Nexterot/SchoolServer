@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"strconv"
+	"strings"
 
 	"golang.org/x/net/html"
 )
@@ -68,8 +69,16 @@ func AverageMarkDynReportParser(r io.Reader) (*dt.AverageMarkDynReport, error) {
 			for stage != nil {
 				var note dt.AverageMarkDynReportNote
 				note.Date = stage.FirstChild.Data
-				note.StudentAverageMark = studentAverageMark.FirstChild.Data
-				note.ClassAverageMark = classAverageMark.FirstChild.Data
+				v1, err := strconv.ParseFloat(strings.Replace(studentAverageMark.FirstChild.Data, ",", ".", 1), 32)
+				if err != nil {
+					v1 = -1.0
+				}
+				note.StudentAverageMark = float32(v1)
+				v2, err := strconv.ParseFloat(strings.Replace(classAverageMark.FirstChild.Data, ",", ".", 1), 32)
+				if err != nil {
+					v2 = -1.0
+				}
+				note.ClassAverageMark = float32(v2)
 
 				if hasWorks {
 					note.StudentWorksAmount, err = strconv.Atoi(studentWorksAmount.FirstChild.Data)
