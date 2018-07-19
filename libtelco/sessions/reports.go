@@ -126,7 +126,7 @@ func (s *Session) GetJournalAccessReport(studentID string) (*dt.JournalAccessRep
 	var studentTotalReport *dt.JournalAccessReport
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		studentTotalReport, err = s.GetJournalAccessReport(studentID)
+		studentTotalReport, err = t01.GetJournalAccessReport(s.Base, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}

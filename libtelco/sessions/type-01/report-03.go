@@ -65,13 +65,12 @@ func GetAverageMarkDynReport(s *ss.Session, dateBegin, dateEnd, Type, studentID 
 			"VER":       s.VER,
 		},
 		Headers: map[string]string{
-			"Origin":           p + s.Serv.Link,
-			"X-Requested-With": "XMLHttpRequest",
-			"at":               s.AT,
-			"Referer":          p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMarkDyn.asp",
 		},
 	}
-	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/StudentAverageMarkDyn.asp", requestOptions1)
+	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMarkDyn.asp", requestOptions1)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +81,46 @@ func GetAverageMarkDynReport(s *ss.Session, dateBegin, dateEnd, Type, studentID 
 		return nil, err
 	}
 
+	// 2-ой Post-запрос.
+	requestOptions2 := &gr.RequestOptions{
+		Data: map[string]string{
+			"A":         "",
+			"ADT":       dateBegin,
+			"AT":        s.AT,
+			"BACK":      "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+			"DDT":       dateEnd,
+			"LoginType": "0",
+			"MT":        Type,
+			"NA":        "",
+			"PCLID":     "",
+			"PP":        "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+			"RP":        "",
+			"RPTID":     "2",
+			"RT":        "",
+			"SID":       studentID,
+			"TA":        "",
+			"ThmID":     "1",
+			"VER":       s.VER,
+		},
+		Headers: map[string]string{
+			"Origin":           p + s.Serv.Link,
+			"X-Requested-With": "XMLHttpRequest",
+			"at":               s.AT,
+			"Referer":          p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+		},
+	}
+	response2, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/StudentAverageMarkDyn.asp", requestOptions2)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response2.Close()
+	}()
+	if err := checkResponse(s, response2); err != nil {
+		return nil, err
+	}
+
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней отчет о динамике среднего балла.
-	return inner.AverageMarkDynReportParser(bytes.NewReader(response1.Bytes()))
+	return inner.AverageMarkDynReportParser(bytes.NewReader(response2.Bytes()))
 }
