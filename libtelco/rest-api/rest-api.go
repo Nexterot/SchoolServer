@@ -85,7 +85,7 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/get_report_journal_access_classes_list", rest.Handler)
 	http.HandleFunc("/get_report_journal_access", rest.Handler)
 	http.HandleFunc("/get_report_parent_info_letter_data", rest.Handler)
-	http.HandleFunc("/get_report_parent_info_letter", rest.Handler)
+	http.HandleFunc("/get_report_parent_info_letter", rest.GetReportParentInfoLetterHandler) // done
 
 	http.HandleFunc("/get_resources", rest.Handler)
 
@@ -552,6 +552,106 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 	}
 	respwr.Write(bytes)
 	rest.logger.Info("Sent report student grades lesson: ", lessonsMap)
+}
+
+// getReportParentInfoLetterRequest используется в GetReportParentInfoLetterHandler
+type getReportParentInfoLetterRequest struct {
+	StudentID    int `json:"student_id"`
+	ReportTypeID int `json:"report_type_id"`
+	PeriodID     int `json:"period_id"`
+}
+
+// GetReportParentInfoLetterHandler обрабатывает запрос на получение шаблона для
+// письма родителям
+func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("GetReportParentInfoLetterHandler called")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq getReportParentInfoLetterRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		school, err := rest.db.GetUserAuthData(userName.(string))
+		if err != nil {
+			rest.logger.Error("Error reading database", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
+	}
+	studentID := strconv.Itoa(rReq.StudentID)
+	reportID := strconv.Itoa(rReq.ReportTypeID)
+	periodID := strconv.Itoa(rReq.PeriodID)
+	parrentLetter, err := remoteSession.GetParentInfoLetterReport(studentID, reportID, periodID)
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	if err != nil {
+		if err == errLoggedOut {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			school, err := rest.db.GetUserAuthData(userName.(string))
+			if err != nil {
+				rest.logger.Error("Error reading database", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get parrent info letter report: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	bytes, err := json.Marshal(parrentLetter)
+	if err != nil {
+		rest.logger.Error("Error marshalling parrentLetter")
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent report parrent info letter report: ", parrentLetter)
 }
 
 // school struct используется в GetSchoolListHandler
