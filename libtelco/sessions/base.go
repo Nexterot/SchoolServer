@@ -70,6 +70,8 @@ func (s *Session) GetChildrenMap() error {
 Получение списка предметов.
 */
 
+// ПЕРЕДЕЛАТЬ!!!
+
 // GetLessonsMap возвращает список пар мапу предметов в их ID.
 func (s *Session) GetLessonsMap(studentID string) (*dt.LessonsMap, error) {
 	s.Base.MU.Lock()

@@ -258,13 +258,14 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentTotalMarks.asp",
 		},
 	}
-	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ParentInfoLetter.asp", requestOptions1)
+	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions1)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
 		_ = response1.Close()
 	}()
+
 	if err := checkResponse(s, response1); err != nil {
 		return nil, err
 	}
