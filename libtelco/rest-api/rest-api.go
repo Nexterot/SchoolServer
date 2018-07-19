@@ -105,7 +105,7 @@ func (rest *RestAPI) BindHandlers() {
 // checkPermissionRequest используется в CheckPermissionHandler
 type checkPermissionRequest struct {
 	Login string `json:"login"`
-	Id    string `json:"id"`
+	Id    int    `json:"id"`
 }
 
 // checkPermissionResponse используется в CheckPermissionHandler
@@ -130,19 +130,28 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	id, err := strconv.Atoi(rReq.Id)
+	// Проверим разрешение у школы
+	perm, err := rest.db.GetSchoolPermission(rReq.Id)
 	if err != nil {
 		rest.logger.Error("Invalid id param specified")
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	perm, err := rest.db.GetPermission(rReq.Login, id)
-	if err != nil {
-		rest.logger.Error("Error when getting permission from db: ", err)
-		respwr.WriteHeader(http.StatusInternalServerError)
-		return
+	if !perm {
+		// Если у школы нет разрешения, проверить разрешение пользователя
+		userPerm, err := rest.db.GetUserPermission(rReq.Login)
+		if err != nil {
+			if err.Error() == "record not found" {
+				// Пользователь новый, вернем true
+				perm = true
+			} else {
+				rest.logger.Error("Getting permission from db: ", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+		perm = userPerm
 	}
-	rest.logger.Info("Getting check permission from db: ", perm)
 	resp := checkPermissionResponse{perm}
 	bytes, err := json.Marshal(resp)
 	if err != nil {
@@ -161,7 +170,7 @@ func (rest *RestAPI) ErrorHandler(respwr http.ResponseWriter, req *http.Request)
 
 // getReportStudentTotalMarksRequest используется в GetReportStudentTotalMarksHandler
 type getReportStudentTotalMarksRequest struct {
-	Id string `json:"id"`
+	Id int `json:"id"`
 }
 
 // GetReportStudentTotalMarksHandler обрабатывает запрос на получение отчета
@@ -219,7 +228,8 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 		}
 		rest.sessionsMap[sessionName] = remoteSession
 	}
-	totalMarkReport, err := remoteSession.GetTotalMarkReport(rReq.Id)
+	id := strconv.Itoa(rReq.Id)
+	totalMarkReport, err := remoteSession.GetTotalMarkReport(id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -258,7 +268,7 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 // getReportStudentAverageMarkRequest используется в GetReportStudentAverageMarkHandler
 // и GetReportStudentAverageMarkDynHandler
 type getReportStudentAverageMarkRequest struct {
-	Id   string `json:"id"`
+	Id   int    `json:"id"`
 	Type string `json:"type"`
 	From string `json:"from"`
 	To   string `json:"to"`
@@ -267,8 +277,7 @@ type getReportStudentAverageMarkRequest struct {
 // GetReportStudentAverageMarkHandler обрабатывает запрос на получение отчета
 // о среднем балле
 func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentTotalMarksHandler called")
-	// TODO добавить переключение между детьми
+	rest.logger.Info("GetReportStudentAverageMarkHandler called")
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -300,6 +309,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 		rest.logger.Error("Malformed request data")
 		return
 	}
+	id := strconv.Itoa(rReq.Id)
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
@@ -319,7 +329,8 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 		}
 		rest.sessionsMap[sessionName] = remoteSession
 	}
-	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type, rReq.Id)
+
+	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -359,7 +370,6 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 // о динамике среднего балла
 func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("GetReportStudentAverageMarkDynHandler called")
-	// TODO добавить переключение между детьми
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -391,6 +401,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 		rest.logger.Error("Malformed request data")
 		return
 	}
+	id := strconv.Itoa(rReq.Id)
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
@@ -410,7 +421,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 		}
 		rest.sessionsMap[sessionName] = remoteSession
 	}
-	averageMarkDynReport, err := remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type, rReq.Id)
+	averageMarkDynReport, err := remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -448,7 +459,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 
 // getReportStudentGradesLessonListRequest используется в GetReportStudentGradesLessonListHandler
 type getReportStudentGradesLessonListRequest struct {
-	Id string `json:"id"`
+	Id int `json:"id"`
 }
 
 // GetReportStudentGradesLessonListHandler
@@ -457,14 +468,15 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 	// TODO добавить переключение между детьми
 }
 
-// school используется в GetSchoolListHandler
+// school struct используется в GetSchoolListHandler
 type school struct {
-	Name string `json:"name"`
-	Id   string `json:"id"`
+	Name    string `json:"name"`
+	Id      int    `json:"id"`
+	Website string `json:"website"`
 }
 
-// schoolListResponse используется в GetSchoolListHandler
-type schoolListResponse struct {
+// SchoolListResponse используется в GetSchoolListHandler
+type SchoolListResponse struct {
 	Schools []school `json:"schools"`
 }
 
@@ -476,12 +488,17 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	resp, err := rest.db.GetSchools()
+	schools, err := rest.db.GetSchools()
 	if err != nil {
 		rest.logger.Error("Error getting school list from db")
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	schoolList := make([]school, 0)
+	for _, sch := range schools {
+		schoolList = append(schoolList, school{sch.Name, int(sch.ID), sch.Address})
+	}
+	resp := SchoolListResponse{schoolList}
 	bytes, err := json.Marshal(resp)
 	if err != nil {
 		rest.logger.Error("Error marshalling list of schools")
@@ -493,7 +510,7 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 // tasksMarksRequest используется в GetTasksAndMarksHandler
 type tasksMarksRequest struct {
 	Week string `json:"week"`
-	Id   string `json:"id"`
+	Id   int    `json:"id"`
 }
 
 // GetTasksAndMarksHandler возвращает задания и оценки на неделю
@@ -530,6 +547,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 		rest.logger.Error("Malformed request data")
 		return
 	}
+	id := strconv.Itoa(rReq.Id)
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
@@ -553,7 +571,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	if week == "" {
 		week = time.Now().Format("02.01.2006")
 	}
-	weekMarks, err := remoteSession.GetWeekSchoolMarks(week, rReq.Id)
+	weekMarks, err := remoteSession.GetWeekSchoolMarks(week, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -591,8 +609,8 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 
 // scheduleRequest используется в GetScheduleHandler
 type scheduleRequest struct {
-	Days string `json:"days"`
-	Id   string `json:"id"`
+	Days int `json:"days"`
+	Id   int `json:"id"`
 }
 
 // GetScheduleHandler возвращает расписание на неделю
@@ -629,6 +647,7 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 		rest.logger.Error("Malformed request data")
 		return
 	}
+	id := strconv.Itoa(rReq.Id)
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
@@ -648,14 +667,8 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 		}
 		rest.sessionsMap[sessionName] = remoteSession
 	}
-	days, err := strconv.Atoi(rReq.Days)
-	if err != nil {
-		rest.logger.Error("Invalid param days specified: ", err)
-		respwr.WriteHeader(http.StatusBadRequest)
-		return
-	}
 	today := time.Now().Format("02.01.2006")
-	timeTable, err := remoteSession.GetTimeTable(today, days, rReq.Id)
+	timeTable, err := remoteSession.GetTimeTable(today, rReq.Days, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -730,7 +743,7 @@ func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request
 type signInRequest struct {
 	Login   string `json:"login"`
 	Passkey string `json:"passkey"`
-	Id      string `json:"id"`
+	Id      int    `json:"id"`
 }
 
 // SignInHandler обрабатывает вход в учетную запись на сайте школы
@@ -749,18 +762,27 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		rest.logger.Error("Malformed request data")
 		return
 	}
-	schoolId, err := strconv.Atoi(rReq.Id)
+	// Проверим разрешение у школы
+	perm, err := rest.db.GetSchoolPermission(rReq.Id)
 	if err != nil {
+		rest.logger.Error("Invalid id param specified")
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Invalid param id specified: ", rReq.Id)
 		return
 	}
-	// Проверка доступа пользователя к сервису
-	perm, err := rest.db.GetPermission(rReq.Login, schoolId)
-	if err != nil {
-		rest.logger.Error("Error when getting permission from db: ", err)
-		respwr.WriteHeader(http.StatusInternalServerError)
-		return
+	if !perm {
+		// Если у школы нет разрешения, проверить разрешение пользователя
+		userPerm, err := rest.db.GetUserPermission(rReq.Login)
+		if err != nil {
+			if err.Error() == "record not found" {
+				// Пользователь новый, вернем true
+				perm = true
+			} else {
+				rest.logger.Error("Getting permission from db: ", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+		perm = userPerm
 	}
 	if !perm {
 		rest.logger.Info("Access to service denied!")
@@ -768,8 +790,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		return
 	}
 	rest.logger.Info("Valid data:", rReq)
-	// TODO доставать адрес школы из БД, а не из конфига
-	school := rest.config.Schools[schoolId]
+	school := rest.config.Schools[rReq.Id-1]
 	school.Login = rReq.Login
 	school.Password = rReq.Passkey
 	// Создание удаленной сессии
@@ -805,17 +826,13 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	}
 	http.SetCookie(respwr, &cookie)
 	// Обновляем базу данных
-	userExists, err := rest.db.UpdateUser(rReq.Login, rReq.Passkey, schoolId)
+	err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, rReq.Id)
 	if err != nil {
-		rest.logger.Error("Error creating new updating database: ", err)
+		rest.logger.Error("Error updating database: ", err)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	userType := "existing"
-	if !userExists {
-		userType = "new"
-	}
-	rest.logger.Info("Successfully signed in as "+userType+" user: ", rReq.Login)
+	rest.logger.Info("Successfully signed in as user: ", rReq.Login)
 }
 
 // Handler временный абстрактный handler для некоторых еще не реализованных
