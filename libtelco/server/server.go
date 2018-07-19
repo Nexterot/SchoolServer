@@ -47,7 +47,7 @@ func (serv *Server) Run() error {
 		os.Exit(1)
 	}
 	// 11198 - Кирилл; 11207 - Максим.
-	data, err := s.GetJournalAccessReport("11198")
+	data, err := s.GetParentInfoLetterReport("1", "10065", "11198")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -55,7 +55,7 @@ func (serv *Server) Run() error {
 	fmt.Println(data)
 	fmt.Println()
 	fmt.Println()
-	data, err = s.GetJournalAccessReport("11207")
+	data, err = s.GetParentInfoLetterReport("1", "10065", "11207")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
