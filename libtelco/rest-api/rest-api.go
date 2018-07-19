@@ -66,6 +66,7 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/sign_in", rest.SignInHandler)                   // done
 	http.HandleFunc("/log_out", rest.LogOutHandler)                   // done
 
+	http.HandleFunc("/get_children_map", rest.GetChildrenMapHandler)      // done
 	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler) // done
 	http.HandleFunc("/get_lesson_description", rest.Handler)
 	http.HandleFunc("/mark_as_done", rest.Handler)
@@ -565,7 +566,7 @@ type SchoolListResponse struct {
 	Schools []school `json:"schools"`
 }
 
-// GetSchoolListHandler обрабатывает запрос на получение списка обслуживаемых школ.
+// GetSchoolListHandler обрабатывает запрос на получение списка обслуживаемых школ
 func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("GetSchoolListHandler called")
 	if req.Method != "GET" {
@@ -590,6 +591,86 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 	}
 	respwr.Write(bytes)
 	rest.logger.Info("Sent list of schools: ", resp)
+}
+
+// GetChildrenMapHandler обрабатывает запрос на получение списка детей
+func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http.Request) {
+	if req.Method != "GET" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		school, err := rest.db.GetUserAuthData(userName.(string))
+		if err != nil {
+			rest.logger.Error("Error reading database")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
+	}
+	err = remoteSession.GetChildrenMap()
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	if err != nil {
+		if err == errLoggedOut {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			school, err := rest.db.GetUserAuthData(userName.(string))
+			if err != nil {
+				rest.logger.Error("Error reading database")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get children map: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	bytes, err := json.Marshal(remoteSession.Base.ChildrenIDS)
+	if err != nil {
+		rest.logger.Error("Error marshalling childrenMap")
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent children map: ", remoteSession.Base.ChildrenIDS)
 }
 
 // tasksMarksRequest используется в GetTasksAndMarksHandler
