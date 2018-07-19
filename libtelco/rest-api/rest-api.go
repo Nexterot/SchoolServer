@@ -219,7 +219,7 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 		}
 		rest.sessionsMap[sessionName] = remoteSession
 	}
-	totalMarkReport, err := remoteSession.GetTotalMarkReport()
+	totalMarkReport, err := remoteSession.GetTotalMarkReport(rReq.Id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -319,7 +319,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 		}
 		rest.sessionsMap[sessionName] = remoteSession
 	}
-	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type)
+	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type, rReq.Id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -410,7 +410,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 		}
 		rest.sessionsMap[sessionName] = remoteSession
 	}
-	averageMarkDynReport, err := remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type)
+	averageMarkDynReport, err := remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type, rReq.Id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -553,7 +553,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	if week == "" {
 		week = time.Now().Format("02.01.2006")
 	}
-	weekMarks, err := remoteSession.GetWeekSchoolMarks(week)
+	weekMarks, err := remoteSession.GetWeekSchoolMarks(week, rReq.Id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {
@@ -655,7 +655,7 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 		return
 	}
 	today := time.Now().Format("02.01.2006")
-	timeTable, err := remoteSession.GetTimeTable(today, days)
+	timeTable, err := remoteSession.GetTimeTable(today, days, rReq.Id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == logOutError {

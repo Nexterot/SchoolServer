@@ -8,15 +8,16 @@ package server
 import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
-	//api "SchoolServer/libtelco/rest-api"
+	api "SchoolServer/libtelco/rest-api"
 
+	"net/http"
 	"runtime"
 )
 
 // Server struct содержит конфигурацию сервера.
 type Server struct {
 	config *cp.Config
-	//api    *api.RestAPI
+	api    *api.RestAPI
 	logger *log.Logger
 }
 
@@ -24,7 +25,7 @@ type Server struct {
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
 	serv := &Server{
 		config: config,
-		//api:    api.NewRestAPI(logger, config),
+		api:    api.NewRestAPI(logger, config),
 	}
 	return serv
 }
@@ -67,7 +68,6 @@ func (serv *Server) Run() error {
 	*/
 
 	// Подключаем handler'ы из RestAPI.
-	//serv.api.BindHandlers()
-	//return http.ListenAndServe(serv.config.ServerAddr, nil)
-	return nil
+	serv.api.BindHandlers()
+	return http.ListenAndServe(serv.config.ServerAddr, nil)
 }
