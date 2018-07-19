@@ -6,6 +6,7 @@ import (
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
 	"fmt"
+	"strings"
 
 	gr "github.com/levigross/grequests"
 )
@@ -74,13 +75,22 @@ func GetJournalAccessReport(s *ss.Session, studentID string) (*dt.JournalAccessR
 	defer func() {
 		_ = response1.Close()
 	}()
-	fmt.Println(string(response1.Bytes()))
-	fmt.Println()
 	if err := checkResponse(s, response1); err != nil {
 		return nil, err
 	}
 
 	// 2-ой Post-запрос.
+	PCLID_IUP := string(response1.Bytes())
+	index := strings.Index(PCLID_IUP, "\"value\":\"")
+	if index == -1 {
+		return nil, fmt.Errorf("Invalid SID")
+	}
+	PCLID_IUP = PCLID_IUP[index+len("\"value\":\""):]
+	index = strings.Index(PCLID_IUP, "\"")
+	if index == -1 {
+		return nil, fmt.Errorf("Invalid SID")
+	}
+
 	requestOptions2 := &gr.RequestOptions{
 		Data: map[string]string{
 			"A":         "",
@@ -88,7 +98,7 @@ func GetJournalAccessReport(s *ss.Session, studentID string) (*dt.JournalAccessR
 			"BACK":      "/asp/Reports/ReportJournalAccess.asp",
 			"LoginType": "0",
 			"NA":        "",
-			"PCLID_IUP": "10169_0",
+			"PCLID_IUP": PCLID_IUP[:index],
 			"PP":        "/asp/Reports/ReportJournalAccess.asp",
 			"RP":        "",
 			"RPTID":     "3",

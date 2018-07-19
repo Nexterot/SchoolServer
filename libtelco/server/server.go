@@ -9,6 +9,9 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	api "SchoolServer/libtelco/rest-api"
+	ss "SchoolServer/libtelco/sessions"
+	"fmt"
+	"os"
 
 	"net/http"
 	"runtime"
@@ -37,35 +40,27 @@ func (serv *Server) Run() error {
 
 	// TODO: протестировать все Get'ы.
 
-	/*
-		// Тесты. Начало.
-		s := ss.NewSession(&serv.config.Schools[0])
-		err := s.Login()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		// 11198 - Кирилл; 11207 - Максим.
-		// Тесты. Конец.
-		//data, err := s.GetTimeTable("11.03.2018", 7, "11198")
-		//data, err := s.GetTotalMarkReport("11198")
-		//data, err := s.GetAverageMarkReport("11.03.2018", "12.04.2018", "T", "11198")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		fmt.Println(data)
-		fmt.Println()
-		fmt.Println()
-		//data, err = s.GetTimeTable("11.03.2018", 7, "11207")
-		//data, err = s.GetTotalMarkReport("11207")
-		//data, err = s.GetAverageMarkReport("11.03.2018", "12.04.2018", "T", "11207")
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-		fmt.Println(data)
-	*/
+	s := ss.NewSession(&serv.config.Schools[0])
+	err := s.Login()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	// 11198 - Кирилл; 11207 - Максим.
+	data, err := s.GetJournalAccessReport("11198")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(data)
+	fmt.Println()
+	fmt.Println()
+	data, err = s.GetJournalAccessReport("11207")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	fmt.Println(data)
 
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()
