@@ -12,14 +12,14 @@ import (
 */
 
 // GetWeekSchoolMarks возвращает оценки на заданную неделю.
-func (s *Session) GetWeekSchoolMarks(date string) (*dt.WeekSchoolMarks, error) {
+func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMarks, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var weekSchoolMarks *dt.WeekSchoolMarks
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		weekSchoolMarks, err = t01.GetWeekSchoolMarks(s.Base, date)
+		weekSchoolMarks, err = t01.GetWeekSchoolMarks(s.Base, date, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}

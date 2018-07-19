@@ -12,7 +12,7 @@ import (
 )
 
 // GetDayTimeTable возвращает расписание на один день c сервера первого типа.
-func GetDayTimeTable(s *ss.Session, date string) (*dt.DayTimeTable, error) {
+func GetDayTimeTable(s *ss.Session, date, studentID string) (*dt.DayTimeTable, error) {
 	p := "http://"
 	var dayTimeTable *dt.DayTimeTable
 
@@ -27,7 +27,7 @@ func GetDayTimeTable(s *ss.Session, date string) (*dt.DayTimeTable, error) {
 			"FOO":       "",
 			"LoginType": "0",
 			"PCLID_UP":  "",
-			"SID":       "11207",
+			"SID":       studentID,
 			"VER":       s.VER,
 		},
 		Headers: map[string]string{

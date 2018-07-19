@@ -205,7 +205,7 @@ func GetChildrenMap(s *ss.Session) error {
 }
 
 // GetLessonsMap возвращает мапу предметов в их ID с сервера первого типа.
-func GetLessonsMap(s *ss.Session) (*dt.LessonsMap, error) {
+func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -233,9 +233,45 @@ func GetLessonsMap(s *ss.Session) (*dt.LessonsMap, error) {
 	if err := checkResponse(s, response0); err != nil {
 		return nil, err
 	}
+
+	// 1-ый Post-запрос.
+	requestOptions1 := &gr.RequestOptions{
+		Data: map[string]string{
+			"A":         "",
+			"AT":        s.AT,
+			"BACK":      "/asp/Reports/ReportStudentTotalMarks.asp",
+			"LoginType": "0",
+			"NA":        "",
+			"PCLID":     "",
+			"PP":        "/asp/Reports/ReportStudentTotalMarks.asp",
+			"RP":        "",
+			"RPTID":     "0",
+			"RT":        "",
+			"SID":       studentID,
+			"TA":        "",
+			"ThmID":     "1",
+			"VER":       s.VER,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentTotalMarks.asp",
+		},
+	}
+	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ParentInfoLetter.asp", requestOptions1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response1.Close()
+	}()
+	if err := checkResponse(s, response1); err != nil {
+		return nil, err
+	}
+
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней мапу предметов в их ID.
-	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
+	parsedHTML, err := html.Parse(bytes.NewReader(response1.Bytes()))
 	if err != nil {
 		return nil, err
 	}

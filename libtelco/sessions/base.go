@@ -71,14 +71,14 @@ func (s *Session) GetChildrenMap() error {
 */
 
 // GetLessonsMap возвращает список пар мапу предметов в их ID.
-func (s *Session) GetLessonsMap() (*dt.LessonsMap, error) {
+func (s *Session) GetLessonsMap(studentID string) (*dt.LessonsMap, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var lessonsMap *dt.LessonsMap
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		lessonsMap, err = t01.GetLessonsMap(s.Base)
+		lessonsMap, err = t01.GetLessonsMap(s.Base, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}

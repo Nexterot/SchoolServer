@@ -13,7 +13,7 @@ import (
 */
 
 // GetTimeTable возвращает расписание на n дней, начиная с текущего.
-func (s *Session) GetTimeTable(date string, n int) (*dt.TimeTable, error) {
+func (s *Session) GetTimeTable(date string, n int, studentID string) (*dt.TimeTable, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
@@ -26,7 +26,7 @@ func (s *Session) GetTimeTable(date string, n int) (*dt.TimeTable, error) {
 		Days: make([]dt.DayTimeTable, 0, n),
 	}
 	for i := 0; i < n; i++ {
-		day, err := s.getDayTimeTable(date)
+		day, err := s.getDayTimeTable(date, studentID)
 		if err != nil {
 			return timeTable, err
 		}
@@ -40,12 +40,12 @@ func (s *Session) GetTimeTable(date string, n int) (*dt.TimeTable, error) {
 }
 
 // getDayTimeTable возвращает расписание на один день.
-func (s *Session) getDayTimeTable(date string) (*dt.DayTimeTable, error) {
+func (s *Session) getDayTimeTable(date, studentID string) (*dt.DayTimeTable, error) {
 	var err error
 	var dayTimeTable *dt.DayTimeTable
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		dayTimeTable, err = t01.GetDayTimeTable(s.Base, date)
+		dayTimeTable, err = t01.GetDayTimeTable(s.Base, date, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}

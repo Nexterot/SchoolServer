@@ -8,15 +8,15 @@ package server
 import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
-	api "SchoolServer/libtelco/rest-api"
-	"net/http"
+	//api "SchoolServer/libtelco/rest-api"
+
 	"runtime"
 )
 
 // Server struct содержит конфигурацию сервера.
 type Server struct {
 	config *cp.Config
-	api    *api.RestAPI
+	//api    *api.RestAPI
 	logger *log.Logger
 }
 
@@ -24,7 +24,7 @@ type Server struct {
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
 	serv := &Server{
 		config: config,
-		api:    api.NewRestAPI(logger, config),
+		//api:    api.NewRestAPI(logger, config),
 	}
 	return serv
 }
@@ -33,7 +33,11 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
+
+	// TODO: протестировать все Get'ы.
+
 	// Подключаем handler'ы из RestAPI.
-	serv.api.BindHandlers()
-	return http.ListenAndServe(serv.config.ServerAddr, nil)
+	//serv.api.BindHandlers()
+	//return http.ListenAndServe(serv.config.ServerAddr, nil)
+	return nil
 }

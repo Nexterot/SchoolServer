@@ -42,10 +42,12 @@ const (
 // Так как школьные сервера бывают разные, то по полю Type мы определяем,
 // какой именно парсер должен быть применен к серверу.
 type School struct {
-	Name     string `json:"name"`
-	Type     int    `json:"type"`
-	Link     string `json:"link"`
-	Time     int    `json:"time"`
+	Name       string `json:"name"`
+	Type       int    `json:"type"`
+	Link       string `json:"link"`
+	Time       int    `json:"time"`
+	Permission bool   `json:"permission"`
+	// Этих полей скоро не будет.
 	Login    string `json:"login"`
 	Password string `json:"password"`
 }

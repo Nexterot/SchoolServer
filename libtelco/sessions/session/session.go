@@ -32,9 +32,12 @@ type Session struct {
 	Serv        *cp.School
 	MU          sync.Mutex
 	LastRequest time.Time
-	Type        Type
+	// Тип: родитель или ученик.
+	Type Type
 	// Только для родителей.
 	ChildrenIDS map[string]string
+	// Только для учеников.
+	ID string
 	// Для серверов первого типа.
 	AT  string
 	VER string

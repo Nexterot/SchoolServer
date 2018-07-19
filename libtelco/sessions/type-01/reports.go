@@ -23,7 +23,7 @@ import (
 */
 
 // GetTotalMarkReport возвращает успеваемость ученика с сервера первого типа.
-func GetTotalMarkReport(s *ss.Session) (*dt.TotalMarkReport, error) {
+func GetTotalMarkReport(s *ss.Session, studentID string) (*dt.TotalMarkReport, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -66,7 +66,7 @@ func GetTotalMarkReport(s *ss.Session) (*dt.TotalMarkReport, error) {
 			"RP":        "0",
 			"RPTID":     "0",
 			"RT":        "0",
-			"SID":       "11198",
+			"SID":       studentID,
 			"TA":        "",
 			"ThmID":     "1",
 			"VER":       s.VER,
@@ -99,7 +99,7 @@ func GetTotalMarkReport(s *ss.Session) (*dt.TotalMarkReport, error) {
 */
 
 // GetAverageMarkReport возвращает средние баллы ученика с сервера первого типа.
-func GetAverageMarkReport(s *ss.Session, dateBegin, dateEnd, Type string) (*dt.AverageMarkReport, error) {
+func GetAverageMarkReport(s *ss.Session, dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkReport, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -144,7 +144,7 @@ func GetAverageMarkReport(s *ss.Session, dateBegin, dateEnd, Type string) (*dt.A
 			"RP":        "",
 			"RPTID":     "1",
 			"RT":        "",
-			"SID":       "11198",
+			"SID":       studentID,
 			"TA":        "",
 			"ThmID":     "1",
 			"VER":       s.VER,
@@ -177,7 +177,7 @@ func GetAverageMarkReport(s *ss.Session, dateBegin, dateEnd, Type string) (*dt.A
 */
 
 // GetAverageMarkDynReport возвращает динамику среднего балла ученика с сервера первого типа.
-func GetAverageMarkDynReport(s *ss.Session, dateBegin, dateEnd, Type string) (*dt.AverageMarkDynReport, error) {
+func GetAverageMarkDynReport(s *ss.Session, dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkDynReport, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -222,7 +222,7 @@ func GetAverageMarkDynReport(s *ss.Session, dateBegin, dateEnd, Type string) (*d
 			"RP":        "",
 			"RPTID":     "2",
 			"RT":        "",
-			"SID":       "11198",
+			"SID":       studentID,
 			"TA":        "",
 			"ThmID":     "1",
 			"VER":       s.VER,
@@ -255,7 +255,7 @@ func GetAverageMarkDynReport(s *ss.Session, dateBegin, dateEnd, Type string) (*d
 */
 
 // GetStudentGradeReport возвращает отчет об успеваемости ученика по предмету с сервера первого типа.
-func GetStudentGradeReport(s *ss.Session, dateBegin, dateEnd, SubjectName string) (*dt.StudentGradeReport, error) {
+func GetStudentGradeReport(s *ss.Session, dateBegin, dateEnd, subjectID, studentID string) (*dt.StudentGradeReport, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -299,8 +299,8 @@ func GetStudentGradeReport(s *ss.Session, dateBegin, dateEnd, SubjectName string
 			"RP":        "",
 			"RPTID":     "0",
 			"RT":        "",
-			"SCLID":     SubjectName,
-			"SID":       "11198",
+			"SCLID":     subjectID,
+			"SID":       studentID,
 			"TA":        "",
 			"ThmID":     "2",
 			"VER":       s.VER,
@@ -337,8 +337,8 @@ func GetStudentGradeReport(s *ss.Session, dateBegin, dateEnd, SubjectName string
 			"RP":        "",
 			"RPTID":     "0",
 			"RT":        "",
-			"SCLID":     SubjectName,
-			"SID":       "11198",
+			"SCLID":     subjectID,
+			"SID":       studentID,
 			"TA":        "",
 			"ThmID":     "2",
 			"VER":       s.VER,
@@ -370,7 +370,7 @@ func GetStudentGradeReport(s *ss.Session, dateBegin, dateEnd, SubjectName string
 */
 
 // GetStudentTotalReport возвращает отчет о посещениях ученика с сервера первого типа.
-func GetStudentTotalReport(s *ss.Session, dateBegin, dateEnd string) (*dt.StudentTotalReport, error) {
+func GetStudentTotalReport(s *ss.Session, dateBegin, dateEnd, studentID string) (*dt.StudentTotalReport, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -414,7 +414,7 @@ func GetStudentTotalReport(s *ss.Session, dateBegin, dateEnd string) (*dt.Studen
 			"RP":        "",
 			"RPTID":     "1",
 			"RT":        "",
-			"SID":       "11198",
+			"SID":       studentID,
 			"TA":        "",
 			"ThmID":     "2",
 			"VER":       s.VER,
@@ -455,7 +455,7 @@ func GetStudentTotalReport(s *ss.Session, dateBegin, dateEnd string) (*dt.Studen
 */
 
 // GetJournalAccessReport возвращает отчет о доступе к журналу с сервера первого типа.
-func GetJournalAccessReport(s *ss.Session) (*dt.JournalAccessReport, error) {
+func GetJournalAccessReport(s *ss.Session, studentID string) (*dt.JournalAccessReport, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -497,7 +497,7 @@ func GetJournalAccessReport(s *ss.Session) (*dt.JournalAccessReport, error) {
 			"RP":        "",
 			"RPTID":     "3",
 			"RT":        "",
-			"SID":       "11198",
+			"SID":       studentID,
 			"TA":        "",
 			"ThmID":     "2",
 			"VER":       s.VER,
@@ -530,7 +530,7 @@ func GetJournalAccessReport(s *ss.Session) (*dt.JournalAccessReport, error) {
 */
 
 // GetParentInfoLetterReport возвращает шаблон письма родителям с сервера первого типа.
-func GetParentInfoLetterReport(s *ss.Session, studentID, reportTypeID, periodID string) (*dt.ParentInfoLetterReport, error) {
+func GetParentInfoLetterReport(s *ss.Session, reportTypeID, periodID, studentID string) (*dt.ParentInfoLetterReport, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -573,7 +573,7 @@ func GetParentInfoLetterReport(s *ss.Session, studentID, reportTypeID, periodID 
 			"RPTID":      "4",
 			"RT":         "",
 			"ReportType": "1",
-			"SID":        "11198",
+			"SID":        studentID,
 			"TA":         "",
 			"TERMID":     "10067",
 			"ThmID":      "2",

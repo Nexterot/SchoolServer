@@ -14,7 +14,7 @@ import (
 )
 
 // GetWeekSchoolMarks возвращает оценки на заданную неделю с сервера первого типа.
-func GetWeekSchoolMarks(s *ss.Session, date string) (*dt.WeekSchoolMarks, error) {
+func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMarks, error) {
 	p := "http://"
 	var weekSchoolMarks *dt.WeekSchoolMarks
 
@@ -24,8 +24,8 @@ func GetWeekSchoolMarks(s *ss.Session, date string) (*dt.WeekSchoolMarks, error)
 			"AT":        s.AT,
 			"Date":      date,
 			"LoginType": "0",
-			"PCLID_IUP": "10169_0",
-			"SID":       "11198",
+			"PCLID_IUP": "",
+			"SID":       studentID,
 			"VER":       s.VER,
 			// "MenuItem": "14",
 			// "TabItem":

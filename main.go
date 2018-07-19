@@ -56,6 +56,7 @@ func main() {
 			"Type", school.Type,
 			"Link", school.Link,
 			"Time", school.Time,
+			"Permission", school.Permission,
 		)
 	}
 

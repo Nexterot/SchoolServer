@@ -16,14 +16,14 @@ import (
 */
 
 // GetTotalMarkReport возвращает успеваемость ученика.
-func (s *Session) GetTotalMarkReport() (*dt.TotalMarkReport, error) {
+func (s *Session) GetTotalMarkReport(studentID string) (*dt.TotalMarkReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var finalMarkReport *dt.TotalMarkReport
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		finalMarkReport, err = t01.GetTotalMarkReport(s.Base)
+		finalMarkReport, err = t01.GetTotalMarkReport(s.Base, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
@@ -35,14 +35,14 @@ func (s *Session) GetTotalMarkReport() (*dt.TotalMarkReport, error) {
 */
 
 // GetAverageMarkReport возвращает средние баллы ученика.
-func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type string) (*dt.AverageMarkReport, error) {
+func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var averageMarkReport *dt.AverageMarkReport
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		averageMarkReport, err = t01.GetAverageMarkReport(s.Base, dateBegin, dateEnd, Type)
+		averageMarkReport, err = t01.GetAverageMarkReport(s.Base, dateBegin, dateEnd, Type, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
@@ -54,14 +54,14 @@ func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type string) (*dt.Ave
 */
 
 // GetAverageMarkDynReport возвращает динамику среднего балла ученика.
-func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type string) (*dt.AverageMarkDynReport, error) {
+func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkDynReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var averageMarkDynReport *dt.AverageMarkDynReport
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		averageMarkDynReport, err = t01.GetAverageMarkDynReport(s.Base, dateBegin, dateEnd, Type)
+		averageMarkDynReport, err = t01.GetAverageMarkDynReport(s.Base, dateBegin, dateEnd, Type, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
@@ -73,14 +73,14 @@ func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type string) (*dt.
 */
 
 // GetStudentGradeReport возвращает отчет об успеваемости ученика по предмету.
-func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) (*dt.StudentGradeReport, error) {
+func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, subjectID, studentID string) (*dt.StudentGradeReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var studentGradeReport *dt.StudentGradeReport
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		studentGradeReport, err = t01.GetStudentGradeReport(s.Base, dateBegin, dateEnd, SubjectName)
+		studentGradeReport, err = t01.GetStudentGradeReport(s.Base, dateBegin, dateEnd, subjectID, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
@@ -92,14 +92,14 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, SubjectName string) 
 */
 
 // GetStudentTotalReport возвращает отчет о посещениях ученика.
-func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*dt.StudentTotalReport, error) {
+func (s *Session) GetStudentTotalReport(dateBegin, dateEnd, studentID string) (*dt.StudentTotalReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var studentTotalReport *dt.StudentTotalReport
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		studentTotalReport, err = t01.GetStudentTotalReport(s.Base, dateBegin, dateEnd)
+		studentTotalReport, err = t01.GetStudentTotalReport(s.Base, dateBegin, dateEnd, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
@@ -119,14 +119,14 @@ func (s *Session) GetStudentTotalReport(dateBegin, dateEnd string) (*dt.StudentT
 */
 
 // GetJournalAccessReport возвращает отчет о доступе к журналу.
-func (s *Session) GetJournalAccessReport() (*dt.JournalAccessReport, error) {
+func (s *Session) GetJournalAccessReport(studentID string) (*dt.JournalAccessReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var studentTotalReport *dt.JournalAccessReport
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		studentTotalReport, err = s.GetJournalAccessReport()
+		studentTotalReport, err = s.GetJournalAccessReport(studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
@@ -138,14 +138,14 @@ func (s *Session) GetJournalAccessReport() (*dt.JournalAccessReport, error) {
 */
 
 // GetParentInfoLetterReport возвращает шаблон письма родителям.
-func (s *Session) GetParentInfoLetterReport(studentID, reportTypeID, periodID string) (*dt.ParentInfoLetterReport, error) {
+func (s *Session) GetParentInfoLetterReport(reportTypeID, periodID, studentID string) (*dt.ParentInfoLetterReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	var parentInfoLetterRepport *dt.ParentInfoLetterReport
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		parentInfoLetterRepport, err = t01.GetParentInfoLetterReport(s.Base, studentID, reportTypeID, periodID)
+		parentInfoLetterRepport, err = t01.GetParentInfoLetterReport(s.Base, reportTypeID, periodID, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
