@@ -76,12 +76,12 @@ func (rest *RestAPI) BindHandlers() {
 
 	http.HandleFunc("/get_schedule", rest.GetScheduleHandler) // done
 
-	http.HandleFunc("/get_report_student_total_marks", rest.GetReportStudentTotalMarksHandler)              // done
-	http.HandleFunc("/get_report_student_average_mark", rest.GetReportStudentAverageMarkHandler)            // done
-	http.HandleFunc("/get_report_student_average_mark_dyn", rest.GetReportStudentAverageMarkDynHandler)     // done
-	http.HandleFunc("/get_report_student_grades_lesson_list", rest.GetReportStudentGradesLessonListHandler) // done
-	http.HandleFunc("/get_report_student_grades", rest.Handler)
-	http.HandleFunc("/get_report_student_total", rest.GetReportStudentTotalHandler) // done
+	http.HandleFunc("/get_report_student_total_marks", rest.GetReportStudentTotalMarksHandler)          // done
+	http.HandleFunc("/get_report_student_average_mark", rest.GetReportStudentAverageMarkHandler)        // done
+	http.HandleFunc("/get_report_student_average_mark_dyn", rest.GetReportStudentAverageMarkDynHandler) // done
+	http.HandleFunc("/get_report_student_grades_lesson_list", rest.GetReportStudentGradesLessonListHandler)
+	http.HandleFunc("/get_report_student_grades", rest.GetReportStudentGradesHandler) // done
+	http.HandleFunc("/get_report_student_total", rest.GetReportStudentTotalHandler)   // done
 	http.HandleFunc("/get_report_journal_access_classes_list", rest.Handler)
 	http.HandleFunc("/get_report_journal_access", rest.Handler)
 	http.HandleFunc("/get_report_parent_info_letter_data", rest.Handler)
@@ -466,7 +466,25 @@ type getReportStudentGradesLessonListRequest struct {
 // GetReportStudentGradesLessonListHandler обрабатывает запрос на получение
 // списка предметов для отчета 'Об успеваемости'
 func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentGradesLessonListHandler called")
+	rest.logger.Info("GetReportStudentGradesLessonListHandler called (not implemented yet")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+}
+
+// getReportStudentGradesRequest используется в GetReportStudentGradesHandler
+type getReportStudentGradesRequest struct {
+	StudentID int    `json:"student_id"`
+	LessonID  int    `json:"lesson_id"`
+	From      string `json:"from"`
+	To        string `json:"to"`
+}
+
+// GetReportStudentGradesHandler обрабатывает запрос на получение
+// отчета 'Об успеваемости'
+func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("GetReportStudentGradesHandler called")
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -490,7 +508,7 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 		return
 	}
 	// Чтение запроса от клиента
-	var rReq getReportStudentGradesLessonListRequest
+	var rReq getReportStudentGradesRequest
 	decoder := json.NewDecoder(req.Body)
 	err = decoder.Decode(&rReq)
 	if err != nil {
@@ -498,7 +516,8 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 		rest.logger.Error("Malformed request data")
 		return
 	}
-	id := strconv.Itoa(rReq.ID)
+	studentID := strconv.Itoa(rReq.StudentID)
+	lessonID := strconv.Itoa(rReq.LessonID)
 	// Если нет удаленной сессии, создать
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
@@ -518,7 +537,7 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 		}
 		rest.sessionsMap[sessionName] = remoteSession
 	}
-	lessonsMap, err := remoteSession.GetLessonsMap(id)
+	gradeReport, err := remoteSession.GetStudentGradeReport(rReq.From, rReq.To, lessonID, studentID)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == errLoggedOut {
@@ -539,19 +558,19 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 			rest.sessionsMap[sessionName] = remoteSession
 			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get lessons map: ", err)
+			rest.logger.Error("Unable to get student grades report: ", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
-	bytes, err := json.Marshal(lessonsMap)
+	bytes, err := json.Marshal(gradeReport)
 	if err != nil {
-		rest.logger.Error("Error marshalling lessonsMap")
+		rest.logger.Error("Error marshalling student grades report")
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	respwr.Write(bytes)
-	rest.logger.Info("Sent report student grades lesson: ", lessonsMap)
+	rest.logger.Info("Sent student grades report: ", gradeReport)
 }
 
 // getReportStudentTotalRequest используется в GetReportStudentTotalHandler
