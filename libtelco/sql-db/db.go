@@ -1,6 +1,7 @@
+// db.go
+
 /*
-Package db содержит необходимое API для работы с базой данных PostgreSQL
-с использованием библиотеки gorm
+Package db содержит необходимое API для работы с базой данных PostgreSQL с использованием библиотеки gorm
 */
 package db
 
@@ -9,7 +10,7 @@ import (
 	"SchoolServer/libtelco/log"
 
 	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/jinzhu/gorm/dialects/postgres" // Необходимо для gorm
 )
 
 // Database struct представляет абстрактную структуру базы данных
