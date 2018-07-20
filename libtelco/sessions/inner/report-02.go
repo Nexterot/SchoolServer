@@ -47,8 +47,10 @@ func AverageMarkReportParser(r io.Reader) (*dt.AverageMarkReport, error) {
 			studentAverageMark = studentAverageMark.FirstChild.NextSibling
 			classAverageMark = classAverageMark.FirstChild.NextSibling
 			for subject != nil {
-				studentAverageMarkReport[subject.FirstChild.Data] = studentAverageMark.FirstChild.Data
-				classAverageMarkReport[subject.FirstChild.Data] = classAverageMark.FirstChild.Data
+				if subject.FirstChild != nil && studentAverageMark.FirstChild != nil && classAverageMark.FirstChild != nil {
+					studentAverageMarkReport[subject.FirstChild.Data] = studentAverageMark.FirstChild.Data
+					classAverageMarkReport[subject.FirstChild.Data] = classAverageMark.FirstChild.Data
+				}
 
 				subject = subject.NextSibling
 				studentAverageMark = studentAverageMark.NextSibling

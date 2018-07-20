@@ -44,25 +44,39 @@ func StudentGradeReportParser(r io.Reader) (*dt.StudentGradeReport, error) {
 				// Добавляем запись
 				perfNote := *new(dt.StudentGradeReportNote)
 				c := noteNode.FirstChild
-				perfNote.Type = c.FirstChild.Data
+				if c.FirstChild != nil {
+					perfNote.Type = c.FirstChild.Data
+				}
 				c = c.NextSibling
-				perfNote.Theme = c.FirstChild.Data
+				if c.FirstChild != nil {
+					perfNote.Theme = c.FirstChild.Data
+				}
 				c = c.NextSibling
-				perfNote.DateOfCompletion = c.FirstChild.Data
+				if c.FirstChild != nil {
+					perfNote.DateOfCompletion = c.FirstChild.Data
+				}
 				c = c.NextSibling
-				perfNote.Mark, err = strconv.Atoi(c.FirstChild.Data)
-				if err != nil {
-					perfNote.Mark = -1
+				if c.FirstChild != nil {
+					perfNote.Mark, err = strconv.Atoi(c.FirstChild.Data)
+					if err != nil {
+						perfNote.Mark = -1
+					}
 				}
 				notes = append(notes, perfNote)
 			}
 			if noteNode != nil {
+				// Добавляем запись о количестве заданий и средней оценке.
 				perfNote := *new(dt.StudentGradeReportNote)
 				perfNote.Type = ""
 				c := noteNode.FirstChild.NextSibling
-				perfNote.Theme = c.FirstChild.FirstChild.FirstChild.Data
+				if c.FirstChild.FirstChild.FirstChild != nil {
+					perfNote.Theme = c.FirstChild.FirstChild.FirstChild.Data
+				}
 				c = c.NextSibling
-				perfNote.DateOfCompletion = c.FirstChild.FirstChild.FirstChild.Data
+				if c.FirstChild.FirstChild.FirstChild != nil {
+					perfNote.DateOfCompletion = c.FirstChild.FirstChild.FirstChild.Data
+				}
+				perfNote.Mark = -1
 				notes = append(notes, perfNote)
 			}
 		}

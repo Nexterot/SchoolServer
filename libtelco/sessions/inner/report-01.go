@@ -38,10 +38,19 @@ func TotalMarkReportParser(r io.Reader) (*dt.TotalMarkReport, error) {
 	// Формирует отчёт
 	var formTotalMarkReport func(*html.Node, map[string][]int)
 	formTotalMarkReport = func(node *html.Node, report map[string][]int) {
+		if node == nil {
+			return
+		}
 		for _, a := range node.Attr {
 			if (a.Key == "class") && (a.Val == "cell-text") {
 				// Нашли урок
+				if node.FirstChild == nil {
+					continue
+				}
 				report[node.FirstChild.Data] = make([]int, 7)
+				for k := 0; k < 7; k++ {
+					report[node.FirstChild.Data][k] = -1
+				}
 				i := 0
 				flag := false
 				for c := node.NextSibling; c != nil; c = c.NextSibling {

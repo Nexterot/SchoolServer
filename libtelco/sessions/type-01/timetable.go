@@ -158,12 +158,19 @@ func GetDayTimeTable(s *ss.Session, date, studentID string) (*dt.DayTimeTable, e
 		if len(starts) != 0 && len(names) == 0 && len(classrooms) == 0 {
 			// Случай, когда в расписании указаны каникулы
 			infoNode := lessonsNode.FirstChild.NextSibling.FirstChild.NextSibling.FirstChild
-			date := infoNode.FirstChild.Data
+			var date string
+			if infoNode.FirstChild != nil {
+				date = infoNode.FirstChild.Data
+				s := strings.Split(date, "-")
+				lessons[0].Begin = s[0][:len(s[0])-2]
+				lessons[0].End = s[1][2:]
+			}
 			infoNode = infoNode.NextSibling.FirstChild
-			event := infoNode.Data + infoNode.NextSibling.FirstChild.Data
-			s := strings.Split(date, "-")
-			lessons[0].Begin = s[0][:len(s[0])-2]
-			lessons[0].End = s[1][2:]
+			var event string
+			if infoNode != nil && infoNode.NextSibling.FirstChild != nil {
+				event = infoNode.Data + infoNode.NextSibling.FirstChild.Data
+			}
+
 			lessons[0].Name = event
 		} else {
 			for i := 0; i < len(starts); i++ {

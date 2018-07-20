@@ -65,9 +65,11 @@ func StudentTotalReportParser(r io.Reader) (*dt.StudentTotalReport, error) {
 		if node != nil {
 			// Добавляем месяцы
 			monthNode := node.FirstChild.FirstChild.FirstChild
-			for monthNode = monthNode.NextSibling; len(monthNode.Attr) == 1 && monthNode.Attr[0].Key == "colspan"; monthNode = monthNode.NextSibling {
+			for monthNode = monthNode.NextSibling; monthNode != nil && len(monthNode.Attr) == 1 && monthNode.Attr[0].Key == "colspan"; monthNode = monthNode.NextSibling {
 				month := *new(dt.Month)
-				month.Name = monthNode.FirstChild.Data
+				if monthNode.FirstChild != nil {
+					month.Name = monthNode.FirstChild.Data
+				}
 				numberOfDaysInMonth, err := strconv.Atoi(monthNode.Attr[0].Val)
 				if err != nil {
 					return months, averageMarks, err
@@ -91,7 +93,9 @@ func StudentTotalReportParser(r io.Reader) (*dt.StudentTotalReport, error) {
 				}
 
 				day := *new(dt.Day)
-				day.Number, err = strconv.Atoi(dayNode.FirstChild.Data)
+				if dayNode.FirstChild != nil {
+					day.Number, err = strconv.Atoi(dayNode.FirstChild.Data)
+				}
 				day.Subjects = make([]dt.SubjectMarks, 0, 1)
 				if err != nil {
 					return months, averageMarks, err
@@ -108,7 +112,10 @@ func StudentTotalReportParser(r io.Reader) (*dt.StudentTotalReport, error) {
 				currentMonth = 0
 				dayNumberInMonth = 0
 				c := noteNode.FirstChild
-				subjectName := c.FirstChild.Data
+				var subjectName string
+				if c.FirstChild != nil {
+					subjectName = c.FirstChild.Data
+				}
 				for i := 0; i < overallNumberOfDays; i++ {
 					if dayNumberInMonth == len(months[currentMonth].Days) {
 						currentMonth++
@@ -131,7 +138,9 @@ func StudentTotalReportParser(r io.Reader) (*dt.StudentTotalReport, error) {
 							}
 						}
 					} else {
-						marks = splitBySpace(c.FirstChild.Data)
+						if c.FirstChild != nil {
+							marks = splitBySpace(c.FirstChild.Data)
+						}
 					}
 
 					// Избавляемся от строк из непечатаемых символом
@@ -153,11 +162,16 @@ func StudentTotalReportParser(r io.Reader) (*dt.StudentTotalReport, error) {
 				}
 				averageSubjectMark := *new(dt.SubjectAverageMark)
 				averageSubjectMark.Name = subjectName
-				v, err := strconv.ParseFloat(strings.Replace(c.NextSibling.FirstChild.Data, ",", ".", 1), 32)
-				if err != nil {
-					v = -1.0
+				if c.NextSibling.FirstChild != nil {
+					v, err := strconv.ParseFloat(strings.Replace(c.NextSibling.FirstChild.Data, ",", ".", 1), 32)
+					if err != nil {
+						v = -1.0
+					}
+					averageSubjectMark.Mark = float32(v)
+				} else {
+					averageSubjectMark.Mark = -1.0
 				}
-				averageSubjectMark.Mark = float32(v)
+
 				averageMarks = append(averageMarks, averageSubjectMark)
 			}
 		} else {

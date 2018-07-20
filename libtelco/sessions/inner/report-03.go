@@ -68,27 +68,38 @@ func AverageMarkDynReportParser(r io.Reader) (*dt.AverageMarkDynReport, error) {
 			stage = stage.FirstChild.NextSibling
 			for stage != nil {
 				var note dt.AverageMarkDynReportNote
-				note.Date = stage.FirstChild.Data
-				v1, err := strconv.ParseFloat(strings.Replace(studentAverageMark.FirstChild.Data, ",", ".", 1), 32)
-				if err != nil {
-					v1 = -1.0
+				if stage.FirstChild != nil {
+					note.Date = stage.FirstChild.Data
 				}
-				note.StudentAverageMark = float32(v1)
-				v2, err := strconv.ParseFloat(strings.Replace(classAverageMark.FirstChild.Data, ",", ".", 1), 32)
-				if err != nil {
-					v2 = -1.0
+				if studentAverageMark.FirstChild != nil {
+					v1, err := strconv.ParseFloat(strings.Replace(studentAverageMark.FirstChild.Data, ",", ".", 1), 32)
+					if err != nil {
+						v1 = -1.0
+					}
+					note.StudentAverageMark = float32(v1)
 				}
-				note.ClassAverageMark = float32(v2)
+				if classAverageMark.FirstChild != nil {
+					v2, err := strconv.ParseFloat(strings.Replace(classAverageMark.FirstChild.Data, ",", ".", 1), 32)
+					if err != nil {
+						v2 = -1.0
+					}
+					note.ClassAverageMark = float32(v2)
+				}
 
 				if hasWorks {
-					note.StudentWorksAmount, err = strconv.Atoi(studentWorksAmount.FirstChild.Data)
-					if err != nil {
-						return err
+					if studentWorksAmount.FirstChild != nil {
+						note.StudentWorksAmount, err = strconv.Atoi(studentWorksAmount.FirstChild.Data)
+						if err != nil {
+							return err
+						}
 					}
-					note.ClassWorksAmount, err = strconv.Atoi(classWorksAmount.FirstChild.Data)
-					if err != nil {
-						return err
+					if classWorksAmount.FirstChild != nil {
+						note.ClassWorksAmount, err = strconv.Atoi(classWorksAmount.FirstChild.Data)
+						if err != nil {
+							return err
+						}
 					}
+
 					studentWorksAmount = studentWorksAmount.NextSibling
 					classWorksAmount = classWorksAmount.NextSibling
 				}

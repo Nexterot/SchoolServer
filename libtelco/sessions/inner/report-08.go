@@ -62,34 +62,47 @@ func ParentInfoLetterReportParser(r io.Reader) (*dt.ParentInfoLetterReport, erro
 				note := *new(dt.ParentInfoLetterReportNote)
 				c := noteNode.FirstChild
 
-				note.Name = c.FirstChild.Data
-
+				if c.FirstChild != nil {
+					note.Name = c.FirstChild.Data
+				}
 				note.Marks = make([]int, 8, 8)
 				for i := 0; i < 8; i++ {
 					c = c.NextSibling
-					if len(c.FirstChild.Data) == 2 && c.FirstChild.Data[0] == 194 {
-						note.Marks[i] = -1
-					} else {
-						note.Marks[i], err = strconv.Atoi(c.FirstChild.Data)
-						if err != nil {
-							return notes, err
+					if c.FirstChild != nil {
+						if len(c.FirstChild.Data) == 2 && c.FirstChild.Data[0] == 194 {
+							note.Marks[i] = -1
+						} else {
+							note.Marks[i], err = strconv.Atoi(c.FirstChild.Data)
+							if err != nil {
+								return notes, err
+							}
 						}
+					} else {
+						note.Marks[i] = -1
 					}
+
 				}
 
 				c = c.NextSibling
-				v, err := strconv.ParseFloat(strings.Replace(c.FirstChild.Data, ",", ".", 1), 32)
-				if err != nil {
-					note.AverageMark = -1.0
+				if c.FirstChild != nil {
+					v, err := strconv.ParseFloat(strings.Replace(c.FirstChild.Data, ",", ".", 1), 32)
+					if err != nil {
+						note.AverageMark = -1.0
+					} else {
+						note.AverageMark = float32(v)
+					}
 				} else {
-					note.AverageMark = float32(v)
+					note.AverageMark = -1.0
 				}
 
+				note.MarkForPeriod = -1
 				if hasPeriodMark {
 					c = c.NextSibling
-					note.MarkForPeriod, err = strconv.Atoi(c.FirstChild.Data)
-					if err != nil {
-						note.MarkForPeriod = -1
+					if c.FirstChild != nil {
+						note.MarkForPeriod, err = strconv.Atoi(c.FirstChild.Data)
+						if err != nil {
+							note.MarkForPeriod = -1
+						}
 					}
 				}
 
@@ -100,37 +113,47 @@ func ParentInfoLetterReportParser(r io.Reader) (*dt.ParentInfoLetterReport, erro
 				note := *new(dt.ParentInfoLetterReportNote)
 				c := noteNode.FirstChild
 
-				note.Name = c.FirstChild.Data
-
+				if c.FirstChild != nil {
+					note.Name = c.FirstChild.Data
+				}
 				note.Marks = make([]int, 8, 8)
 				for i := 0; i < 8; i++ {
 					c = c.NextSibling
-					if len(c.FirstChild.Data) == 2 && c.FirstChild.Data[0] == 194 {
-						note.Marks[i] = -1
-					} else {
-						note.Marks[i], err = strconv.Atoi(c.FirstChild.Data)
-						if err != nil {
-							return notes, err
+					if c.FirstChild != nil {
+						if len(c.FirstChild.Data) == 2 && c.FirstChild.Data[0] == 194 {
+							note.Marks[i] = -1
+						} else {
+							note.Marks[i], err = strconv.Atoi(c.FirstChild.Data)
+							if err != nil {
+								return notes, err
+							}
 						}
+					} else {
+						note.Marks[i] = -1
 					}
 				}
 
 				c = c.NextSibling
-				v, err := strconv.ParseFloat(strings.Replace(c.FirstChild.Data, ",", ".", 1), 32)
-				if err != nil {
-					note.AverageMark = -1.0
-				} else {
-					note.AverageMark = float32(v)
-				}
-
-				if hasPeriodMark {
-					c = c.NextSibling
-					note.MarkForPeriod, err = strconv.Atoi(c.FirstChild.Data)
+				if c.FirstChild != nil {
+					v, err := strconv.ParseFloat(strings.Replace(c.FirstChild.Data, ",", ".", 1), 32)
 					if err != nil {
-						note.MarkForPeriod = -1
+						note.AverageMark = -1.0
+					} else {
+						note.AverageMark = float32(v)
 					}
 				} else {
-					note.MarkForPeriod = -1
+					note.AverageMark = -1.0
+				}
+
+				note.MarkForPeriod = -1
+				if hasPeriodMark {
+					c = c.NextSibling
+					if c.FirstChild != nil {
+						note.MarkForPeriod, err = strconv.Atoi(c.FirstChild.Data)
+						if err != nil {
+							note.MarkForPeriod = -1
+						}
+					}
 				}
 
 				notes = append(notes, note)

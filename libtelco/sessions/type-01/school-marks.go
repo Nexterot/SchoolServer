@@ -164,28 +164,39 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 						if c.Attr[0].Val == "#FFFFFF" {
 							lesson.InTime = true
 						}
-						lesson.Name = c2.FirstChild.Data
+						if c2.FirstChild != nil {
+							lesson.Name = c2.FirstChild.Data
+						}
 
 						c2 = c2.NextSibling.NextSibling
 						c3 := c2.FirstChild
-						lesson.Type = c3.Data
+						if c3 != nil {
+							lesson.Type = c3.Data
+						}
 
 						c2 = c2.NextSibling.NextSibling
 						c3 = c2.FirstChild.NextSibling
-						lesson.Title = c3.FirstChild.Data
-						for _, a := range c3.Attr {
-							if a.Key == "onclick" {
-								var err error
-								lesson.AID, lesson.CID, lesson.TP, err = findID(a.Val)
-								if err != nil {
-									return days, err
+						if c3 != nil {
+							if c3.FirstChild != nil {
+								lesson.Title = c3.FirstChild.Data
+							}
+
+							for _, a := range c3.Attr {
+								if a.Key == "onclick" {
+									var err error
+									lesson.AID, lesson.CID, lesson.TP, err = findID(a.Val)
+									if err != nil {
+										return days, err
+									}
+									break
 								}
-								break
 							}
 						}
 
 						c2 = c2.NextSibling
-						lesson.Mark = c2.FirstChild.Data
+						if c2.FirstChild != nil {
+							lesson.Mark = c2.FirstChild.Data
+						}
 						lessons = append(lessons, lesson)
 					}
 				}
