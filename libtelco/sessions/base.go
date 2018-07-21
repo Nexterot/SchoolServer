@@ -53,6 +53,8 @@ func (s *Session) Login() error {
 Получение списка детей.
 */
 
+// ПЕРЕДЕЛАТЬ!!!
+
 // GetChildrenMap получает мапу детей в их UID.
 func (s *Session) GetChildrenMap() error {
 	s.Base.MU.Lock()

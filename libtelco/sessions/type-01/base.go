@@ -196,13 +196,16 @@ func GetChildrenMap(s *ss.Session) error {
 	}
 
 	s.ChildrenIDS, err = getChildrenIDs(parsedHTML)
-	if len(s.ChildrenIDS) == 0 {
+	if err.Error() == "Couldn't find children IDs Node" {
 		s.Type = ss.Student
+		err = nil
 	} else {
 		s.Type = ss.Parent
 	}
 	return err
 }
+
+// TODO: протестить для пездюков.
 
 // GetLessonsMap возвращает мапу предметов в их ID с сервера первого типа.
 func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
@@ -272,8 +275,6 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 	if err := checkResponse(s, response1); err != nil {
 		return nil, err
 	}
-
-	fmt.Println(string(response1.Bytes())[16000:17500])
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней мапу предметов в их ID.
