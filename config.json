@@ -24,6 +24,15 @@
             "permission": true,
             "login" : "Мисриханов",
             "password" : "c854adcde95c9f20002b52737211a566"
+        },
+        {
+            "name" : "Европейская гимназия",
+            "type" : 1,
+            "link" : "62.117.74.43",
+            "time" : 2700,
+            "permission": true,
+            "login" : "Мрябцева",
+            "password" : "d0970714757783e6cf17b26fb8e2298f"
         }
     ]
 }

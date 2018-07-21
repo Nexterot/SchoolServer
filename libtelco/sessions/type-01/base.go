@@ -135,6 +135,7 @@ func GetChildrenMap(s *ss.Session) error {
 		},
 	}
 	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
+	fmt.Println(string(response0.Bytes()))
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	"SchoolServer/libtelco/log"
 	api "SchoolServer/libtelco/rest-api"
 	"net/http"
+
 	//ss "SchoolServer/libtelco/sessions"
 
 	"runtime"
@@ -26,7 +27,7 @@ type Server struct {
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
 	serv := &Server{
 		config: config,
-		api:    api.NewRestAPI(logger, config),
+		//api:    api.NewRestAPI(logger, config),
 	}
 	return serv
 }
@@ -39,19 +40,19 @@ func (serv *Server) Run() error {
 	/*
 		// TODO: протестировать все Get'ы.
 
-		s := ss.NewSession(&serv.config.Schools[1])
+		s := ss.NewSession(&serv.config.Schools[2])
 		err := s.Login()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 
-		data, err := s.GetLessonsMap("10684")
+		err = s.GetChildrenMap()
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Println(data)
+		fmt.Println(s.Base.ChildrenIDS)
 	*/
 
 	// Подключаем handler'ы из RestAPI.
