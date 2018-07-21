@@ -15,6 +15,7 @@ import (
 	gr "github.com/levigross/grequests"
 )
 
+// Session struct содержит в себе описание сессии к одному из школьных серверов.
 type Session struct {
 	Base *ss.Session
 }

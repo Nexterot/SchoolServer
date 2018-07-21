@@ -8,19 +8,18 @@ package server
 import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
-	api "SchoolServer/libtelco/rest-api"
+	// api "SchoolServer/libtelco/rest-api"
 	ss "SchoolServer/libtelco/sessions"
 	"fmt"
 	"os"
 
-	"net/http"
 	"runtime"
 )
 
 // Server struct содержит конфигурацию сервера.
 type Server struct {
 	config *cp.Config
-	api    *api.RestAPI
+	// api    *api.RestAPI
 	logger *log.Logger
 }
 
@@ -28,7 +27,7 @@ type Server struct {
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
 	serv := &Server{
 		config: config,
-		api:    api.NewRestAPI(logger, config),
+		// api:    api.NewRestAPI(logger, config),
 	}
 	return serv
 }
@@ -47,7 +46,7 @@ func (serv *Server) Run() error {
 		os.Exit(1)
 	}
 	// 11198 - Кирилл; 11207 - Максим.
-	data, err := s.GetParentInfoLetterReport("1", "10065", "11198")
+	data, err := s.GetLessonsMap("11198")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -55,7 +54,9 @@ func (serv *Server) Run() error {
 	fmt.Println(data)
 	fmt.Println()
 	fmt.Println()
-	data, err = s.GetParentInfoLetterReport("1", "10065", "11207")
+	fmt.Println()
+	fmt.Println()
+	data, err = s.GetLessonsMap("11207")
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -63,6 +64,7 @@ func (serv *Server) Run() error {
 	fmt.Println(data)
 
 	// Подключаем handler'ы из RestAPI.
-	serv.api.BindHandlers()
-	return http.ListenAndServe(serv.config.ServerAddr, nil)
+	// serv.api.BindHandlers()
+	// return http.ListenAndServe(serv.config.ServerAddr, nil)
+	return nil
 }

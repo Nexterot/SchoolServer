@@ -214,7 +214,7 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 			"AT":        s.AT,
 			"LoginType": "0",
 			"RPTID":     "0",
-			"ThmID":     "1",
+			"ThmID":     "2",
 			"VER":       s.VER,
 		},
 		Headers: map[string]string{
@@ -223,7 +223,7 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 		},
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
+	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", requestOptions0)
 	if err != nil {
 		return nil, err
 	}
@@ -238,27 +238,30 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 	requestOptions1 := &gr.RequestOptions{
 		Data: map[string]string{
 			"A":         "",
+			"ADT":       "01.09.2017",
 			"AT":        s.AT,
-			"BACK":      "/asp/Reports/ReportStudentTotalMarks.asp",
+			"BACK":      "/asp/Reports/ReportStudentGrades.asp",
+			"DDT":       "31.08.2018",
 			"LoginType": "0",
 			"NA":        "",
-			"PCLID":     "",
-			"PP":        "/asp/Reports/ReportStudentTotalMarks.asp",
+			"PCLID_IUP": "",
+			"PP":        "/asp/Reports/ReportStudentGrades.asp",
 			"RP":        "",
 			"RPTID":     "0",
 			"RT":        "",
+			"SCLID":     "",
 			"SID":       studentID,
 			"TA":        "",
-			"ThmID":     "1",
+			"ThmID":     "2",
 			"VER":       s.VER,
 		},
 		Headers: map[string]string{
 			"Origin":                    p + s.Serv.Link,
 			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentTotalMarks.asp",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentGrades.asp",
 		},
 	}
-	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions1)
+	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", requestOptions1)
 	if err != nil {
 		return nil, err
 	}
@@ -269,6 +272,8 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 	if err := checkResponse(s, response1); err != nil {
 		return nil, err
 	}
+
+	fmt.Println(string(response1.Bytes())[16000:17500])
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней мапу предметов в их ID.
