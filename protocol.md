@@ -49,9 +49,9 @@
 
 ```json
 {
-    "action": "check_permission",
-    "login": "string",
-    "id": "string"
+	"action": "check_permission",
+	"login": "string",
+	"id": "string"
 }
 ```
 
@@ -77,10 +77,10 @@
 
 ```json
 {
-    "action": "sign_in",
-    "login": "string",
-    "passkey": "string",
-    "id": "string"
+	"action": "sign_in",
+	"login": "string",
+	"passkey": "string",
+	"id": "string"
 }
 ```
 
@@ -94,7 +94,7 @@
 
 ```json
 {
-    "success": "boolean"
+	"success": "boolean"
 }
 ```
 
@@ -115,7 +115,7 @@
 
 ```json
 {
-    "action": "log_out"
+	"action": "log_out"
 }
 ```
 
@@ -123,7 +123,7 @@
 
 ```json
 {
-    "success": "boolean"
+	"success": "boolean"
 }
 ```
 
@@ -142,9 +142,9 @@
 
 ```json
 {
-    "action": "get_tasks_and_marks",
-    "week": "string",
-    "id": "string"
+	"action": "get_tasks_and_marks",
+	"week": "string",
+	"id": "string"
 }
 ```
 
@@ -196,8 +196,8 @@
 
 ```json
 {
-    "action": "get_lesson_description",
-    "id": "string"
+	    "action": "get_lesson_description",
+	    "id": "string"
 }
 ```
 
@@ -224,8 +224,8 @@
 
 ```json
 {
-    "action": "mark_as_done",
-    "id": "string"
+	"action": "mark_as_done",
+	"id": "string"
 }
 ```
 
@@ -249,8 +249,8 @@
 
 ```json
 {
-    "action": "unmark_as_done",
-    "id": "string"
+	"action": "unmark_as_done",
+	"id": "string"
 }
 ```
 
@@ -268,7 +268,7 @@
 
 ```json
 {
-    "action": "get_posts"
+	"action": "get_posts"
 }
 ```
 
@@ -308,9 +308,9 @@
 
 ```json
 {
-    "action": "get_schedule",
-    "days": "number",
-    "id": "string"
+	"action": "get_schedule",
+	"days": "number",
+	"id": "string"
 }
 ```
 
@@ -353,8 +353,8 @@
 
 ```json
 {
-    "action": "get_report_student_total_marks",
-    "id": "string"
+	"action": "get_report_student_total_marks",
+	"id": "string"
 }
 ```
 
@@ -396,11 +396,11 @@
 
 ```json
 {
-    "action": "get_report_student_average_mark",
-    "id": "string",
-    "type": "string",
-    "from": "string",
-    "to": "string"
+	"action": "get_report_student_average_mark",
+	"id": "string",
+	"type": "string",
+	"from": "string",
+	"to": "string"
 }
 ```
 
@@ -415,11 +415,13 @@
 
 ```json
 {
-	"table": [{
-		"subject": "string",
-		"student_mark": "string",
-		"class_mark": "string"
-	}]
+	"table": [
+		{
+			"subject": "string",
+			"student_mark": "string",
+			"class_mark": "string"
+		}
+	]
 }
 ```
 
@@ -433,11 +435,11 @@
 
 ```json
 {
-    "action": "get_report_student_average_mark_dyn",
-    "id": "string",
-    "type": "string",
-    "from": "string",
-    "to": "string"
+	"action": "get_report_student_average_mark_dyn",
+	"id": "string",
+	"type": "string",
+	"from": "string",
+	"to": "string"
 }
 ```
 
@@ -454,8 +456,8 @@
 
 ```json
 {
-    "action": "get_report_student_grades_lesson_list",
-    "id": "string"
+	"action": "get_report_student_grades_lesson_list",
+	"id": "string"
 }
 ```
 
@@ -467,10 +469,12 @@
 
 ```json
 {
-	"lessons": [{
-		"id": "number",
-		"name": "string"
-	}]
+	"lessons": [
+		{
+			"id": "number",
+			"name": "string"
+		}
+	]
 }
 ```
 
@@ -484,11 +488,11 @@
 
 ```json
 {
-    "action": "get_report_student_grades",
-    "student_id": "string",
-    "lesson_id": "number",
-    "from": "string",
-    "to": "string"
+	"action": "get_report_student_grades",
+	"student_id": "string",
+	"lesson_id": "number",
+	"from": "string",
+	"to": "string"
 }
 ```
 
@@ -505,10 +509,10 @@
 
 ```json
 {
-    "action": "get_report_student_total",
-    "id": "number|undefined",
-    "from": "string",
-    "to": "string"
+	"action": "get_report_student_total",
+	"id": "number|undefined",
+	"from": "string",
+	"to": "string"
 }
 ```
 
@@ -528,8 +532,8 @@
 
 ```json
 {
-    "action": "get_report_journal_access",
-    "student_id": "string"
+	"action": "get_report_journal_access",
+	"student_id": "string"
 }
 ```
 
@@ -542,8 +546,8 @@
 
 ```json
 {
-    "action": "get_report_parent_info_letter_data",
-    "id": "string"
+	"action": "get_report_parent_info_letter_data",
+	"id": "string"
 }
 ```
 
