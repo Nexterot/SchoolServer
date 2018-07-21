@@ -140,7 +140,7 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 	}
 	if !perm {
 		// Если у школы нет разрешения, проверить разрешение пользователя
-		userPerm, err := rest.db.GetUserPermission(rReq.Login)
+		userPerm, err := rest.db.GetUserPermission(rReq.Login, rReq.ID)
 		if err != nil {
 			if err.Error() == "record not found" {
 				// Пользователь новый, вернем true
@@ -178,7 +178,6 @@ type getReportStudentTotalMarksRequest struct {
 // об итоговых оценках
 func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("GetReportStudentTotalMarksHandler called")
-	// TODO добавить переключение между детьми
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -215,7 +214,8 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database")
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -236,7 +236,8 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database")
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -316,7 +317,8 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -337,7 +339,8 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database", err)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -408,7 +411,8 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -428,7 +432,8 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database", err)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -523,7 +528,8 @@ func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, r
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -543,7 +549,8 @@ func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, r
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database", err)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -620,7 +627,8 @@ func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, re
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -641,7 +649,8 @@ func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, re
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database", err)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -718,7 +727,8 @@ func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -741,7 +751,8 @@ func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database", err)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -840,7 +851,8 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database")
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -860,7 +872,8 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database")
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -936,7 +949,8 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database")
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -952,7 +966,24 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	}
 	week := rReq.Week
 	if week == "" {
-		week = time.Now().Format("02.01.2006")
+		t2 := time.Now()
+		t1 := t2.Weekday()
+		switch t1 {
+		case time.Monday:
+		case time.Tuesday:
+			t2 = t2.AddDate(0, 0, -1)
+		case time.Wednesday:
+			t2 = t2.AddDate(0, 0, -2)
+		case time.Thursday:
+			t2 = t2.AddDate(0, 0, -3)
+		case time.Friday:
+			t2 = t2.AddDate(0, 0, -4)
+		case time.Saturday:
+			t2 = t2.AddDate(0, 0, -5)
+		case time.Sunday:
+			t2 = t2.AddDate(0, 0, -6)
+		}
+		week = t2.Format("02.01.2006")
 	}
 	weekMarks, err := remoteSession.GetWeekSchoolMarks(week, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
@@ -960,7 +991,8 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database")
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -975,11 +1007,21 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 			rest.sessionsMap[sessionName] = remoteSession
 			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get schedule: ", err)
+			rest.logger.Error("Unable to get tasks and marks: ", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Обновить статусы заданий
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	err = rest.db.UpdateTasksStatuses(userName.(string), schoolID.(int), rReq.ID, weekMarks)
+	if err != nil {
+		rest.logger.Error("Error updating statuses for weekMarks")
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// Замаршалить
 	bytes, err := json.Marshal(weekMarks)
 	if err != nil {
 		rest.logger.Error("Error marshalling weekMarks")
@@ -1036,7 +1078,8 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 	if !ok {
 		rest.logger.Info("No remote session, creating new one")
 		userName := session.Values["userName"]
-		school, err := rest.db.GetUserAuthData(userName.(string))
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("Error reading database", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -1057,7 +1100,8 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 		if err == errLoggedOut {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
-			school, err := rest.db.GetUserAuthData(userName.(string))
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 			if err != nil {
 				rest.logger.Error("Error reading database", err)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -1154,7 +1198,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	}
 	if !perm {
 		// Если у школы нет разрешения, проверить разрешение пользователя
-		userPerm, err := rest.db.GetUserPermission(rReq.Login)
+		userPerm, err := rest.db.GetUserPermission(rReq.Login, rReq.ID)
 		if err != nil {
 			if err.Error() == "record not found" {
 				// Пользователь новый, вернем true
@@ -1178,9 +1222,17 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	school.Password = rReq.Passkey
 	// Создание удаленной сессии
 	newRemoteSession := ss.NewSession(&school)
-	if err = newRemoteSession.Login(); err != nil {
+	err = newRemoteSession.Login()
+	if err != nil {
 		rest.logger.Error("Error remote signing in", err)
 		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Сразу получим мапу имен детей в их ID
+	err = newRemoteSession.GetChildrenMap()
+	if err != nil {
+		rest.logger.Error("Error: can't get children map", err)
+		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// Если удаленная авторизация прошла успешно, создать локальную сессию
@@ -1201,6 +1253,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	// ... и привязать к ней удаленную сессию
 	rest.sessionsMap[newSessionName] = newRemoteSession
 	newLocalSession.Values["userName"] = rReq.Login
+	newLocalSession.Values["schoolID"] = rReq.ID
 	newLocalSession.Save(req, respwr)
 	// Устанавливаем в куки значение sessionName
 	expiration := time.Now().Add(365 * 24 * time.Hour)
@@ -1209,7 +1262,8 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	}
 	http.SetCookie(respwr, &cookie)
 	// Обновляем базу данных
-	err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, rReq.ID)
+	isParent := true
+	err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.ChildrenIDS)
 	if err != nil {
 		rest.logger.Error("Error updating database: ", err)
 		respwr.WriteHeader(http.StatusInternalServerError)

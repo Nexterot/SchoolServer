@@ -6,11 +6,21 @@ Package db содержит необходимое API для работы с б
 package db
 
 import (
-	"SchoolServer/libtelco/config-parser"
+	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
+	dt "SchoolServer/libtelco/sessions/data-types"
+	"fmt"
+	"strconv"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Необходимо для gorm
+)
+
+// Статусы заданий
+const (
+	StatusTaskNew = (1 + iota)
+	StatusTaskSeen
+	StatusTaskDone
 )
 
 // Database struct представляет абстрактную структуру базы данных
@@ -19,21 +29,50 @@ type Database struct {
 	Logger         *log.Logger
 }
 
-// User struct представляет структуру записи пользователя
-type User struct {
-	gorm.Model
-	Login      string `sql:"size:255;unique;index"`
-	Password   string `sql:"size:255"`
-	Permission bool   `sql:"DEFAULT:false"`
-	School     *School
-}
-
 // School struct представляет структуру записи школы
 type School struct {
 	gorm.Model
 	Name       string `sql:"size:255;unique"`
 	Address    string `sql:"size:255;unique"`
 	Permission bool   `sql:"DEFAULT:true"`
+	Users      []User // has-many relation
+}
+
+// User struct представляет структуру записи пользователя
+type User struct {
+	gorm.Model
+	SchoolID   uint
+	IsParent   bool      `sql:"DEFAULT:false"`
+	Login      string    `sql:"size:255;index"`
+	Password   string    `sql:"size:255"`
+	Permission bool      `sql:"DEFAULT:false"`
+	Students   []Student // has-many relation
+}
+
+// Student struct представляет структуру ученика
+type Student struct {
+	gorm.Model
+	UserID      uint
+	NetSchoolID int
+	Name        string `sql:"size:255"`
+	Days        []Day  // has-many relation
+}
+
+// Day struct представляет структуру дня с дз
+type Day struct {
+	gorm.Model
+	StudentID uint
+	Date      string `sql:"size:255"`
+	Tasks     []Task // has-many relation
+}
+
+// Task представляет структуру задания
+type Task struct {
+	gorm.Model
+	DayID      uint
+	LessonID   int // id урока
+	HometaskID int // id домашнего задания
+	Status     int // новое\просмотренное\выполненное
 }
 
 // NewDatabase создает Database и возвращает указатель на неё
@@ -45,12 +84,34 @@ func NewDatabase(logger *log.Logger) (*Database, error) {
 	}
 	// Если таблицы с пользователями не существует, создадим её
 	if !sdb.HasTable(&User{}) {
+		// User
 		logger.Info("Table 'users' doesn't exist! Creating new one")
 		err := sdb.CreateTable(&User{}).Error
 		if err != nil {
 			return nil, err
 		}
 		logger.Info("Successfully created 'users' table")
+		// Student
+		logger.Info("Creating 'students' table")
+		err = sdb.CreateTable(&Student{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("Successfully created 'students' table")
+		// Day
+		logger.Info("Creating 'day' table")
+		err = sdb.CreateTable(&Day{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("Successfully created 'day' table")
+		// Task
+		logger.Info("Creating 'task' table")
+		err = sdb.CreateTable(&Task{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("Successfully created 'task' table")
 	} else {
 		logger.Info("Table 'users' exists")
 	}
@@ -87,42 +148,206 @@ func NewDatabase(logger *log.Logger) (*Database, error) {
 }
 
 // UpdateUser обновляет данные о пользователе
-func (db *Database) UpdateUser(login string, passkey string, id int) error {
+func (db *Database) UpdateUser(login string, passkey string, isParent bool, schoolID int, childrenMap map[string]string) error {
 	var (
-		school School
-		user   User
+		school  School
+		student Student
+		user    User
 	)
 	// Получаем запись школы
-	err := db.SchoolServerDB.First(&school, id).Error
+	err := db.SchoolServerDB.First(&school, schoolID).Error
 	if err != nil {
+		db.Logger.Info("DB: Error getting school by id")
 		return err
 	}
-	// Получаем и обновляем запись пользователя, если не существует - создаем
-	where := User{Login: login}
-	attrs := User{Password: passkey, School: &school}
-	err = db.SchoolServerDB.Where(where).Attrs(attrs).FirstOrCreate(&user).Error
+	// Получаем запись пользователя
+	where := User{Login: login, SchoolID: uint(schoolID)}
+	err = db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		if err.Error() == "record not found" {
+			// Пользователь не найден, создадим
+			students := make([]Student, len(childrenMap))
+			i := 0
+			for childName, childID := range childrenMap {
+				id, err := strconv.Atoi(childID)
+				if err != nil {
+					db.Logger.Info("DB: Error converting IDS from childrenMap")
+					return err
+				}
+				student = Student{Name: childName, NetSchoolID: id, Days: []Day{}}
+				err = db.SchoolServerDB.Create(&student).Error
+				if err != nil {
+					db.Logger.Info("DB: Error creating Students for user")
+					return err
+				}
+				students[i] = student
+				i++
+			}
+			user := User{
+				SchoolID: uint(schoolID),
+				IsParent: isParent,
+				Login:    login,
+				Password: passkey,
+				Students: students,
+			}
+			err = db.SchoolServerDB.Create(&user).Error
+			if err != nil {
+				db.Logger.Error("DB: Error when creating user")
+			}
+		} else {
+			db.Logger.Error("DB: Error when getting user")
+
+		}
+		return err
+	}
+	// Пользователь найден, обновим
+	user.Password = passkey
+	user.SchoolID = uint(schoolID)
+	// Пока без childrenMap'ы
+	err = db.SchoolServerDB.Save(&user).Error
+	if err != nil {
+		db.Logger.Info("DB: Error saving updated data for user")
+	}
 	return err
 }
 
+// UpdateTasksMarks обновляет задания и оценки на неделю
+func (db *Database) UpdateTasksMarks(userName string, studentID int, task *dt.WeekSchoolMarks) error {
+
+	return nil
+}
+
 // GetUserAuthData возвращает данные для повторной удаленной авторизации пользователя
-func (db *Database) GetUserAuthData(userName string) (*configParser.School, error) {
+func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, error) {
 	var user User
-	// Получаем пользователя по логину
+	// Получаем пользователя по школе и логину
 	where := User{Login: userName}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
-	return &configParser.School{Link: user.School.Address, Login: userName, Password: user.Password}, err
+	return &cp.School{Link: "user.School.Address", Login: userName, Password: user.Password}, err
 }
 
 // GetUserPermission проверяет разрешение пользователя на работу с сервисом
-func (db *Database) GetUserPermission(userName string) (bool, error) {
+func (db *Database) GetUserPermission(userName string, schoolID int) (bool, error) {
 	var user User
 	// Получаем пользователя по логину
-	where := User{Login: userName}
+	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
+		db.Logger.Info("DB: Error getting permission for user")
 		return false, err
 	}
 	return user.Permission, nil
+}
+
+func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID int, week *dt.WeekSchoolMarks) error {
+	var (
+		student  Student
+		students []Student
+		user     User
+		newDay   Day
+		days     []Day
+		newTask  Task
+		tasks    []Task
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting user for updating tasks status")
+		return err
+	}
+	// Получаем ученика по studentID
+	err = db.SchoolServerDB.Model(&user).Related(&students).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting students list for updating tasks status")
+		return err
+	}
+	studentFound := false
+	for _, stud := range students {
+		if stud.NetSchoolID == studentID {
+			studentFound = true
+			student = stud
+			break
+		}
+	}
+	if !studentFound {
+		db.Logger.Info("DB: No student found for updating tasks status")
+		return err
+	}
+	// Получаем список дней у ученика
+	err = db.SchoolServerDB.Model(&student).Related(&days).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting days list for updating tasks status")
+		return err
+	}
+	fmt.Println(len(days))
+	// Гоняем по дням из пакета
+	for dayNum, day := range week.Data {
+		date := day.Date
+		// Найдем подходящий день в БД
+		dbDayFound := false
+		for _, dbDay := range days {
+			if date == dbDay.Date {
+				dbDayFound = true
+				newDay = dbDay
+				break
+			}
+		}
+		if !dbDayFound {
+			db.Logger.Info("day not found")
+			// Дня не существует, надо создать
+			newDay = Day{StudentID: student.ID, Date: date, Tasks: []Task{}}
+			err = db.SchoolServerDB.Create(&newDay).Error
+			if err != nil {
+				db.Logger.Info("DB: Error saving new day for updating tasks status")
+				return err
+			}
+			days = append(days, newDay)
+		}
+		// Получаем список задания для дня
+		err = db.SchoolServerDB.Model(&newDay).Related(&tasks).Error
+		if err != nil {
+			db.Logger.Info("DB: Error getting tasks list for updating tasks status")
+			return err
+		}
+		fmt.Println(len(tasks))
+		// Гоняем по заданиям
+		for taskNum, task := range day.Lessons {
+			// Найдем подходящее задание в БД
+			dbTaskFound := false
+			for _, dbTask := range tasks {
+				if task.AID == dbTask.HometaskID {
+					dbTaskFound = true
+					newTask = dbTask
+					break
+				}
+			}
+			if !dbTaskFound {
+				// Задания не существует, надо создать
+				newTask = Task{DayID: newDay.ID, LessonID: task.CID, HometaskID: task.AID, Status: StatusTaskNew}
+				err = db.SchoolServerDB.Create(&newTask).Error
+				if err != nil {
+					db.Logger.Info("DB: Error creating new task for updating tasks status")
+					return err
+				}
+				tasks = append(tasks, newTask)
+			}
+			// Присвоить статусу таска из пакета статус таска из БД
+			week.Data[dayNum].Lessons[taskNum].Status = newTask.Status
+		}
+		err = db.SchoolServerDB.Save(&newDay).Error
+		if err != nil {
+			db.Logger.Info("DB:")
+			return err
+		}
+	}
+
+	err = db.SchoolServerDB.Save(&student).Error
+	if err != nil {
+		db.Logger.Info("DB:")
+		return err
+	}
+	return nil
 }
 
 // GetSchoolPermission проверяет разрешение школы на работу с сервисом

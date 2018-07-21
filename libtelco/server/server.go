@@ -27,7 +27,7 @@ type Server struct {
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
 	serv := &Server{
 		config: config,
-		//api:    api.NewRestAPI(logger, config),
+		api:    api.NewRestAPI(logger, config),
 	}
 	return serv
 }

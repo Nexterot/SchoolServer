@@ -20,7 +20,7 @@ type SchoolMark struct {
 	AID    int
 	CID    int
 	TP     int
-	Status bool   `json:"status"`
+	Status int    `json:"status"`
 	InTime bool   `json:"inTime"`
 	Name   string `json:"name"`
 	Author string `json:"author"`
