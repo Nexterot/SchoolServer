@@ -277,13 +277,19 @@ func GetChildrenMap(s *ss.Session) error {
 	var isParent bool
 	s.ChildrenIDS, isParent, err = getChildrenIDs(parsedHTML)
 	if err != nil {
-		if isParent {
-			s.Type = ss.Parent
-		} else {
-			s.Type = ss.Student
+		return err
+	}
+	if isParent {
+		s.Type = ss.Parent
+	} else {
+		s.Type = ss.Student
+	}
+	if len(s.ChildrenIDS) == 1 {
+		for _, v := range s.ChildrenIDS {
+			s.ID = v
 		}
 	}
-	return err
+	return nil
 }
 
 // GetLessonsMap возвращает мапу предметов в их ID с сервера первого типа.
