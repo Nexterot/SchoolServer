@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -180,7 +181,7 @@ func GetChildrenMap(s *ss.Session) error {
 	var getChildrenIDNode func(*html.Node) *html.Node
 	getChildrenIDNode = func(node *html.Node) *html.Node {
 		if node.Type == html.ElementNode {
-			if node.Data == "select" {
+			if node.Data == "select" || node.Data == "input" {
 				for _, a := range node.Attr {
 					if a.Key == "name" && a.Val == "SID" {
 						return node
@@ -198,34 +199,89 @@ func GetChildrenMap(s *ss.Session) error {
 		return nil
 	}
 
-	getChildrenIDs := func(node *html.Node) (map[string]string, error) {
+	// Находит ID учеников и также определяет тип сессии
+	getChildrenIDs := func(node *html.Node) (map[string]string, bool, error) {
+		// Находим ID учеников/ученика
 		childrenIDs := make(map[string]string)
 		idNode := getChildrenIDNode(node)
 		if idNode != nil {
-			for n := idNode.FirstChild; n != nil; n = n.NextSibling {
-				if len(n.Attr) != 0 {
-					for _, a := range n.Attr {
-						if a.Key == "value" {
-							childrenIDs[n.FirstChild.Data] = a.Val
-							if _, err := strconv.Atoi(a.Val); err != nil {
-								return childrenIDs, nil
+			if idNode.FirstChild == nil {
+				for _, a := range idNode.Attr {
+					if a.Key == "value" {
+						if idNode.PrevSibling != nil {
+							nameNode := idNode.PrevSibling
+							flag := true
+							for nameNode != nil && flag {
+								for _, b := range nameNode.Attr {
+									if b.Key == "type" && b.Val == "text" {
+										flag = false
+										break
+									}
+								}
+								if !flag {
+									break
+								}
+								nameNode = nameNode.PrevSibling
+							}
+							if nameNode != nil && !flag {
+								for _, a2 := range nameNode.Attr {
+									if a2.Key == "value" {
+										childrenIDs[a2.Val] = a.Val
+										if _, err := strconv.Atoi(a.Val); err != nil {
+											return childrenIDs, false, errors.New("ID has incorrect format")
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			} else {
+				for n := idNode.FirstChild; n != nil; n = n.NextSibling {
+					if len(n.Attr) != 0 {
+						for _, a := range n.Attr {
+							if a.Key == "value" {
+								childrenIDs[n.FirstChild.Data] = a.Val
+								if _, err := strconv.Atoi(a.Val); err != nil {
+									return childrenIDs, false, errors.New("ID has incorrect format")
+								}
 							}
 						}
 					}
 				}
 			}
 		} else {
-			return childrenIDs, fmt.Errorf("Couldn't find children IDs Node")
+			return childrenIDs, false, errors.New("Couldn't find children IDs Node")
 		}
 
-		return childrenIDs, err
+		// Находим тип сессии
+		sessTypeNode := idNode.Parent
+		if sessTypeNode != nil && sessTypeNode.Data == "select" {
+			sessTypeNode = sessTypeNode.Parent
+		}
+		isParent := false
+		for sessTypeNode != nil && sessTypeNode.Data != "label" {
+			sessTypeNode = sessTypeNode.PrevSibling
+		}
+		if sessTypeNode != nil && sessTypeNode.FirstChild != nil {
+			if sessTypeNode.FirstChild.Data == "Ученики" {
+				isParent = true
+			}
+		} else {
+			return childrenIDs, false, errors.New("Couldn't find type of session")
+		}
+
+		return childrenIDs, isParent, nil
 	}
 
-	s.ChildrenIDS, err = getChildrenIDs(parsedHTML)
-	if len(s.ChildrenIDS) == 0 {
-		s.Type = ss.Student
-	} else {
-		s.Type = ss.Parent
+	var isParent bool
+	s.ChildrenIDS, isParent, err = getChildrenIDs(parsedHTML)
+	if err != nil {
+		if isParent {
+			s.Type = ss.Parent
+		} else {
+			s.Type = ss.Student
+		}
 	}
 	return err
 }
