@@ -72,7 +72,7 @@ func (s *Session) Logout() error {
 
 // ПЕРЕДЕЛАТЬ!!!
 
-// GetChildrenMap получает мапу детей в их UID.
+// GetChildrenMap получает мапу детей в их ID.
 func (s *Session) GetChildrenMap() error {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
@@ -96,6 +96,9 @@ func (s *Session) GetChildrenMap() error {
 func (s *Session) GetLessonsMap(studentID string) (*dt.LessonsMap, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var lessonsMap *dt.LessonsMap
 	switch s.Base.Serv.Type {

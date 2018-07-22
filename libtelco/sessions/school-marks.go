@@ -15,6 +15,9 @@ import (
 func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMarks, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var weekSchoolMarks *dt.WeekSchoolMarks
 	switch s.Base.Serv.Type {

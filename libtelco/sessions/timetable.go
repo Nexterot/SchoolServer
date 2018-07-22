@@ -16,6 +16,9 @@ import (
 func (s *Session) GetTimeTable(date string, n int, studentID string) (*dt.TimeTable, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var timeTable *dt.TimeTable
 	if (n < 1) || (n > 7) {

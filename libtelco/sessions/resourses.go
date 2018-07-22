@@ -16,6 +16,9 @@ import (
 func (s *Session) GetResourcesList(studentID string) (*dt.Resources, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var resources *dt.Resources
 	switch s.Base.Serv.Type {

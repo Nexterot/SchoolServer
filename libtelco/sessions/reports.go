@@ -19,6 +19,9 @@ import (
 func (s *Session) GetTotalMarkReport(studentID string) (*dt.TotalMarkReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var finalMarkReport *dt.TotalMarkReport
 	switch s.Base.Serv.Type {
@@ -38,6 +41,9 @@ func (s *Session) GetTotalMarkReport(studentID string) (*dt.TotalMarkReport, err
 func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var averageMarkReport *dt.AverageMarkReport
 	switch s.Base.Serv.Type {
@@ -57,6 +63,9 @@ func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type, studentID strin
 func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkDynReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var averageMarkDynReport *dt.AverageMarkDynReport
 	switch s.Base.Serv.Type {
@@ -76,6 +85,9 @@ func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type, studentID st
 func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, subjectID, studentID string) (*dt.StudentGradeReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var studentGradeReport *dt.StudentGradeReport
 	switch s.Base.Serv.Type {
@@ -95,6 +107,9 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, subjectID, studentID
 func (s *Session) GetStudentTotalReport(dateBegin, dateEnd, studentID string) (*dt.StudentTotalReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var studentTotalReport *dt.StudentTotalReport
 	switch s.Base.Serv.Type {
@@ -122,6 +137,9 @@ func (s *Session) GetStudentTotalReport(dateBegin, dateEnd, studentID string) (*
 func (s *Session) GetJournalAccessReport(studentID string) (*dt.JournalAccessReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var studentTotalReport *dt.JournalAccessReport
 	switch s.Base.Serv.Type {
@@ -141,6 +159,9 @@ func (s *Session) GetJournalAccessReport(studentID string) (*dt.JournalAccessRep
 func (s *Session) GetParentInfoLetterReport(reportTypeID, periodID, studentID string) (*dt.ParentInfoLetterReport, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
 	var err error
 	var parentInfoLetterRepport *dt.ParentInfoLetterReport
 	switch s.Base.Serv.Type {

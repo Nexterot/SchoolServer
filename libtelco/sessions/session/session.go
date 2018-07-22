@@ -36,7 +36,7 @@ type Session struct {
 	Type Type
 	// Только для родителей.
 	ChildrenIDS map[string]string
-	// Только для учеников.
+	// Для учеников, а также для родителей с одним ребенком.
 	ID string
 	// Для серверов первого типа.
 	AT  string
