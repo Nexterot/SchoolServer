@@ -66,11 +66,11 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/sign_in", rest.SignInHandler)                   // done
 	http.HandleFunc("/log_out", rest.LogOutHandler)                   // done
 
-	http.HandleFunc("/get_children_map", rest.GetChildrenMapHandler)      // done
-	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler) // done
-	http.HandleFunc("/get_lesson_description", rest.Handler)
-	http.HandleFunc("/mark_as_done", rest.MarkAsDoneHandler)     // done
-	http.HandleFunc("/unmark_as_done", rest.UnmarkAsDoneHandler) // in dev
+	http.HandleFunc("/get_children_map", rest.GetChildrenMapHandler)             // done
+	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler)        // done
+	http.HandleFunc("/get_lesson_description", rest.GetLessonDescriptionHandler) // in dev
+	http.HandleFunc("/mark_as_done", rest.MarkAsDoneHandler)                     // done
+	http.HandleFunc("/unmark_as_done", rest.UnmarkAsDoneHandler)                 // done
 
 	http.HandleFunc("/get_posts", rest.Handler)
 
@@ -1032,6 +1032,140 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	rest.logger.Info("Sent tasks and marks for a week: ", weekMarks)
 }
 
+// getLessonDescriptionRequest используется в GetLessonDescriptionHandler
+type getLessonDescriptionRequest struct {
+	ID string `json:"id"`
+}
+
+// GetLessonDescriptionHandler обрабатывает запрос на получение подробностей дз
+func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("GetLessonDescriptionHandler called (not implemented yet")
+	/*
+		if req.Method != "POST" {
+			rest.logger.Error("Wrong method: ", req.Method)
+			return
+		}
+		// Прочитать куку
+		cookie, err := req.Cookie("sessionName")
+		if err != nil {
+			rest.logger.Info("User not authorized: sessionName absent")
+			respwr.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		sessionName := cookie.Value
+		// Получить существующий объект сессии
+		session, err := rest.store.Get(req, sessionName)
+		if session.IsNew {
+			rest.logger.Error("Local session broken")
+			delete(rest.sessionsMap, sessionName)
+			session.Options.MaxAge = -1
+			session.Save(req, respwr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		// Чтение запроса от клиента
+		var rReq getLessonDescriptionRequest
+		decoder := json.NewDecoder(req.Body)
+		err = decoder.Decode(&rReq)
+		if err != nil {
+			respwr.WriteHeader(http.StatusBadRequest)
+			rest.logger.Error("Malformed request data")
+			return
+		}
+		var id int
+		if rReq.ID == "" {
+			id = -1
+		} else {
+			id, err := strconv.Atoi(rReq.ID)
+			if err != nil {
+				respwr.WriteHeader(http.StatusBadRequest)
+				rest.logger.Error("Malformed request data or i don't know")
+				return
+			}
+		}
+		// Если нет удаленной сессии, создать
+		remoteSession, ok := rest.sessionsMap[sessionName]
+		if !ok {
+			rest.logger.Info("No remote session, creating new one")
+			userName := session.Values["userName"]
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			if err != nil {
+				rest.logger.Error("Error reading database")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+		}
+		// Сходить в бд за датой дня таска
+		userName := session.Values["userName"]
+		schoolID := session.Values["schoolID"]
+		date, err = rest.db.GetTaskDate(userName.(string), schoolID.(int), id)
+		if err != nil {
+			if err.Error() == "record not found" {
+				rest.logger.Info("Invalid task specified: it's not in db", err)
+				respwr.WriteHeader(http.StatusBadRequest)
+				return
+			}
+			rest.logger.Error("Error getting task date from db")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Получить задания на неделю
+
+		// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+		if err != nil {
+			if err == errLoggedOut {
+				rest.logger.Info("Remote connection broken, creation new one")
+				userName := session.Values["userName"]
+				schoolID := session.Values["schoolID"]
+				school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+				if err != nil {
+					rest.logger.Error("Error reading database")
+					respwr.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				remoteSession = ss.NewSession(school)
+				if err = remoteSession.Login(); err != nil {
+					rest.logger.Error("Error remote signing in")
+					respwr.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+				rest.sessionsMap[sessionName] = remoteSession
+				rest.logger.Info("Successfully created new remote session")
+			} else {
+				rest.logger.Error("Unable to get tasks and marks: ", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+		// Обновить статусы заданий
+		userName := session.Values["userName"]
+		schoolID := session.Values["schoolID"]
+		err = rest.db.UpdateTasksStatuses(userName.(string), schoolID.(int), rReq.ID, weekMarks)
+		if err != nil {
+			rest.logger.Error("Error updating statuses for weekMarks")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Замаршалить
+		bytes, err := json.Marshal(weekMarks)
+		if err != nil {
+			rest.logger.Error("Error marshalling weekMarks")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		respwr.Write(bytes)
+		rest.logger.Info("Sent tasks and marks for a week: ", weekMarks)
+	*/
+}
+
 // markAsDoneRequest используется в MarkAsDoneHandler
 type MarkAsDoneRequest struct {
 	ID int `json:"id"`
@@ -1352,8 +1486,14 @@ func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request
 	// Если кука есть, удалить локальную и удаленную сессии
 	session, err := rest.store.Get(req, sessionName)
 	if err != nil {
-		rest.logger.Info("Error getting session: ", sessionName)
+		rest.logger.Info("Error getting session: ", err)
+		respwr.WriteHeader(http.StatusInternalServerError)
 		return
+	}
+	// Вызвать logout для удаленной сессии
+	err = rest.sessionsMap[sessionName].Logout()
+	if err != nil {
+		rest.logger.Error("Error remote log out", err)
 	}
 	delete(rest.sessionsMap, sessionName)
 	session.Options.MaxAge = -1
