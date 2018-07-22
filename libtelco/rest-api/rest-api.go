@@ -76,14 +76,13 @@ func (rest *RestAPI) BindHandlers() {
 
 	http.HandleFunc("/get_schedule", rest.GetScheduleHandler) // done
 
-	http.HandleFunc("/get_report_student_total_marks", rest.GetReportStudentTotalMarksHandler)          // done
-	http.HandleFunc("/get_report_student_average_mark", rest.GetReportStudentAverageMarkHandler)        // done
-	http.HandleFunc("/get_report_student_average_mark_dyn", rest.GetReportStudentAverageMarkDynHandler) // done
-	http.HandleFunc("/get_report_student_grades_lesson_list", rest.GetReportStudentGradesLessonListHandler)
-	http.HandleFunc("/get_report_student_grades", rest.GetReportStudentGradesHandler) // done
-	http.HandleFunc("/get_report_student_total", rest.GetReportStudentTotalHandler)   // done
-	http.HandleFunc("/get_report_journal_access_classes_list", rest.Handler)
-	http.HandleFunc("/get_report_journal_access", rest.Handler)
+	http.HandleFunc("/get_report_student_total_marks", rest.GetReportStudentTotalMarksHandler)              // done
+	http.HandleFunc("/get_report_student_average_mark", rest.GetReportStudentAverageMarkHandler)            // done
+	http.HandleFunc("/get_report_student_average_mark_dyn", rest.GetReportStudentAverageMarkDynHandler)     // done
+	http.HandleFunc("/get_report_student_grades_lesson_list", rest.GetReportStudentGradesLessonListHandler) // done
+	http.HandleFunc("/get_report_student_grades", rest.GetReportStudentGradesHandler)                       // done
+	http.HandleFunc("/get_report_student_total", rest.GetReportStudentTotalHandler)                         // done
+	http.HandleFunc("/get_report_journal_access", rest.GetReportJournalAccessHandler)                       // done
 	http.HandleFunc("/get_report_parent_info_letter_data", rest.Handler)
 	http.HandleFunc("/get_report_parent_info_letter", rest.GetReportParentInfoLetterHandler) // done
 
@@ -471,11 +470,94 @@ type getReportStudentGradesLessonListRequest struct {
 // GetReportStudentGradesLessonListHandler обрабатывает запрос на получение
 // списка предметов для отчета 'Об успеваемости'
 func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentGradesLessonListHandler called (not implemented yet")
+	rest.logger.Info("GetReportStudentGradesLessonListHandler called")
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
 	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq getReportStudentGradesLessonListRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	studentID := strconv.Itoa(rReq.ID)
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+		if err != nil {
+			rest.logger.Error("Error reading database", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
+	}
+	lessonsMap, err := remoteSession.GetLessonsMap(studentID)
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	if err != nil {
+		if err == errLoggedOut {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			if err != nil {
+				rest.logger.Error("Error reading database", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get lessons map: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	bytes, err := json.Marshal(lessonsMap)
+	if err != nil {
+		rest.logger.Error("Error marshalling student lessons map")
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent lessons map: ", lessonsMap)
 }
 
 // getReportStudentGradesRequest используется в GetReportStudentGradesHandler
@@ -587,7 +669,7 @@ type getReportStudentTotalRequest struct {
 	To   string `json:"to"`
 }
 
-// GetReportStudentTotalHandler брабатывает запрос на получение отчета об успеваемости
+// GetReportStudentTotalHandler обрабатывает запрос на получение отчета об успеваемости
 // и посещаемости
 func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("GetReportStudentTotalHandler called")
@@ -678,6 +760,104 @@ func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, re
 	}
 	respwr.Write(bytes)
 	rest.logger.Info("Sent total student report: ", totalReport)
+}
+
+// getReportJournalAccessRequest используется в GetReportJournalAccessHandler
+type getReportJournalAccessRequest struct {
+	ID int `json:"student_id"`
+}
+
+// GetReportJournalAccessHandler обрабатывает запрос на получение отчета о доступе
+// к классному журналу
+func (rest *RestAPI) GetReportJournalAccessHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("GetReportJournalAccessHandler called")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq getReportJournalAccessRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+		if err != nil {
+			rest.logger.Error("Error reading database", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
+	}
+	studentID := strconv.Itoa(rReq.ID)
+	accessReport, err := remoteSession.GetJournalAccessReport(studentID)
+	if err != nil {
+		// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+		if err == errLoggedOut {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			if err != nil {
+				rest.logger.Error("Error reading database", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in", err)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get journal access report: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	bytes, err := json.Marshal(accessReport)
+	if err != nil {
+		rest.logger.Error("Error marshalling accessReport")
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent total access report: ", accessReport)
 }
 
 // getReportParentInfoLetterRequest используется в GetReportParentInfoLetterHandler
