@@ -26,3 +26,9 @@ func (s *Session) GetResourcesList() (*dt.Resources, error) {
 	}
 	return resources, err
 }
+
+// GetFile выкачивает файл в заданную директорию по заданной ссылке (если его там уже нет) и возвращает на него ссылку.
+func (s *Session) GetFile(link string) (string, error) {
+
+	return "", nil
+}
