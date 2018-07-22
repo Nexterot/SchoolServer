@@ -50,6 +50,23 @@ func (s *Session) Login() error {
 }
 
 /*
+Выход из системы.
+*/
+// Logout выходит с сервера.
+func (s *Session) Logout() error {
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	var err error
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		err = t01.Logout(s.Base)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return err
+}
+
+/*
 Получение списка детей.
 */
 

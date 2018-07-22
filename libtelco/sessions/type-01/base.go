@@ -115,6 +115,32 @@ func Login(s *ss.Session) error {
 	return nil
 }
 
+// Logout выходит с сервера первого типа.
+func Logout(s *ss.Session) error {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":  s.AT,
+			"VER": s.VER,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+		},
+	}
+	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/logout.asp", requestOptions0)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	return checkResponse(s, response0)
+}
+
 // GetChildrenMap получает мапу детей в их UID с сервера первого типа.
 func GetChildrenMap(s *ss.Session) error {
 	p := "http://"
