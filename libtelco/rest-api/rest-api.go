@@ -69,8 +69,8 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/get_children_map", rest.GetChildrenMapHandler)      // done
 	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler) // done
 	http.HandleFunc("/get_lesson_description", rest.Handler)
-	http.HandleFunc("/mark_as_done", rest.Handler)
-	http.HandleFunc("/unmark_as_done", rest.Handler)
+	http.HandleFunc("/mark_as_done", rest.MarkAsDoneHandler)     // done
+	http.HandleFunc("/unmark_as_done", rest.UnmarkAsDoneHandler) // in dev
 
 	http.HandleFunc("/get_posts", rest.Handler)
 
@@ -1030,6 +1030,202 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	}
 	respwr.Write(bytes)
 	rest.logger.Info("Sent tasks and marks for a week: ", weekMarks)
+}
+
+// markAsDoneRequest используется в MarkAsDoneHandler
+type MarkAsDoneRequest struct {
+	ID int `json:"id"`
+}
+
+// MarkAsDoneHandler обрабатывает запрос на отметку задания как сделанного
+func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("MarkAsDoneHandler called")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq MarkAsDoneRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+		if err != nil {
+			rest.logger.Error("Error reading database")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
+	}
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	if err != nil {
+		if err == errLoggedOut {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			if err != nil {
+				rest.logger.Error("Error reading database")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get tasks and marks: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	// Лезть в БД
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	err = rest.db.TaskMarkDone(userName.(string), schoolID.(int), rReq.ID)
+	if err != nil {
+		rest.logger.Error("Error when marking task as done in db", err)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	rest.logger.Info("Successfully marked task as done")
+	respwr.WriteHeader(http.StatusOK)
+}
+
+// unmarkAsDoneRequest используется в UnmarkAsDoneHandler
+type UnmarkAsDoneRequest struct {
+	ID int `json:"id"`
+}
+
+// UnmarkAsDoneHandler обрабатывает запрос на отметку задания как просмотренного
+func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("UnmarkAsDoneHandler called (not implemented yet)")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq MarkAsDoneRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data")
+		return
+	}
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+		if err != nil {
+			rest.logger.Error("Error reading database")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
+	}
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	if err != nil {
+		if err == errLoggedOut {
+			rest.logger.Info("Remote connection broken, creation new one")
+			userName := session.Values["userName"]
+			schoolID := session.Values["schoolID"]
+			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			if err != nil {
+				rest.logger.Error("Error reading database")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			remoteSession = ss.NewSession(school)
+			if err = remoteSession.Login(); err != nil {
+				rest.logger.Error("Error remote signing in")
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			rest.sessionsMap[sessionName] = remoteSession
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get tasks and marks: ", err)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+	// Лезть в БД
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	err = rest.db.TaskMarkDone(userName.(string), schoolID.(int), rReq.ID)
+	if err != nil {
+		rest.logger.Error("Error when marking task as done in db", err)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	rest.logger.Info("Successfully marked task as done")
+	respwr.WriteHeader(http.StatusOK)
 }
 
 // scheduleRequest используется в GetScheduleHandler

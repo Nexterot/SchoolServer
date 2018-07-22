@@ -211,12 +211,6 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 	return err
 }
 
-// UpdateTasksMarks обновляет задания и оценки на неделю
-func (db *Database) UpdateTasksMarks(userName string, studentID int, task *dt.WeekSchoolMarks) error {
-
-	return nil
-}
-
 // GetUserAuthData возвращает данные для повторной удаленной авторизации пользователя
 func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, error) {
 	var user User
@@ -239,6 +233,8 @@ func (db *Database) GetUserPermission(userName string, schoolID int) (bool, erro
 	return user.Permission, nil
 }
 
+// UpdateTasksStatuses добавляет в БД несуществующие ДЗ и обновляет статусы
+// заданий из пакета WeekSchoolMarks
 func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID int, week *dt.WeekSchoolMarks) error {
 	var (
 		student  Student
@@ -310,7 +306,6 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 			db.Logger.Info("DB: Error getting tasks list for updating tasks status")
 			return err
 		}
-		fmt.Println(len(tasks))
 		// Гоняем по заданиям
 		for taskNum, task := range day.Lessons {
 			// Найдем подходящее задание в БД
@@ -348,6 +343,59 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 		return err
 	}
 	return nil
+}
+
+// TaskMarkDone меняет статус задания на "Выполненное"
+func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) error {
+	var (
+		tasks   []Task
+		day     Day
+		student Student
+		user    User
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting user for updating tasks status")
+		return err
+	}
+	// Получаем таски с таким taskID
+	where_ := Task{HometaskID: taskID}
+	err = db.SchoolServerDB.Where(where_).Find(&tasks).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting tasks for updating tasks status")
+		return err
+	}
+	// Найдем нужный таск
+	for _, t := range tasks {
+		// Получим день по DayID
+		err = db.SchoolServerDB.First(&day, t.DayID).Error
+		if err != nil {
+			db.Logger.Info("DB: Error getting days for updating tasks status")
+			return err
+		}
+		// Получим студента по дню
+		err = db.SchoolServerDB.First(&student, day.StudentID).Error
+		if err != nil {
+			db.Logger.Info("DB: Error getting student for updating tasks status")
+			return err
+		}
+
+		// Если совпал id пользователя - поменять статус, сохранить и закончить цикл
+		if user.ID == student.UserID {
+			t.Status = StatusTaskDone
+			err = db.SchoolServerDB.Save(&t).Error
+			if err != nil {
+				db.Logger.Error("DB: Error when saving updated task status")
+				return err
+			}
+			return nil
+		}
+	}
+	// Таск не найден
+	db.Logger.Info("DB: Error when searching for task to update status")
+	return fmt.Errorf("record not found")
 }
 
 // GetSchoolPermission проверяет разрешение школы на работу с сервисом
