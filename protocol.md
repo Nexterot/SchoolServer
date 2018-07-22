@@ -570,24 +570,32 @@
 
 ```json
 {
-	"table": [{
-		"months": [{
-			"name": "string",
-			"days": [{
-				"number": "number",
-				"subjects": [{
+	"table": [
+		{
+			"months": [
+				{
 					"name": "string",
-					"marks": [{
-						"string"
-					}]
-				}]
-			}]
-		}],
-		"average_marks": [{
-			"name": "string",
-			"mark": "number|undefined"
-		}]
-	}]
+					"days": [
+						{
+							"number": "number",
+							"subjects": [
+								{
+									"name": "string",
+									"marks": [ "string" ]
+								}
+							]
+						}
+					]
+				}
+			],
+			"average_marks": [
+				{
+					"name": "string",
+					"mark": "number|undefined"
+				}
+			]
+		}
+	]
 }
 ```
 
@@ -684,16 +692,22 @@
 
 ```json
 {
-	"data": [{
-		"report_types": [{
-			"report_type_id": "number",
-			"report_type_name": "string"
-		}],
-		"periods": [{
-			"period_id": "number",
-			"period_name": "string"
-		}]
-	}]
+	"data": [
+		{
+			"report_types": [
+				{
+					"report_type_id": "number",
+					"report_type_name": "string"
+				}
+			],
+		"periods": [
+				{
+					"period_id": "number",
+					"period_name": "string"
+				}
+			]
+		}
+	]
 }
 ```
 
@@ -728,9 +742,7 @@
 	"table": [
 		{
 			"name": "string",
-			"marks": [{
-				"number|undefined"
-			}],
+			"marks": [ "number|undefined" ],
 			"average_mark": "number|undefined",
 			"mark_for_period": "number|undefined"
 		}
