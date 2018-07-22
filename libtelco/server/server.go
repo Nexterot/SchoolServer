@@ -34,6 +34,27 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
+
+	/*
+		// Тесты.
+		kek := ss.NewSession(&serv.config.Schools[2])
+		err := kek.Login()
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		data, err := kek.GetResourcesList()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println(data)
+
+		err = kek.Logout()
+		if err != nil {
+			fmt.Println(err)
+		}
+	*/
+
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()
 	return http.ListenAndServe(serv.config.ServerAddr, nil)

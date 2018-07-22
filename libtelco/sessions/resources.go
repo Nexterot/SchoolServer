@@ -13,17 +13,14 @@ import (
 )
 
 // GetResourcesList возвращает список всех ресурсов.
-func (s *Session) GetResourcesList(studentID string) (*dt.Resources, error) {
+func (s *Session) GetResourcesList() (*dt.Resources, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
-	if studentID == "" {
-		studentID = s.Base.ID
-	}
 	var err error
 	var resources *dt.Resources
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		resources, err = t01.GetResourcesList(s.Base, studentID)
+		resources, err = t01.GetResourcesList(s.Base)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
