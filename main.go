@@ -42,9 +42,7 @@ func main() {
 	logger.Info("SchoolServer V0.1 is running",
 		"Server address", config.ServerAddr,
 		"Postgres info", config.Postgres,
-		"Redis info", config.Redis,
 		"Max allowed threads", config.MaxProcs,
-		"Pool size", config.PoolSize,
 		"Update Interval", config.UpdateInterval,
 		"LogFile", config.LogFile,
 	)

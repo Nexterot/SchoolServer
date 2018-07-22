@@ -1,9 +1,7 @@
 {
     "serverAddr" : "localhost:8000",
     "postgres" : "postgres",
-    "redis" : "redis",
     "maxProcs" : 2,
-    "poolSize" : 4,
     "updateInterval" : 1800,
     "logFile" : "stdout",
     "schools" : [

@@ -23,9 +23,7 @@ import (
 type Config struct {
 	ServerAddr     string   `json:"serverAddr"`
 	Postgres       string   `json:"postgres"`
-	Redis          string   `json:"redis"`
 	MaxProcs       int      `json:"maxProcs"`
-	PoolSize       int      `json:"poolSize"`
 	UpdateInterval int      `json:"updateInterval"`
 	LogFile        string   `json:"logFile"`
 	Schools        []School `json:"schools"`
