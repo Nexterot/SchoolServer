@@ -46,7 +46,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	newStore.MaxAge(86400 * 365)
 	database, err := db.NewDatabase(logger, config)
 	if err != nil {
-		logger.Error("Error when creating database!")
+		logger.Error("Error when creating database!", err)
 	}
 	return &RestAPI{
 		config:      config,
