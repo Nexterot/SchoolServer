@@ -1,6 +1,6 @@
 {
     "serverAddr" : "localhost:8000",
-    "postgres" : "postgres",
+    "postgres" : "host=localhost port=5432 user=test_user password=qwerty dbname=schoolserverdb sslmode=disable",
     "maxProcs" : 2,
     "updateInterval" : 1800,
     "logFile" : "stdout",

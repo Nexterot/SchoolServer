@@ -639,7 +639,7 @@
 ```json
 {
 	"action": "get_report_journal_access",
-	"student_id": "string"
+	"id": "string"
 }
 ```
 
@@ -725,7 +725,7 @@
 ```json
 {
     "action": "get_report_parent_info_letter",
-    "student_id": "string",
+    "id": "string",
     "report_type_id": "string",
     "period_id": "string"
 }

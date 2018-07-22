@@ -44,7 +44,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	logger.Info("Generated secure key: ", key)
 	newStore := sessions.NewCookieStore(key)
 	newStore.MaxAge(86400 * 365)
-	database, err := db.NewDatabase(logger)
+	database, err := db.NewDatabase(logger, config)
 	if err != nil {
 		logger.Error("Error when creating database!")
 	}
@@ -764,7 +764,7 @@ func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, re
 
 // getReportJournalAccessRequest используется в GetReportJournalAccessHandler
 type getReportJournalAccessRequest struct {
-	ID int `json:"student_id"`
+	ID int `json:"id"`
 }
 
 // GetReportJournalAccessHandler обрабатывает запрос на получение отчета о доступе
@@ -925,7 +925,7 @@ func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter
 	studentID := strconv.Itoa(rReq.StudentID)
 	reportID := strconv.Itoa(rReq.ReportTypeID)
 	periodID := strconv.Itoa(rReq.PeriodID)
-	parentLetter, err := remoteSession.GetParentInfoLetterReport(studentID, reportID, periodID)
+	parentLetter, err := remoteSession.GetParentInfoLetterReport(reportID, periodID, studentID)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err == errLoggedOut {

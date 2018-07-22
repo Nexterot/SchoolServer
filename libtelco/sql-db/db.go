@@ -77,9 +77,9 @@ type Task struct {
 }
 
 // NewDatabase создает Database и возвращает указатель на неё
-func NewDatabase(logger *log.Logger) (*Database, error) {
+func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 	// Подключение к базе данных
-	sdb, err := gorm.Open("postgres", "host=localhost port=5432 user=test_user password=qwerty dbname=schoolserverdb sslmode=disable")
+	sdb, err := gorm.Open("postgres", config.Postgres)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,6 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 		db.Logger.Info("DB: Error getting days list for updating tasks status")
 		return err
 	}
-	fmt.Println(len(days))
 	// Гоняем по дням из пакета
 	for dayNum, day := range week.Data {
 		date := day.Date
