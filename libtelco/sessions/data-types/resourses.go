@@ -4,8 +4,8 @@ package dataTypes
 Ресурсы.
 */
 
-// SchoolResources struct содержит в себе школьные ресурсы.
-type SchoolResources struct {
+// Resources struct содержит в себе школьные ресурсы.
+type Resources struct {
 	Data []Group `json:"data"`
 }
 
