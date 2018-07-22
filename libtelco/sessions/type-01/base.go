@@ -333,7 +333,7 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 			for n := idNode.FirstChild; n != nil; n = n.NextSibling {
 				if len(n.Attr) != 0 {
 					for _, a := range n.Attr {
-						if a.Key == "valлue" {
+						if a.Key == "value" {
 							subjectsIDsMap[n.FirstChild.Data] = a.Val
 							if _, err = strconv.Atoi(a.Val); err != nil {
 								return nil, err
