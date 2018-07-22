@@ -18,7 +18,8 @@ import (
 
 // Статусы заданий
 const (
-	StatusTaskNew = (1 + iota)
+	_ = iota
+	StatusTaskNew
 	StatusTaskSeen
 	StatusTaskDone
 )
@@ -385,6 +386,59 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 		// Если совпал id пользователя - поменять статус, сохранить и закончить цикл
 		if user.ID == student.UserID {
 			t.Status = StatusTaskDone
+			err = db.SchoolServerDB.Save(&t).Error
+			if err != nil {
+				db.Logger.Error("DB: Error when saving updated task status")
+				return err
+			}
+			return nil
+		}
+	}
+	// Таск не найден
+	db.Logger.Info("DB: Error when searching for task to update status")
+	return fmt.Errorf("record not found")
+}
+
+// TaskMarkUndone меняет статус задания на "Просмотренное"
+func (db *Database) TaskMarkUndone(userName string, schoolID int, taskID int) error {
+	var (
+		tasks   []Task
+		day     Day
+		student Student
+		user    User
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting user for updating tasks status")
+		return err
+	}
+	// Получаем таски с таким taskID
+	where_ := Task{HometaskID: taskID}
+	err = db.SchoolServerDB.Where(where_).Find(&tasks).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting tasks for updating tasks status")
+		return err
+	}
+	// Найдем нужный таск
+	for _, t := range tasks {
+		// Получим день по DayID
+		err = db.SchoolServerDB.First(&day, t.DayID).Error
+		if err != nil {
+			db.Logger.Info("DB: Error getting days for updating tasks status")
+			return err
+		}
+		// Получим студента по дню
+		err = db.SchoolServerDB.First(&student, day.StudentID).Error
+		if err != nil {
+			db.Logger.Info("DB: Error getting student for updating tasks status")
+			return err
+		}
+
+		// Если совпал id пользователя - поменять статус, сохранить и закончить цикл
+		if user.ID == student.UserID {
+			t.Status = StatusTaskSeen
 			err = db.SchoolServerDB.Save(&t).Error
 			if err != nil {
 				db.Logger.Error("DB: Error when saving updated task status")

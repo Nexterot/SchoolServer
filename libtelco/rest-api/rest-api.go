@@ -1112,7 +1112,7 @@ func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Req
 			rest.sessionsMap[sessionName] = remoteSession
 			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get tasks and marks: ", err)
+			rest.logger.Error("Unable to mark task as done: ", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -1137,7 +1137,7 @@ type UnmarkAsDoneRequest struct {
 
 // UnmarkAsDoneHandler обрабатывает запрос на отметку задания как просмотренного
 func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("UnmarkAsDoneHandler called (not implemented yet)")
+	rest.logger.Info("UnmarkAsDoneHandler called")
 	if req.Method != "POST" {
 		rest.logger.Error("Wrong method: ", req.Method)
 		return
@@ -1210,7 +1210,7 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 			rest.sessionsMap[sessionName] = remoteSession
 			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get tasks and marks: ", err)
+			rest.logger.Error("Unable to mark task as undone: ", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -1218,13 +1218,13 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 	// Лезть в БД
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	err = rest.db.TaskMarkDone(userName.(string), schoolID.(int), rReq.ID)
+	err = rest.db.TaskMarkUndone(userName.(string), schoolID.(int), rReq.ID)
 	if err != nil {
-		rest.logger.Error("Error when marking task as done in db", err)
+		rest.logger.Error("Error when marking task as undone in db", err)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	rest.logger.Info("Successfully marked task as done")
+	rest.logger.Info("Successfully marked task as undone")
 	respwr.WriteHeader(http.StatusOK)
 }
 
