@@ -10,7 +10,8 @@ import (
 	"SchoolServer/libtelco/log"
 
 	api "SchoolServer/libtelco/rest-api"
-	// ss "SchoolServer/libtelco/sessions"
+
+	"github.com/gorilla/context"
 
 	"net/http"
 
@@ -56,5 +57,5 @@ func (serv *Server) Run() error {
 
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()
-	return http.ListenAndServe(serv.config.ServerAddr, nil)
+	return http.ListenAndServe(serv.config.ServerAddr, context.ClearHandler(http.DefaultServeMux))
 }

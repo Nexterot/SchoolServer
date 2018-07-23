@@ -290,7 +290,6 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 			}
 		}
 		if !dbDayFound {
-			db.Logger.Info("day not found")
 			// Дня не существует, надо создать
 			newDay = Day{StudentID: student.ID, Date: date, Tasks: []Task{}}
 			err = db.SchoolServerDB.Create(&newDay).Error

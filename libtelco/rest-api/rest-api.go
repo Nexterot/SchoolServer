@@ -13,7 +13,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -32,10 +31,6 @@ type RestAPI struct {
 	sessionsMap map[string]*ss.Session
 	db          *db.Database
 }
-
-// errLoggedOut представляет объект ошибки когда клиент пытается выполнить запрос,
-// а удаленная сессия была прервана
-var errLoggedOut = fmt.Errorf("You was logged out from server")
 
 // NewRestAPI создает структуру для работы с Rest API.
 func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
@@ -232,7 +227,7 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 	totalMarkReport, err := remoteSession.GetTotalMarkReport(id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -335,7 +330,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -428,7 +423,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 	averageMarkDynReport, err := remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -526,7 +521,7 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 	lessonsMap, err := remoteSession.GetLessonsMap(studentID)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -628,7 +623,7 @@ func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, r
 	gradeReport, err := remoteSession.GetStudentGradeReport(rReq.From, rReq.To, lessonID, studentID)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -728,7 +723,7 @@ func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, re
 	totalReport, err := remoteSession.GetStudentTotalReport(rReq.From, rReq.To, studentID)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -826,7 +821,7 @@ func (rest *RestAPI) GetReportJournalAccessHandler(respwr http.ResponseWriter, r
 	accessReport, err := remoteSession.GetJournalAccessReport(studentID)
 	if err != nil {
 		// Если удаленная сессия есть в mapSessions, но не активна, создать новую
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -928,7 +923,7 @@ func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter
 	parentLetter, err := remoteSession.GetParentInfoLetterReport(reportID, periodID, studentID)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -1049,7 +1044,7 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 	err = remoteSession.GetChildrenMap()
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -1168,7 +1163,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	weekMarks, err := remoteSession.GetWeekSchoolMarks(week, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -1301,7 +1296,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 
 		// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 		if err != nil {
-			if err == errLoggedOut {
+			if err.Error() == "You was logged out from server" {
 				rest.logger.Info("Remote connection broken, creation new one")
 				userName := session.Values["userName"]
 				schoolID := session.Values["schoolID"]
@@ -1407,7 +1402,7 @@ func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Req
 	}
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -1505,7 +1500,7 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 	}
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
@@ -1607,7 +1602,7 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 	timeTable, err := remoteSession.GetTimeTable(today, rReq.Days, id)
 	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
-		if err == errLoggedOut {
+		if err.Error() == "You was logged out from server" {
 			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
