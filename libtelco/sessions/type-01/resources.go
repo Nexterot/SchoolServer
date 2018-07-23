@@ -190,3 +190,11 @@ func GetResourcesList(s *ss.Session) (*dt.Resources, error) {
 	}
 	return makeSchoolResources(parsedHTML)
 }
+
+// GetFile выкачивает файл по заданной ссылке в заданную директорию (если его там ещё нет) и возвращает
+// - true, если файл был скачан;
+// - false, если файл уже был в директории;
+// с сервера первого типа.
+func GetFile(s *ss.Session, link, path string) (bool, error) {
+	return false, nil
+}

@@ -37,7 +37,6 @@ func main() {
 		"Server address", config.ServerAddr,
 		"Postgres info", config.Postgres,
 		"Max allowed threads", config.MaxProcs,
-		"Update Interval", config.UpdateInterval,
 		"LogFile", config.LogFile,
 	)
 	// Вся информация о списке серверов.
@@ -47,7 +46,6 @@ func main() {
 			"Name", school.Name,
 			"Type", school.Type,
 			"Link", school.Link,
-			"Time", school.Time,
 			"Permission", school.Permission,
 		)
 	}

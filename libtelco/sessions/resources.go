@@ -31,6 +31,15 @@ func (s *Session) GetResourcesList() (*dt.Resources, error) {
 // - true, если файл был скачан;
 // - false, если файл уже был в директории.
 func (s *Session) GetFile(link, path string) (bool, error) {
-
-	return false, nil
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	var err error
+	var flag bool
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		flag, err = t01.GetFile(s.Base, link, path)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return flag, err
 }

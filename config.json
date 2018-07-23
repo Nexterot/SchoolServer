@@ -2,35 +2,15 @@
     "serverAddr" : "localhost:8000",
     "postgres" : "host=localhost port=5432 user=test_user password=qwerty dbname=schoolserverdb sslmode=disable",
     "maxProcs" : 2,
-    "updateInterval" : 1800,
-    "logFile" : "logs/log0.txt",
+    "logFile" : "stdout",
     "schools" : [
         {
             "name" : "Европейская гимназия",
             "type" : 1,
             "link" : "62.117.74.43",
-            "time" : 2700,
             "permission": true,
             "login" : "мкорнакова",
             "password" : "93279e3308bdbbeed946fc965017f67a"
-        },
-        {
-            "name" : "Европейская гимназия",
-            "type" : 1,
-            "link" : "62.117.74.43",
-            "time" : 2700,
-            "permission": true,
-            "login" : "Мисриханов",
-            "password" : "c854adcde95c9f20002b52737211a566"
-        },
-        {
-            "name" : "Европейская гимназия",
-            "type" : 1,
-            "link" : "62.117.74.43",
-            "time" : 2700,
-            "permission": true,
-            "login" : "Мрябцева",
-            "password" : "d0970714757783e6cf17b26fb8e2298f"
         }
     ]
 }

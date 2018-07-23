@@ -21,12 +21,11 @@ import (
 // - информация о лог-файле;
 // - параметры школьных серверов;
 type Config struct {
-	ServerAddr     string   `json:"serverAddr"`
-	Postgres       string   `json:"postgres"`
-	MaxProcs       int      `json:"maxProcs"`
-	UpdateInterval int      `json:"updateInterval"`
-	LogFile        string   `json:"logFile"`
-	Schools        []School `json:"schools"`
+	ServerAddr string   `json:"serverAddr"`
+	Postgres   string   `json:"postgres"`
+	MaxProcs   int      `json:"maxProcs"`
+	LogFile    string   `json:"logFile"`
+	Schools    []School `json:"schools"`
 }
 
 // Типы серверов.
@@ -43,7 +42,6 @@ type School struct {
 	Name       string `json:"name"`
 	Type       int    `json:"type"`
 	Link       string `json:"link"`
-	Time       int    `json:"time"`
 	Permission bool   `json:"permission"`
 	// Этих полей скоро не будет.
 	Login    string `json:"login"`
