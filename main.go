@@ -14,12 +14,6 @@ var (
 	config *cp.Config
 	// Логгер.
 	logger *log.Logger
-	/*
-		// ORM-Объект PostgreSQL
-		sqlDB *gorm.DB
-		// Объект Redis.
-		inMemoryDB *redis.Client
-	*/
 	// Стандартная ошибка.
 	err error
 )

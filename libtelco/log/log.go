@@ -33,20 +33,15 @@ func NewLogger(config string) (logger *Logger, err error) {
 	case "stdout":
 		logger.useLog = true
 		logger.logger = log.NewLogger(log.NewConcurrentWriter(os.Stdout), "SchoolServer")
+	case "stderr":
+		logger.useLog = true
+		logger.logger = log.NewLogger(log.NewConcurrentWriter(os.Stderr), "SchoolServer")
 	case "":
 	default:
 		logger.useLog = true
-		var logFile *os.File
-		if _, err = os.Stat(config); os.IsNotExist(err) {
-			logFile, err = os.Create(config)
-			if err != nil {
-				return
-			}
-		} else {
-			logFile, err = os.Open(config)
-			if err != nil {
-				return
-			}
+		logFile, err := os.Create(config)
+		if err != nil {
+			return nil, err
 		}
 		logger.logger = log.NewLogger(log.NewConcurrentWriter(io.Writer(logFile)), "SchoolServer")
 	}
