@@ -28,3 +28,25 @@ func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMark
 	}
 	return weekSchoolMarks, err
 }
+
+/*
+Получение подробностей урока.
+*/
+
+// GetLessonDescription вовзращает подробности урока.
+func (s *Session) GetLessonDescription(lessonID, studentID string) (*dt.LessonDescription, error) {
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	if studentID == "" {
+		studentID = s.Base.ID
+	}
+	var err error
+	var lessonDescription *dt.LessonDescription
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		lessonDescription, err = t01.GetLessonDescription(s.Base, lessonID, studentID)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return lessonDescription, err
+}

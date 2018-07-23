@@ -33,3 +33,14 @@ type SchoolMark struct {
 	// Временный костыль.
 	ID int `json:"id"`
 }
+
+// LessonDescription struct содержит в себе подробности задания.
+type LessonDescription struct {
+	ThemeType    string
+	ThemeInfo    string
+	DateType     string
+	DateInfo     string
+	Comments     []string
+	File         string
+	AttachmentID string
+}

@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	dt "SchoolServer/libtelco/sessions/data-types"
 	ss "SchoolServer/libtelco/sessions/session"
@@ -419,4 +420,13 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 		lm.Data = append(lm.Data, dt.LessonMap{k, v})
 	}
 	return &lm, nil
+}
+
+func checkResponse(s *ss.Session, response *gr.Response) error {
+	body := string(response.Bytes())
+	if (response.StatusCode == 400) &&
+		(strings.Contains(body, "HTTP Error 400. The request has an invalid header name.")) {
+		return fmt.Errorf("You was logged out from server")
+	}
+	return nil
 }

@@ -6,9 +6,7 @@ import (
 	dt "SchoolServer/libtelco/sessions/data-types"
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
-	"fmt"
 	"strconv"
-	"strings"
 	"unicode"
 
 	gr "github.com/levigross/grequests"
@@ -221,13 +219,4 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 
 	weekSchoolMarks, err = makeWeekSchoolMarks(parsedHTML)
 	return weekSchoolMarks, err
-}
-
-func checkResponse(s *ss.Session, response *gr.Response) error {
-	body := string(response.Bytes())
-	if (response.StatusCode == 400) &&
-		(strings.Contains(body, "HTTP Error 400. The request has an invalid header name.")) {
-		return fmt.Errorf("You was logged out from server")
-	}
-	return nil
 }
