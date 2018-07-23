@@ -572,8 +572,7 @@
 
 ```json
 {
-	"table": [
-		{
+	"table": {
 			"months": [
 				{
 					"name": "string",
@@ -588,8 +587,7 @@
 							]
 						}
 					]
-				}
-			],
+				} ,
 			"average_marks": [
 				{
 					"name": "string",
