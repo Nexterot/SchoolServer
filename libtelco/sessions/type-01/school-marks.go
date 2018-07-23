@@ -220,3 +220,8 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 	weekSchoolMarks, err = makeWeekSchoolMarks(parsedHTML)
 	return weekSchoolMarks, err
 }
+
+// GetLessonDescription вовзращает подробности урока с сервера первого типа.
+func GetLessonDescription(s *ss.Session, lessonId, studentID string) (*dt.LessonDescription, error) {
+	return nil, nil
+}
