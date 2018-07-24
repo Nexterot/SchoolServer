@@ -6,6 +6,7 @@ import (
 	dt "SchoolServer/libtelco/sessions/data-types"
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
+	"fmt"
 	"strconv"
 	"unicode"
 
@@ -27,8 +28,6 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 			"PCLID_IUP": "",
 			"SID":       studentID,
 			"VER":       s.VER,
-			// "MenuItem": "14",
-			// "TabItem":
 		},
 		Headers: map[string]string{
 			"Origin":                    p + s.Serv.Link,
@@ -222,6 +221,68 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 }
 
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
-func GetLessonDescription(s *ss.Session, lessonId, studentID string) (*dt.LessonDescription, error) {
+func GetLessonDescription(s *ss.Session, date, lessonID, studentID string) (*dt.LessonDescription, error) {
+	p := "http://"
+	//var lessonDescription *dt.LessonDescription
+
+	// 0-ой Post-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"AT":        s.AT,
+			"Date":      date,
+			"LoginType": "0",
+			"PCLID_IUP": "",
+			"SID":       studentID,
+			"VER":       s.VER,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
+		},
+	}
+	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Curriculum/Assignments.asp", requestOptions0)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	fmt.Println(string(response0.Bytes()))
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	if err := checkResponse(s, response0); err != nil {
+		return nil, err
+	}
+
+	// 1-ый Post-запрос.
+	requestOptions1 := &gr.RequestOptions{
+		Data: map[string]string{
+			// TODO: get AID.
+			"AID":       "217128",
+			"AT":        s.AT,
+			"CID":       lessonID,
+			"PCLID_IUP": "",
+			"TP":        "3",
+		},
+		Headers: map[string]string{
+			"Origin":           p + s.Serv.Link,
+			"X-Requested-With": "XMLHttpRequest",
+			"at":               s.AT,
+			"Referer":          p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
+		},
+	}
+	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/ajax/Assignments/GetAssignmentInfo.asp", requestOptions1)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = response1.Close()
+	}()
+	fmt.Println(string(response1.Bytes()))
+	if err := checkResponse(s, response1); err != nil {
+		return nil, err
+	}
 	return nil, nil
 }

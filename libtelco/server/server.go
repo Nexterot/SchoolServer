@@ -8,14 +8,14 @@ package server
 import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
+	// ss "SchoolServer/libtelco/sessions"
 
 	api "SchoolServer/libtelco/rest-api"
 
-	"github.com/gorilla/context"
-
 	"net/http"
-
 	"runtime"
+
+	"github.com/gorilla/context"
 )
 
 // Server struct содержит конфигурацию сервера.
@@ -38,23 +38,25 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
-
 	/*
 		// Тесты.
-		kek := ss.NewSession(&serv.config.Schools[2])
+		kek := ss.NewSession(&serv.config.Schools[0])
 
 		err := kek.Login()
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		data, err := kek.GetResourcesList()
+		_, err = kek.GetLessonDescription("16.10.2017", "13075", "11198")
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(data)
-	*/
 
+		err = kek.Logout()
+		if err != nil {
+			fmt.Println(err)
+		}
+	*/
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()
 	return http.ListenAndServe(serv.config.ServerAddr, context.ClearHandler(http.DefaultServeMux))
