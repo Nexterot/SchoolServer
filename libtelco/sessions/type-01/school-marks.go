@@ -6,8 +6,10 @@ import (
 	dt "SchoolServer/libtelco/sessions/data-types"
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"strconv"
+	"strings"
 	"unicode"
 
 	gr "github.com/levigross/grequests"
@@ -287,7 +289,24 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней подробности урока.
-	parsedHTML, err := html.Parse(bytes.NewReader(response1.Bytes()))
+
+	// Получаем таблицу с подробностями урока из полученной json-структуры
+	responseMap := make(map[string]interface{})
+	err = json.Unmarshal(response1.Bytes(), &responseMap)
+	if err != nil {
+		return nil, err
+	}
+	strs := responseMap["data"].(map[string]interface{})
+	var responseString string
+	if strs != nil {
+		for k, v := range strs {
+			if k == "strTable" {
+				responseString = v.(string)
+			}
+		}
+	}
+
+	parsedHTML, err := html.Parse(strings.NewReader(responseString))
 	if err != nil {
 		return nil, err
 	}
