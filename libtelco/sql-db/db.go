@@ -517,9 +517,36 @@ func (db *Database) GetSchoolPermission(id int) (bool, error) {
 	return school.Permission, nil
 }
 
-// GetSchools возвращает информацию о всех поддерживаемых школах.
+// GetSchools возвращает информацию о всех поддерживаемых школах
 func (db *Database) GetSchools() ([]School, error) {
 	var schools []School
 	err := db.SchoolServerDB.Find(&schools).Error
 	return schools, err
+}
+
+// GetStudents возвращает список учеников пользователя
+func (db *Database) GetStudents(userName string, schoolID int) (map[string]int, error) {
+	var (
+		user     User
+		students []Student
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting user for getting childrenMap")
+		return nil, err
+	}
+	// Получаем ассоциированных с пользователем учеников
+	err = db.SchoolServerDB.Model(&user).Related(&students).Error
+	if err != nil {
+		db.Logger.Info("DB: Error getting students list for getting childrenMap")
+		return nil, err
+	}
+	// Заполним ответ
+	childrenMap := make(map[string]int)
+	for _, st := range students {
+		childrenMap[st.Name] = st.NetSchoolID
+	}
+	return childrenMap, nil
 }
