@@ -220,8 +220,14 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 	return weekSchoolMarks, err
 }
 
+/*
+TODO:
+1) чтобы вытащить аякс-запросом подробности урока, мне нужно сначала запросить расписание+оценки, которые будут содержать данный урок, то есть мне нужна "дата". Таким образом, в ответ со списком оценок/уроков тебе надо пихнуть тупо дату, которую передавал пользователь
+2) так как там идёт Ajax-запрос, то там не html, а маленькая фигня прилетает, твой парсер эт учитывает?
+*/
+
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
-func GetLessonDescription(s *ss.Session, date, lessonID, studentID string) (*dt.LessonDescription, error) {
+func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentID string) (*dt.LessonDescription, error) {
 	p := "http://"
 	//var lessonDescription *dt.LessonDescription
 
@@ -248,10 +254,6 @@ func GetLessonDescription(s *ss.Session, date, lessonID, studentID string) (*dt.
 	defer func() {
 		_ = response0.Close()
 	}()
-	fmt.Println(string(response0.Bytes()))
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
 	if err := checkResponse(s, response0); err != nil {
 		return nil, err
 	}
@@ -259,12 +261,11 @@ func GetLessonDescription(s *ss.Session, date, lessonID, studentID string) (*dt.
 	// 1-ый Post-запрос.
 	requestOptions1 := &gr.RequestOptions{
 		Data: map[string]string{
-			// TODO: get AID.
-			"AID":       "217128",
+			"AID":       strconv.Itoa(AID),
 			"AT":        s.AT,
-			"CID":       lessonID,
+			"CID":       strconv.Itoa(CID),
 			"PCLID_IUP": "",
-			"TP":        "3",
+			"TP":        strconv.Itoa(TP),
 		},
 		Headers: map[string]string{
 			"Origin":           p + s.Serv.Link,
@@ -280,9 +281,17 @@ func GetLessonDescription(s *ss.Session, date, lessonID, studentID string) (*dt.
 	defer func() {
 		_ = response1.Close()
 	}()
-	fmt.Println(string(response1.Bytes()))
 	if err := checkResponse(s, response1); err != nil {
 		return nil, err
 	}
+	fmt.Println(string(response1.Bytes()))
+	/*
+		// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+		// находящуюся в теле ответа, и найти в ней подробности урока.
+		parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
+		if err != nil {
+			return nil, err
+		}
+	*/
 	return nil, nil
 }

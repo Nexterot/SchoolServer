@@ -39,23 +39,23 @@ func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 	/*
-		// Тесты.
-		kek := ss.NewSession(&serv.config.Schools[0])
+						// Тесты.
+						kek := ss.NewSession(&serv.config.Schools[0])
 
-		err := kek.Login()
-		if err != nil {
-			fmt.Println(err)
-		}
+						err := kek.Login()
+						if err != nil {
+							fmt.Println(err)
+						}
+		// Вставь нужное кол-во значений.
+						_, err = kek.GetLessonDescription("16.10.2017", "13075", "11198")
+						if err != nil {
+							fmt.Println(err)
+						}
 
-		_, err = kek.GetLessonDescription("16.10.2017", "13075", "11198")
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		err = kek.Logout()
-		if err != nil {
-			fmt.Println(err)
-		}
+						err = kek.Logout()
+						if err != nil {
+							fmt.Println(err)
+						}
 	*/
 	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()

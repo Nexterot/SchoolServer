@@ -19,9 +19,12 @@ type DaySchoolMarks struct {
 
 // SchoolMark struct содержит в себе оценку и ДЗ по одному уроку.
 type SchoolMark struct {
-	AID    int
-	CID    int
-	TP     int
+	// Для последующего AJAX-запроса.
+	Date string `json:"date"`
+	AID  int    `json:"AID"`
+	CID  int    `json:"CID"`
+	TP   int    `json:"TP"`
+	// Собственно ответ.
 	Status int    `json:"status"`
 	InTime bool   `json:"inTime"`
 	Name   string `json:"name"`
@@ -30,8 +33,6 @@ type SchoolMark struct {
 	Type   string `json:"type"`
 	Mark   string `json:"mark"`
 	Weight string `json:"weight"`
-	// Временный костыль.
-	ID int `json:"id"`
 }
 
 // LessonDescription struct содержит в себе подробности задания.
