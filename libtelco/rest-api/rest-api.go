@@ -52,25 +52,27 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	}
 }
 
-// BindHandlers привязывает все handler'ы (с помощью http.HandleFunc).
+// BindHandlers привязывает все handler'ы Rest API
 func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/", rest.ErrorHandler)
 
+	// Общее: Запрос списка школ, запрос доступа, авторизация, выход
 	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler)    // done
 	http.HandleFunc("/check_permission", rest.CheckPermissionHandler) // done
 	http.HandleFunc("/sign_in", rest.SignInHandler)                   // done
 	http.HandleFunc("/log_out", rest.LogOutHandler)                   // done
-
+	// Дневник: список учеников, задания и оценки на неделю, отметить задание
+	// как выполненное/невыполненное
 	http.HandleFunc("/get_children_map", rest.GetChildrenMapHandler)             // done
 	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler)        // done
-	http.HandleFunc("/get_lesson_description", rest.GetLessonDescriptionHandler) // in dev
+	http.HandleFunc("/get_lesson_description", rest.GetLessonDescriptionHandler) // done
 	http.HandleFunc("/mark_as_done", rest.MarkAsDoneHandler)                     // done
 	http.HandleFunc("/unmark_as_done", rest.UnmarkAsDoneHandler)                 // done
-
+	// Объявления: получение списка объявлений
 	http.HandleFunc("/get_posts", rest.Handler)
-
+	// Расписание: получение расписания на N дней
 	http.HandleFunc("/get_schedule", rest.GetScheduleHandler) // done
-
+	// Отчеты
 	http.HandleFunc("/get_report_student_total_marks", rest.GetReportStudentTotalMarksHandler)              // done
 	http.HandleFunc("/get_report_student_average_mark", rest.GetReportStudentAverageMarkHandler)            // done
 	http.HandleFunc("/get_report_student_average_mark_dyn", rest.GetReportStudentAverageMarkDynHandler)     // done
@@ -80,20 +82,20 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/get_report_journal_access", rest.GetReportJournalAccessHandler)                       // done
 	http.HandleFunc("/get_report_parent_info_letter_data", rest.Handler)
 	http.HandleFunc("/get_report_parent_info_letter", rest.GetReportParentInfoLetterHandler) // done
-
+	// Школьные ресурсы
 	http.HandleFunc("/get_resources", rest.Handler)
-
+	// Почта
 	http.HandleFunc("/get_mail", rest.Handler)
 	http.HandleFunc("/get_mail_description", rest.Handler)
 	http.HandleFunc("/delete_mail", rest.Handler)
 	http.HandleFunc("/send_letter", rest.Handler)
 	http.HandleFunc("/get_address_book", rest.Handler)
-
+	// Форум
 	http.HandleFunc("/get_forum", rest.Handler)
 	http.HandleFunc("/get_forum_messages", rest.Handler)
 	http.HandleFunc("/create_topic", rest.Handler)
 	http.HandleFunc("/create_message_in_topic", rest.Handler)
-
+	// Настройки
 	http.HandleFunc("/change_password", rest.Handler)
 }
 
@@ -1214,54 +1216,84 @@ type getLessonDescriptionRequest struct {
 
 // GetLessonDescriptionHandler обрабатывает запрос на получение подробностей дз
 func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetLessonDescriptionHandler called (not implemented yet")
-	/*
-		if req.Method != "POST" {
-			rest.logger.Error("Wrong method: ", req.Method)
-			return
-		}
-		// Прочитать куку
-		cookie, err := req.Cookie("sessionName")
+	rest.logger.Info("GetLessonDescriptionHandler called")
+	if req.Method != "POST" {
+		rest.logger.Error("Wrong method: ", req.Method)
+		return
+	}
+	// Прочитать куку
+	cookie, err := req.Cookie("sessionName")
+	if err != nil {
+		rest.logger.Info("User not authorized: sessionName absent")
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	sessionName := cookie.Value
+	// Получить существующий объект сессии
+	session, err := rest.store.Get(req, sessionName)
+	if session.IsNew {
+		rest.logger.Error("Local session broken")
+		delete(rest.sessionsMap, sessionName)
+		session.Options.MaxAge = -1
+		session.Save(req, respwr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq getLessonDescriptionRequest
+	decoder := json.NewDecoder(req.Body)
+	err = decoder.Decode(&rReq)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data", err)
+		return
+	}
+	taskID, err := strconv.Atoi(rReq.ID)
+	if err != nil {
+		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("Malformed request data", err)
+		return
+	}
+	// Если нет удаленной сессии, создать
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		rest.logger.Info("No remote session, creating new one")
+		userName := session.Values["userName"]
+		schoolID := session.Values["schoolID"]
+		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
 		if err != nil {
-			rest.logger.Info("User not authorized: sessionName absent")
+			rest.logger.Error("Error reading database")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		remoteSession = ss.NewSession(school)
+		if err = remoteSession.Login(); err != nil {
+			rest.logger.Error("Error remote signing in")
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		rest.sessionsMap[sessionName] = remoteSession
+	}
+	// Сходить в бд за информацией о таске
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	date, cid, tp, studentID, err := rest.db.GetTaskDate(userName.(string), schoolID.(int), taskID)
+	if err != nil {
+		if err.Error() == "record not found" {
+			rest.logger.Info("Invalid task specified: it's not in db", err)
 			respwr.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		sessionName := cookie.Value
-		// Получить существующий объект сессии
-		session, err := rest.store.Get(req, sessionName)
-		if session.IsNew {
-			rest.logger.Error("Local session broken")
-			delete(rest.sessionsMap, sessionName)
-			session.Options.MaxAge = -1
-			session.Save(req, respwr)
-			respwr.WriteHeader(http.StatusBadRequest)
-			return
-		}
-		// Чтение запроса от клиента
-		var rReq getLessonDescriptionRequest
-		decoder := json.NewDecoder(req.Body)
-		err = decoder.Decode(&rReq)
-		if err != nil {
-			respwr.WriteHeader(http.StatusBadRequest)
-			rest.logger.Error("Malformed request data")
-			return
-		}
-		var id int
-		if rReq.ID == "" {
-			id = -1
-		} else {
-			id, err := strconv.Atoi(rReq.ID)
-			if err != nil {
-				respwr.WriteHeader(http.StatusBadRequest)
-				rest.logger.Error("Malformed request data or i don't know")
-				return
-			}
-		}
-		// Если нет удаленной сессии, создать
-		remoteSession, ok := rest.sessionsMap[sessionName]
-		if !ok {
-			rest.logger.Info("No remote session, creating new one")
+		rest.logger.Error("Error getting task date from db")
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// Получить описание таска
+	lessonDescription, err := remoteSession.GetLessonDescription(date, taskID, cid, tp, strconv.Itoa(studentID))
+	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	if err != nil {
+		if err.Error() == "You was logged out from server" {
+			rest.logger.Info("Remote connection broken, creation new one")
 			userName := session.Values["userName"]
 			schoolID := session.Values["schoolID"]
 			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
@@ -1277,68 +1309,23 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 				return
 			}
 			rest.sessionsMap[sessionName] = remoteSession
-		}
-		// Сходить в бд за датой дня таска
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		date, err = rest.db.GetTaskDate(userName.(string), schoolID.(int), id)
-		if err != nil {
-			if err.Error() == "record not found" {
-				rest.logger.Info("Invalid task specified: it's not in db", err)
-				respwr.WriteHeader(http.StatusBadRequest)
-				return
-			}
-			rest.logger.Error("Error getting task date from db")
+			rest.logger.Info("Successfully created new remote session")
+		} else {
+			rest.logger.Error("Unable to get lesson description: ", err)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		// Получить задания на неделю
+	}
+	// Замаршалить
+	bytes, err := json.Marshal(lessonDescription)
+	if err != nil {
+		rest.logger.Error("Error marshalling lesson description", err)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	respwr.Write(bytes)
+	rest.logger.Info("Sent lesson description: ", lessonDescription)
 
-		// Если удаленная сессия есть в mapSessions, но не активна, создать новую
-		if err != nil {
-			if err.Error() == "You was logged out from server" {
-				rest.logger.Info("Remote connection broken, creation new one")
-				userName := session.Values["userName"]
-				schoolID := session.Values["schoolID"]
-				school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-				if err != nil {
-					rest.logger.Error("Error reading database")
-					respwr.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				remoteSession = ss.NewSession(school)
-				if err = remoteSession.Login(); err != nil {
-					rest.logger.Error("Error remote signing in")
-					respwr.WriteHeader(http.StatusInternalServerError)
-					return
-				}
-				rest.sessionsMap[sessionName] = remoteSession
-				rest.logger.Info("Successfully created new remote session")
-			} else {
-				rest.logger.Error("Unable to get tasks and marks: ", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		}
-		// Обновить статусы заданий
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		err = rest.db.UpdateTasksStatuses(userName.(string), schoolID.(int), rReq.ID, weekMarks)
-		if err != nil {
-			rest.logger.Error("Error updating statuses for weekMarks")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		// Замаршалить
-		bytes, err := json.Marshal(weekMarks)
-		if err != nil {
-			rest.logger.Error("Error marshalling weekMarks")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		respwr.Write(bytes)
-		rest.logger.Info("Sent tasks and marks for a week: ", weekMarks)
-	*/
 }
 
 // markAsDoneRequest используется в MarkAsDoneHandler

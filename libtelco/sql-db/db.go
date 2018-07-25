@@ -71,8 +71,9 @@ type Day struct {
 type Task struct {
 	gorm.Model
 	DayID      uint
-	LessonID   int // id урока
-	HometaskID int // id домашнего задания
+	LessonID   int // id урока (CID)
+	HometaskID int // id домашнего задания (AID)
+	TP         int // TP
 	Status     int // новое\просмотренное\выполненное
 }
 
@@ -318,7 +319,7 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 			}
 			if !dbTaskFound {
 				// Задания не существует, надо создать
-				newTask = Task{DayID: newDay.ID, LessonID: task.CID, HometaskID: task.AID, Status: StatusTaskNew}
+				newTask = Task{DayID: newDay.ID, LessonID: task.CID, HometaskID: task.AID, Status: StatusTaskNew, TP: task.TP}
 				err = db.SchoolServerDB.Create(&newTask).Error
 				if err != nil {
 					db.Logger.Info("DB: Error creating new task for updating tasks status")
@@ -344,8 +345,8 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 	return nil
 }
 
-// GetTaskDate получает дату дня по таску
-func (db *Database) GetTaskDate(userName string, schoolID int, taskID int) (string, error) {
+// GetTaskInfo получает информацию о задании - дату, CID, TP, id ученика
+func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (string, int, int, int, error) {
 	var (
 		tasks   []Task
 		day     Day
@@ -357,14 +358,14 @@ func (db *Database) GetTaskDate(userName string, schoolID int, taskID int) (stri
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
 		db.Logger.Info("DB: Error getting user for getting task date")
-		return "", err
+		return "", -1, -1, -1, err
 	}
 	// Получаем таски с таким taskID
 	where_ := Task{HometaskID: taskID}
 	err = db.SchoolServerDB.Where(where_).Find(&tasks).Error
 	if err != nil {
 		db.Logger.Info("DB: Error getting tasks for getting task date")
-		return "", err
+		return "", -1, -1, -1, err
 	}
 	// Найдем нужный таск
 	for _, t := range tasks {
@@ -372,13 +373,13 @@ func (db *Database) GetTaskDate(userName string, schoolID int, taskID int) (stri
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
 			db.Logger.Info("DB: Error getting days for getting task date")
-			return "", err
+			return "", -1, -1, -1, err
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
 			db.Logger.Info("DB: Error getting student for getting task date")
-			return "", err
+			return "", -1, -1, -1, err
 		}
 
 		// Если совпал id пользователя, обновить статус и вернуть дату
@@ -388,15 +389,15 @@ func (db *Database) GetTaskDate(userName string, schoolID int, taskID int) (stri
 				err = db.SchoolServerDB.Save(&t).Error
 				if err != nil {
 					db.Logger.Error("DB: Error when saving updated task status")
-					return "", err
+					return "", -1, -1, -1, err
 				}
 			}
-			return day.Date, nil
+			return day.Date, t.LessonID, t.TP, student.NetSchoolID, nil
 		}
 	}
 	// Таск не найден
 	db.Logger.Info("DB: Error when searching for task when getting task date")
-	return "", fmt.Errorf("record not found")
+	return "", -1, -1, -1, fmt.Errorf("record not found")
 }
 
 // TaskMarkDone меняет статус задания на "Выполненное"
