@@ -1277,7 +1277,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	// Сходить в бд за информацией о таске
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	date, cid, tp, studentID, err := rest.db.GetTaskDate(userName.(string), schoolID.(int), taskID)
+	date, cid, tp, studentID, err := rest.db.GetTaskInfo(userName.(string), schoolID.(int), taskID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			rest.logger.Info("Invalid task specified: it's not in db", err)
