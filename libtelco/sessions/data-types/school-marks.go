@@ -37,11 +37,11 @@ type SchoolMark struct {
 
 // LessonDescription struct содержит в себе подробности задания.
 type LessonDescription struct {
-	ThemeType    string
-	ThemeInfo    string
-	DateType     string
-	DateInfo     string
-	Comments     []string
-	File         string
-	AttachmentID string
+	ThemeType    string   `json:"theme_type"`
+	ThemeInfo    string   `json:"theme_info"`
+	DateType     string   `json:"date_type"`
+	DateInfo     string   `json:"date_info"`
+	Comments     []string `json:"comments"`
+	File         string   `json:"file"`
+	AttachmentID string   `json:"AttachmentID"`
 }
