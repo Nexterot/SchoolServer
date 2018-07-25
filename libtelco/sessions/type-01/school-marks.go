@@ -7,7 +7,6 @@ import (
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
 	"errors"
-	"fmt"
 	"strconv"
 	"unicode"
 
@@ -230,7 +229,7 @@ TODO:
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
 func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentID string) (*dt.LessonDescription, error) {
 	p := "http://"
-	//var lessonDescription *dt.LessonDescription
+	var lessonDescription *dt.LessonDescription
 
 	// 0-ой Post-запрос.
 	requestOptions0 := &gr.RequestOptions{
@@ -285,14 +284,126 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 	if err := checkResponse(s, response1); err != nil {
 		return nil, err
 	}
-	fmt.Println(string(response1.Bytes()))
-	/*
-		// Если мы дошли до этого места, то можно распарсить HTML-страницу,
-		// находящуюся в теле ответа, и найти в ней подробности урока.
-		parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
-		if err != nil {
-			return nil, err
+
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа, и найти в ней подробности урока.
+	parsedHTML, err := html.Parse(bytes.NewReader(response1.Bytes()))
+	if err != nil {
+		return nil, err
+	}
+
+	// Находит нод с табличкой
+	var findLessonDescriptionTableNode func(*html.Node) *html.Node
+	findLessonDescriptionTableNode = func(node *html.Node) *html.Node {
+		if node.Type == html.ElementNode {
+			if node.Data == "table" {
+				for _, a := range node.Attr {
+					if a.Key == "class" && a.Val == "table table-bordered table-condensed" {
+						return node
+					}
+				}
+			}
 		}
-	*/
-	return nil, nil
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			n := findLessonDescriptionTableNode(c)
+			if n != nil {
+				return n
+			}
+		}
+
+		return nil
+	}
+
+	// Находит из переданной строки путь к файлу и его attachmentId
+	findURLAndID := func(str string) (string, string, error) {
+		var url, id string
+		var i, j int
+		for i = 0; i < len(str); i++ {
+			if str[i:i+1] == "(" {
+				break
+			}
+		}
+		for j = i; j < len(str); j++ {
+			if str[j:j+1] == "," {
+				url = str[i+2 : j-1]
+				break
+			}
+		}
+		for i = j + 1; i < len(str); i++ {
+			if str[i:i+1] == ")" {
+				id = str[j+2 : i]
+			}
+		}
+		if url == "" || id == "" {
+			return url, id, errors.New("Couldn't find url path or attachment id of file in task details")
+		}
+
+		return url, id, nil
+	}
+
+	var formLessonDescription func(*html.Node) (*dt.LessonDescription, error)
+	formLessonDescription = func(node *html.Node) (*dt.LessonDescription, error) {
+		if node != nil {
+			details := *new(dt.LessonDescription)
+
+			tableNode := node.FirstChild.FirstChild
+			if tableNode.FirstChild.FirstChild != nil {
+				details.ThemeType = tableNode.FirstChild.FirstChild.Data
+			}
+			if tableNode.FirstChild.NextSibling.FirstChild != nil {
+				details.ThemeInfo = tableNode.FirstChild.NextSibling.FirstChild.Data
+			}
+
+			tableNode = tableNode.NextSibling
+			if tableNode.FirstChild.FirstChild != nil {
+				details.DateType = tableNode.FirstChild.FirstChild.Data
+			}
+			if tableNode.FirstChild.NextSibling.FirstChild != nil {
+				details.DateInfo = tableNode.FirstChild.NextSibling.FirstChild.Data
+			}
+
+			details.Comments = make([]string, 0, 1)
+			tableNode = tableNode.NextSibling
+			commentNode := tableNode.FirstChild.NextSibling
+			if commentNode.FirstChild != nil {
+				commentNode = commentNode.FirstChild
+				for commentNode != nil {
+					if commentNode.Data != "br" && !(len(commentNode.Data) == 2 && commentNode.Data[0] == 194 && commentNode.Data[1] == 160) {
+						details.Comments = append(details.Comments, commentNode.Data)
+					}
+					commentNode = commentNode.NextSibling
+				}
+			}
+
+			tableNode = tableNode.NextSibling
+			if tableNode.FirstChild.NextSibling.FirstChild != nil {
+				if tableNode.FirstChild.NextSibling.FirstChild.FirstChild != nil {
+					for _, a := range tableNode.FirstChild.NextSibling.FirstChild.FirstChild.Attr {
+						if a.Key == "href" {
+							details.File, details.AttachmentID, err = findURLAndID(a.Val)
+							if err != nil {
+								return &details, err
+							}
+							break
+						}
+					}
+				}
+			}
+
+			return &details, nil
+		}
+
+		return nil, errors.New("Node is nil in func formLessonDescription")
+	}
+
+	makeLessonDescription := func(node *html.Node) (*dt.LessonDescription, error) {
+		var details *dt.LessonDescription
+		tableNode := findLessonDescriptionTableNode(node)
+		details, err = formLessonDescription(tableNode)
+
+		return details, err
+	}
+
+	lessonDescription, err = makeLessonDescription(parsedHTML)
+	return lessonDescription, err
 }
