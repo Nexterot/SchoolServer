@@ -22,7 +22,7 @@ func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMark
 	var weekSchoolMarks *dt.WeekSchoolMarks
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		weekSchoolMarks, _, err = t01.GetWeekSchoolMarks(s.Base, date, studentID)
+		weekSchoolMarks, err = t01.GetWeekSchoolMarks(s.Base, date, studentID)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
