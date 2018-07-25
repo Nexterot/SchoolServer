@@ -6,6 +6,7 @@ import (
 	dt "SchoolServer/libtelco/sessions/data-types"
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"unicode"
@@ -15,7 +16,7 @@ import (
 )
 
 // GetWeekSchoolMarks возвращает оценки на заданную неделю с сервера первого типа.
-func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMarks, error) {
+func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMarks, string, error) {
 	p := "http://"
 	var weekSchoolMarks *dt.WeekSchoolMarks
 
@@ -37,19 +38,19 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 	}
 	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Curriculum/Assignments.asp", requestOptions0)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	defer func() {
 		_ = response0.Close()
 	}()
 	if err := checkResponse(s, response0); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней оценки на заданную неделю.
 	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	// Объявляем нужные функции
@@ -133,8 +134,8 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 
 	// Получает всю информацию о уроках из переданного нода.
 	getAllSchoolMarksInfo := func(node *html.Node) ([]dt.DaySchoolMarks, error) {
+		days := make([]dt.DaySchoolMarks, 0, 7)
 		if node != nil {
-			days := make([]dt.DaySchoolMarks, 0, 7)
 			lessons := make([]dt.SchoolMark, 0, 10)
 			var currentDay dt.DaySchoolMarks
 			date := ""
@@ -204,7 +205,7 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 			days = append(days, currentDay)
 			return days, nil
 		}
-		return nil, nil
+		return days, errors.New("Node is nil in func getAllSchoolMarksInfo")
 	}
 
 	// Составляет таблицу с днями и их уроками
@@ -217,7 +218,7 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 	}
 
 	weekSchoolMarks, err = makeWeekSchoolMarks(parsedHTML)
-	return weekSchoolMarks, err
+	return weekSchoolMarks, date, err
 }
 
 /*
