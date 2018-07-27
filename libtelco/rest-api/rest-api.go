@@ -36,12 +36,14 @@ type RestAPI struct {
 func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	key := make([]byte, 32)
 	rand.Read(key)
-	logger.Info("Generated secure key: ", key)
+	logger.Info("REST: Successfully generated secure key", "Key", key)
 	newStore := sessions.NewCookieStore(key)
 	newStore.MaxAge(86400 * 365)
 	database, err := db.NewDatabase(logger, config)
 	if err != nil {
-		logger.Error("Error when creating database!", err)
+		logger.Error("REST: Error occured when initializing database", "Error", err)
+	} else {
+		logger.Info("REST: Successfully initialized database")
 	}
 	return &RestAPI{
 		config:      config,
@@ -55,7 +57,6 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 // BindHandlers привязывает все handler'ы Rest API
 func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/", rest.ErrorHandler)
-
 	// Общее: Запрос списка школ, запрос доступа, авторизация, выход
 	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler)    // done
 	http.HandleFunc("/check_permission", rest.CheckPermissionHandler) // done
@@ -97,41 +98,52 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/create_message_in_topic", rest.Handler)
 	// Настройки
 	http.HandleFunc("/change_password", rest.Handler)
+	rest.logger.Info("REST: Successfully bound handlers")
 }
 
-// checkPermissionRequest используется в CheckPermissionHandler
-type checkPermissionRequest struct {
+// permissionCheckRequest используется в CheckPermissionHandler
+type permissionCheckRequest struct {
 	Login string `json:"login"`
 	ID    int    `json:"id"`
 }
 
-// checkPermissionResponse используется в CheckPermissionHandler
-type checkPermissionResponse struct {
+// permissionCheckResponse используется в CheckPermissionHandler
+type permissionCheckResponse struct {
 	Permission bool `json:"permission"`
 }
 
 // CheckPermissionHandler проверяет, есть ли разрешение на работу с школой
 func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("CheckPermissionHandler called")
+	rest.logger.Info("REST: CheckPermissionHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	// Чтение json'a
-	var rReq checkPermissionRequest
+	var rReq permissionCheckRequest
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&rReq)
 	if err != nil {
-		rest.logger.Error("Malformed request data")
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
 	// Проверим разрешение у школы
 	perm, err := rest.db.GetSchoolPermission(rReq.ID)
 	if err != nil {
-		rest.logger.Error("Invalid id param specified")
-		respwr.WriteHeader(http.StatusBadRequest)
+		if err.Error() == "record not found" {
+			// Школа не найдена
+			rest.logger.Info("REST: Invalid school id specified", "Id", rReq.ID, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting school permission from db", "Error", err, "Id", rReq.ID, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+		}
 		return
 	}
 	if !perm {
@@ -139,128 +151,178 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 		userPerm, err := rest.db.GetUserPermission(rReq.Login, rReq.ID)
 		if err != nil {
 			if err.Error() == "record not found" {
-				// Пользователь новый, вернем true
+				// Пользователь новый: вернем true, чтобы он мог залогиниться и
+				// купить подписку
 				perm = true
 			} else {
-				rest.logger.Error("Getting permission from db: ", err)
+				// Другая ошибка
+				rest.logger.Error("REST: Error occured when getting user permission from db", "Error", err, "Login", rReq.Login, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+		} else {
+			perm = userPerm
 		}
-		perm = userPerm
 	}
-	resp := checkPermissionResponse{perm}
+	// Закодировать ответ в JSON
+	resp := permissionCheckResponse{perm}
 	bytes, err := json.Marshal(resp)
 	if err != nil {
-		rest.logger.Error("Error marshalling permission check response")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", resp, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent permission check response: ", resp)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+	}
 }
 
 // ErrorHandler обрабатывает некорректные запросы.
 func (rest *RestAPI) ErrorHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("Wrong request:", req.URL.EscapedPath())
+	rest.logger.Info("Wrong request", "Path", req.URL.EscapedPath(), "IP", req.RemoteAddr)
 }
 
-// getReportStudentTotalMarksRequest используется в GetReportStudentTotalMarksHandler
-type getReportStudentTotalMarksRequest struct {
+// reportStudentTotalMarksGetRequest используется в GetReportStudentTotalMarksHandler
+type reportStudentTotalMarksGetRequest struct {
 	ID int `json:"id"`
 }
 
-// GetReportStudentTotalMarksHandler обрабатывает запрос на получение отчета
-// об итоговых оценках
-func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentTotalMarksHandler called")
-	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
+// getLocalSession читает куки и получает объект локальной сессии
+func (rest *RestAPI) getLocalSession(respwr http.ResponseWriter, req *http.Request) (string, *sessions.Session) {
 	// Прочитать куку
 	cookie, err := req.Cookie("sessionName")
 	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: User not authorized", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		return
+		return "", nil
 	}
 	sessionName := cookie.Value
 	// Получить существующий объект сессии
 	session, err := rest.store.Get(req, sessionName)
 	if session.IsNew {
-		rest.logger.Error("Local session broken")
+		rest.logger.Error("REST: Error occured when getting session from cookiestore", "Error", err, "Session name", sessionName, "IP", req.RemoteAddr)
 		delete(rest.sessionsMap, sessionName)
 		session.Options.MaxAge = -1
 		session.Save(req, respwr)
 		respwr.WriteHeader(http.StatusBadRequest)
+		return "", nil
+	}
+	return sessionName, session
+}
+
+// remoteLogin авторизуется на сайте школы
+func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, session *sessions.Session) *ss.Session {
+	rest.logger.Info("REST: Remote signing in", "IP", req.RemoteAddr)
+	// Полезть в базу данных за данными для авторизации
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+	if err != nil {
+		if err.Error() == "record not found" {
+			// Либо пользователя, либо школы не нашли
+			rest.logger.Info("REST: No user auth data in db", "Username", userName, "SchoolID", schoolID, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting user auth data from db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+		}
+		return nil
+	}
+	// Создать удаленную сессию и залогиниться
+	remoteSession := ss.NewSession(school)
+	err = remoteSession.Login()
+	if err != nil {
+		rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return nil
+	}
+	rest.sessionsMap[session.Name()] = remoteSession
+	rest.logger.Info("REST: Successfully created new remote session", "IP", req.RemoteAddr)
+	return remoteSession
+}
+
+// GetReportStudentTotalMarksHandler обрабатывает запрос на получение отчета
+// об итоговых оценках
+func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("REST: GetReportStudentTotalMarksHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
+	if req.Method != "POST" {
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
-	var rReq getReportStudentTotalMarksRequest
+	var rReq reportStudentTotalMarksGetRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database")
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
-	id := strconv.Itoa(rReq.ID)
-	totalMarkReport, err := remoteSession.GetTotalMarkReport(id)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	// Получить отчет с сайта школы
+	totalMarkReport, err := remoteSession.GetTotalMarkReport(strconv.Itoa(rReq.ID))
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить отчет с сайта школы
+			totalMarkReport, err = remoteSession.GetTotalMarkReport(strconv.Itoa(rReq.ID))
 			if err != nil {
-				rest.logger.Error("Error reading database")
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in")
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get total marks: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(totalMarkReport)
 	if err != nil {
-		rest.logger.Error("Error marshalling totalMarkReport")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", totalMarkReport, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent total marks report: ", totalMarkReport)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", totalMarkReport, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", totalMarkReport, "IP", req.RemoteAddr)
+	}
 }
 
 // getReportStudentAverageMarkRequest используется в GetReportStudentAverageMarkHandler
@@ -275,188 +337,159 @@ type getReportStudentAverageMarkRequest struct {
 // GetReportStudentAverageMarkHandler обрабатывает запрос на получение отчета
 // о среднем балле
 func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentAverageMarkHandler called")
+	rest.logger.Info("REST: GetReportStudentAverageMarkHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq getReportStudentAverageMarkRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	id := strconv.Itoa(rReq.ID)
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
-
-	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type, id)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	// Получить отчет с сайта школы
+	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type, strconv.Itoa(rReq.ID))
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить отчет с сайта школы
+			averageMarkReport, err = remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type, strconv.Itoa(rReq.ID))
 			if err != nil {
-				rest.logger.Error("Error reading database", err)
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get average marks: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(averageMarkReport)
 	if err != nil {
-		rest.logger.Error("Error marshalling averageMarkReport")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", averageMarkReport, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent average marks report: ", averageMarkReport)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", averageMarkReport, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", averageMarkReport, "IP", req.RemoteAddr)
+	}
 }
 
 // GetReportStudentAverageMarkDynHandler обрабатывает запрос на получение отчета
 // о динамике среднего балла
 func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentAverageMarkDynHandler called")
+	rest.logger.Info("REST: GetReportStudentAverageMarkDynHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq getReportStudentAverageMarkRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	id := strconv.Itoa(rReq.ID)
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
-	averageMarkDynReport, err := remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type, id)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	// Получить отчет с сайта школы
+	averageMarkDynReport, err := remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type, strconv.Itoa(rReq.ID))
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить отчет с сайта школы
+			averageMarkDynReport, err = remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type, strconv.Itoa(rReq.ID))
 			if err != nil {
-				rest.logger.Error("Error reading database", err)
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get average dyn marks: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(averageMarkDynReport)
 	if err != nil {
-		rest.logger.Error("Error marshalling averageMarkDynReport")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", averageMarkDynReport, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent average marks dynamic report: ", averageMarkDynReport)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", averageMarkDynReport, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", averageMarkDynReport, "IP", req.RemoteAddr)
+	}
 }
 
 // getReportStudentGradesLessonListRequest используется в GetReportStudentGradesLessonListHandler
@@ -467,94 +500,80 @@ type getReportStudentGradesLessonListRequest struct {
 // GetReportStudentGradesLessonListHandler обрабатывает запрос на получение
 // списка предметов для отчета 'Об успеваемости'
 func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentGradesLessonListHandler called")
+	rest.logger.Info("REST: GetReportStudentGradesLessonListHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq getReportStudentGradesLessonListRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	studentID := strconv.Itoa(rReq.ID)
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
-	lessonsMap, err := remoteSession.GetLessonsMap(studentID)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	// Получить отчет с сайта школы
+	lessonsMap, err := remoteSession.GetLessonsMap(strconv.Itoa(rReq.ID))
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить отчет с сайта школы
+			lessonsMap, err = remoteSession.GetLessonsMap(strconv.Itoa(rReq.ID))
 			if err != nil {
-				rest.logger.Error("Error reading database", err)
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get lessons map: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(lessonsMap)
 	if err != nil {
-		rest.logger.Error("Error marshalling student lessons map")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", lessonsMap, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent lessons map: ", lessonsMap)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", lessonsMap, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", lessonsMap, "IP", req.RemoteAddr)
+	}
 }
 
 // getReportStudentGradesRequest используется в GetReportStudentGradesHandler
@@ -568,95 +587,80 @@ type getReportStudentGradesRequest struct {
 // GetReportStudentGradesHandler обрабатывает запрос на получение
 // отчета 'Об успеваемости'
 func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentGradesHandler called")
+	rest.logger.Info("REST: GetReportStudentGradesHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq getReportStudentGradesRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	studentID := strconv.Itoa(rReq.StudentID)
-	lessonID := strconv.Itoa(rReq.LessonID)
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
-	gradeReport, err := remoteSession.GetStudentGradeReport(rReq.From, rReq.To, lessonID, studentID)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	// Получить отчет с сайта школы
+	gradeReport, err := remoteSession.GetStudentGradeReport(rReq.From, rReq.To, strconv.Itoa(rReq.LessonID), strconv.Itoa(rReq.StudentID))
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить отчет с сайта школы
+			gradeReport, err = remoteSession.GetStudentGradeReport(rReq.From, rReq.To, strconv.Itoa(rReq.LessonID), strconv.Itoa(rReq.StudentID))
 			if err != nil {
-				rest.logger.Error("Error reading database", err)
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get student grades report: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(gradeReport)
 	if err != nil {
-		rest.logger.Error("Error marshalling student grades report")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", gradeReport, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent student grades report: ", gradeReport)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", gradeReport, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", gradeReport, "IP", req.RemoteAddr)
+	}
 }
 
 // getReportStudentTotalRequest используется в GetReportStudentTotalHandler
@@ -669,94 +673,81 @@ type getReportStudentTotalRequest struct {
 // GetReportStudentTotalHandler обрабатывает запрос на получение отчета об успеваемости
 // и посещаемости
 func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportStudentTotalHandler called")
+	rest.logger.Info("REST: GetReportStudentTotalHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq getReportStudentTotalRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
+	// Получить отчет с сайта школы
 	studentID := strconv.Itoa(rReq.ID)
 	totalReport, err := remoteSession.GetStudentTotalReport(rReq.From, rReq.To, studentID)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить отчет с сайта школы
+			totalReport, err = remoteSession.GetStudentTotalReport(rReq.From, rReq.To, studentID)
 			if err != nil {
-				rest.logger.Error("Error reading database", err)
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get total student report: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(totalReport)
 	if err != nil {
-		rest.logger.Error("Error marshalling totalReport")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", totalReport, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent total student report: ", totalReport)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", totalReport, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", totalReport, "IP", req.RemoteAddr)
+	}
 }
 
 // getReportJournalAccessRequest используется в GetReportJournalAccessHandler
@@ -767,94 +758,81 @@ type getReportJournalAccessRequest struct {
 // GetReportJournalAccessHandler обрабатывает запрос на получение отчета о доступе
 // к классному журналу
 func (rest *RestAPI) GetReportJournalAccessHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportJournalAccessHandler called")
+	rest.logger.Info("REST: GetReportJournalAccessHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq getReportJournalAccessRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
+	// Получить отчет с сайта школы
 	studentID := strconv.Itoa(rReq.ID)
 	accessReport, err := remoteSession.GetJournalAccessReport(studentID)
 	if err != nil {
-		// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить отчет с сайта школы
+			accessReport, err = remoteSession.GetJournalAccessReport(studentID)
 			if err != nil {
-				rest.logger.Error("Error reading database", err)
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get journal access report: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(accessReport)
 	if err != nil {
-		rest.logger.Error("Error marshalling accessReport")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", accessReport, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent total access report: ", accessReport)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", accessReport, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", accessReport, "IP", req.RemoteAddr)
+	}
 }
 
 // getReportParentInfoLetterRequest используется в GetReportParentInfoLetterHandler
@@ -864,99 +842,86 @@ type getReportParentInfoLetterRequest struct {
 	PeriodID     int `json:"period_id"`
 }
 
-// GetReportParentInfoLetterHandler обрабатывает запрос на получение шаблона для
+// GetReportParentInfoLetterHandler обрабатывает запрос на получение шаблона
 // письма родителям
 func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetReportParentInfoLetterHandler called")
+	rest.logger.Info("REST: GetReportParentInfoLetterHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq getReportParentInfoLetterRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
+	// Получить отчет с сайта школы
 	studentID := strconv.Itoa(rReq.StudentID)
 	reportID := strconv.Itoa(rReq.ReportTypeID)
 	periodID := strconv.Itoa(rReq.PeriodID)
 	parentLetter, err := remoteSession.GetParentInfoLetterReport(reportID, periodID, studentID)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить отчет с сайта школы
+			parentLetter, err = remoteSession.GetParentInfoLetterReport(reportID, periodID, studentID)
 			if err != nil {
-				rest.logger.Error("Error reading database", err)
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get parent info letter report: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(parentLetter)
 	if err != nil {
-		rest.logger.Error("Error marshalling parentLetter")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", parentLetter, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent parent info letter report: ", parentLetter)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", parentLetter, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", parentLetter, "IP", req.RemoteAddr)
+	}
 }
 
 // school struct используется в GetSchoolListHandler
@@ -973,32 +938,43 @@ type SchoolListResponse struct {
 
 // GetSchoolListHandler обрабатывает запрос на получение списка обслуживаемых школ
 func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetSchoolListHandler called")
+	rest.logger.Info("REST: GetSchoolListHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "GET" {
-		rest.logger.Error("Wrong method: ", req.Method)
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
+	// Залезть в БД за списком школ
 	schools, err := rest.db.GetSchools()
 	if err != nil {
-		rest.logger.Error("Error getting school list from db")
+		rest.logger.Error("REST: Error occured when getting school list from db", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// Заполняем пакет ответа
 	schoolList := make([]school, 0)
 	for _, sch := range schools {
 		schoolList = append(schoolList, school{sch.Name, int(sch.ID), sch.Address})
 	}
 	resp := SchoolListResponse{schoolList}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(resp)
 	if err != nil {
-		rest.logger.Error("Error marshalling list of schools")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", resp, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent list of schools: ", resp)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+	}
 }
 
-//  используется в GetChildrenMapHandler
+// student используется в GetChildrenMapResponse и GetChildrenMapHandler
 type student struct {
 	Name string `json:"name"`
 	ID   int    `json:"id"`
@@ -1011,60 +987,40 @@ type GetChildrenMapResponse struct {
 
 // GetChildrenMapHandler обрабатывает запрос на получение списка детей
 func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("REST: GetChildrenMapHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "GET" {
-		rest.logger.Error("Wrong method: ", req.Method)
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	// Если нет удаленной сессии, создать
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database")
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
-	// Замаршалить
+	// Заполнить пакет ответа
 	var stud student
 	studs := make([]student, 0)
-	// Проверить мапу у сессии парсеров
+	// Проверить наличие мапы у сессии парсеров
 	if remoteSession.Base.ChildrenIDS == nil || len(remoteSession.Base.ChildrenIDS) == 0 {
 		// Если мапа не существует или пустая, полезем в БД
 		userName := session.Values["userName"]
 		schoolID := session.Values["schoolID"]
 		res, err := rest.db.GetStudents(userName.(string), schoolID.(int))
 		if err != nil {
-			rest.logger.Error("Error getting children map from DB", err)
+			rest.logger.Error("REST: Error occured when getting children map from db", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -1078,7 +1034,7 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 		for k, v := range res {
 			vs, err := strconv.Atoi(v)
 			if err != nil {
-				rest.logger.Error("Error converting student id", err)
+				rest.logger.Error("REST: Error occured when converting student id", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -1086,15 +1042,22 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 			studs = append(studs, stud)
 		}
 	}
+	// Замаршалить
 	resp := GetChildrenMapResponse{Students: studs}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(resp)
 	if err != nil {
-		rest.logger.Error("Error marshalling children map")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", resp, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent children map: ", resp)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+	}
 }
 
 // tasksMarksRequest используется в GetTasksAndMarksHandler
@@ -1105,103 +1068,62 @@ type tasksMarksRequest struct {
 
 // GetTasksAndMarksHandler возвращает задания и оценки на неделю
 func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetTasksAndMarksHandler called")
+	rest.logger.Info("REST: GetTasksAndMarksHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq tasksMarksRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	id := strconv.Itoa(rReq.ID)
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database")
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
-	week := rReq.Week
-	if week == "" {
-		t2 := time.Now()
-		t1 := t2.Weekday()
-		switch t1 {
-		case time.Monday:
-		case time.Tuesday:
-			t2 = t2.AddDate(0, 0, -1)
-		case time.Wednesday:
-			t2 = t2.AddDate(0, 0, -2)
-		case time.Thursday:
-			t2 = t2.AddDate(0, 0, -3)
-		case time.Friday:
-			t2 = t2.AddDate(0, 0, -4)
-		case time.Saturday:
-			t2 = t2.AddDate(0, 0, -5)
-		case time.Sunday:
-			t2 = t2.AddDate(0, 0, -6)
-		}
-		week = t2.Format("02.01.2006")
-	}
-	weekMarks, err := remoteSession.GetWeekSchoolMarks(week, id)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	// Получить отчет с сайта школы
+	weekMarks, err := remoteSession.GetWeekSchoolMarks(rReq.Week, strconv.Itoa(rReq.ID))
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить с сайта школы
+			weekMarks, err = remoteSession.GetWeekSchoolMarks(rReq.Week, strconv.Itoa(rReq.ID))
 			if err != nil {
-				rest.logger.Error("Error reading database")
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in")
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get tasks and marks: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -1209,335 +1131,222 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	// Обновить статусы заданий
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
+	// Сходить в бд
 	err = rest.db.UpdateTasksStatuses(userName.(string), schoolID.(int), rReq.ID, weekMarks)
 	if err != nil {
-		rest.logger.Error("Error updating statuses for weekMarks")
+		rest.logger.Error("REST: Error occured when updating statuses for tasks and marks", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// Замаршалить
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(weekMarks)
 	if err != nil {
-		rest.logger.Error("Error marshalling weekMarks")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", weekMarks, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent tasks and marks for a week: ", weekMarks)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", weekMarks, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", weekMarks, "IP", req.RemoteAddr)
+	}
 }
 
 // getLessonDescriptionRequest используется в GetLessonDescriptionHandler
 type getLessonDescriptionRequest struct {
-	ID string `json:"id"`
+	ID int `json:"id"`
 }
 
 // GetLessonDescriptionHandler обрабатывает запрос на получение подробностей дз
 func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetLessonDescriptionHandler called")
+	rest.logger.Info("REST: GetLessonDescriptionHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq getLessonDescriptionRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data", err)
 		return
 	}
-	taskID, err := strconv.Atoi(rReq.ID)
-	if err != nil {
-		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data", err)
-		return
-	}
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database")
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
 	// Сходить в бд за информацией о таске
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	date, cid, tp, studentID, err := rest.db.GetTaskInfo(userName.(string), schoolID.(int), taskID)
+	date, cid, tp, studentID, err := rest.db.GetTaskInfo(userName.(string), schoolID.(int), rReq.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
-			rest.logger.Info("Invalid task specified: it's not in db", err)
+			// Такого таска нет
+			rest.logger.Info("REST: Invalid task id specified", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			return
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting task date from db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
 		}
-		rest.logger.Error("Error getting task date from db")
-		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// Получить описание таска
-	lessonDescription, err := remoteSession.GetLessonDescription(date, taskID, cid, tp, strconv.Itoa(studentID))
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
+	lessonDescription, err := remoteSession.GetLessonDescription(date, rReq.ID, cid, tp, strconv.Itoa(studentID))
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить с сайта школы
+			lessonDescription, err = remoteSession.GetLessonDescription(date, rReq.ID, cid, tp, strconv.Itoa(studentID))
 			if err != nil {
-				rest.logger.Error("Error reading database")
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in")
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get lesson description: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
-	// Замаршалить
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(lessonDescription)
 	if err != nil {
-		rest.logger.Error("Error marshalling lesson description", err)
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", lessonDescription, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent lesson description: ", lessonDescription)
-
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", lessonDescription, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", lessonDescription, "IP", req.RemoteAddr)
+	}
 }
 
-// markAsDoneRequest используется в MarkAsDoneHandler
-type MarkAsDoneRequest struct {
+// markAsDoneRequest используется в MarkAsDoneHandler и UnmarkAsDoneHandler
+type markAsDoneRequest struct {
 	ID int `json:"id"`
 }
 
 // MarkAsDoneHandler обрабатывает запрос на отметку задания как сделанного
 func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("MarkAsDoneHandler called")
+	rest.logger.Info("REST: MarkAsDoneHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	_, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
-	var rReq MarkAsDoneRequest
+	var rReq markAsDoneRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	// Если нет удаленной сессии, создать
-	remoteSession, ok := rest.sessionsMap[sessionName]
-	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
-	}
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
-	if err != nil {
-		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-			if err != nil {
-				rest.logger.Error("Error reading database")
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in")
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
-		} else {
-			rest.logger.Error("Unable to mark task as done: ", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
 	// Лезть в БД
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
 	err = rest.db.TaskMarkDone(userName.(string), schoolID.(int), rReq.ID)
 	if err != nil {
-		rest.logger.Error("Error when marking task as done in db", err)
-		respwr.WriteHeader(http.StatusInternalServerError)
+		if err.Error() == "record not found" {
+			// Такого таска нет в БД
+			rest.logger.Info("REST: Task with specified id not found in db", "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when marking task as done in db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
-	rest.logger.Info("Successfully marked task as done")
+	// Отправить ответ клиенту
+	rest.logger.Info("REST: Successfully marked task as done", "IP", req.RemoteAddr)
 	respwr.WriteHeader(http.StatusOK)
-}
-
-// unmarkAsDoneRequest используется в UnmarkAsDoneHandler
-type UnmarkAsDoneRequest struct {
-	ID int `json:"id"`
 }
 
 // UnmarkAsDoneHandler обрабатывает запрос на отметку задания как просмотренного
 func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("UnmarkAsDoneHandler called")
+	rest.logger.Info("REST: UnmarkAsDoneHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	_, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
-	var rReq MarkAsDoneRequest
+	var rReq markAsDoneRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	// Если нет удаленной сессии, создать
-	remoteSession, ok := rest.sessionsMap[sessionName]
-	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in")
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
-	}
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
-	if err != nil {
-		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-			if err != nil {
-				rest.logger.Error("Error reading database")
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in")
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
-		} else {
-			rest.logger.Error("Unable to mark task as undone: ", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-	}
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
 	// Лезть в БД
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
 	err = rest.db.TaskMarkUndone(userName.(string), schoolID.(int), rReq.ID)
 	if err != nil {
-		rest.logger.Error("Error when marking task as undone in db", err)
-		respwr.WriteHeader(http.StatusInternalServerError)
+		if err.Error() == "record not found" {
+			// Такого таска нет в БД
+			rest.logger.Info("REST: Task with specified id not found in db", "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when marking task as undone in db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+		}
 		return
 	}
-	rest.logger.Info("Successfully marked task as undone")
+	// Отправить ответ клиенту
+	rest.logger.Info("REST: Successfully marked task as undone", "IP", req.RemoteAddr)
 	respwr.WriteHeader(http.StatusOK)
 }
 
@@ -1549,136 +1358,110 @@ type scheduleRequest struct {
 
 // GetScheduleHandler возвращает расписание на неделю
 func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("GetScheduleHandler called")
+	rest.logger.Info("REST: GetScheduleHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
-	if session.IsNew {
-		rest.logger.Error("Local session broken")
-		delete(rest.sessionsMap, sessionName)
-		session.Options.MaxAge = -1
-		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusBadRequest)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Чтение запроса от клиента
 	var rReq scheduleRequest
 	decoder := json.NewDecoder(req.Body)
-	err = decoder.Decode(&rReq)
+	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
-	id := strconv.Itoa(rReq.ID)
-	// Если нет удаленной сессии, создать
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
-		rest.logger.Info("No remote session, creating new one")
-		userName := session.Values["userName"]
-		schoolID := session.Values["schoolID"]
-		school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
-		if err != nil {
-			rest.logger.Error("Error reading database", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
 			return
 		}
-		remoteSession = ss.NewSession(school)
-		if err = remoteSession.Login(); err != nil {
-			rest.logger.Error("Error remote signing in", err)
-			respwr.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-		rest.sessionsMap[sessionName] = remoteSession
 	}
 	today := time.Now().Format("02.01.2006")
+	id := strconv.Itoa(rReq.ID)
 	timeTable, err := remoteSession.GetTimeTable(today, rReq.Days, id)
-	// Если удаленная сессия есть в mapSessions, но не активна, создать новую
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
-			rest.logger.Info("Remote connection broken, creation new one")
-			userName := session.Values["userName"]
-			schoolID := session.Values["schoolID"]
-			school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить с сайта школы
+			timeTable, err = remoteSession.GetTimeTable(today, rReq.Days, id)
 			if err != nil {
-				rest.logger.Error("Error reading database", err)
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			remoteSession = ss.NewSession(school)
-			if err = remoteSession.Login(); err != nil {
-				rest.logger.Error("Error remote signing in", err)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			rest.sessionsMap[sessionName] = remoteSession
-			rest.logger.Info("Successfully created new remote session")
 		} else {
-			rest.logger.Error("Unable to get schedule: ", err)
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(timeTable)
 	if err != nil {
-		rest.logger.Error("Error marshalling timeTable")
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", timeTable, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	respwr.Write(bytes)
-	rest.logger.Info("Sent schedule for a week: ", timeTable)
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", timeTable, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", timeTable, "IP", req.RemoteAddr)
+	}
 }
 
 // LogOutHandler обрабатывает удаление сессии клиента и отвязку устройства
 func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("LogOutHandler called")
+	rest.logger.Info("REST: LogOutHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "GET" {
-		rest.logger.Error("Wrong method: ", req.Method)
-		return
-	}
-	// Прочитать куку
-	cookie, err := req.Cookie("sessionName")
-	if err != nil {
-		rest.logger.Info("User not authorized: sessionName absent")
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	sessionName := cookie.Value
-
-	/* TODO
-	не чистить sessionMap, сохранять в БД идентификатор последней сессии,
-	чтобы можно было к случае logout+login восстановить удаленную сессию
-	по имени пользователя
-	*/
-
-	// Если кука есть, удалить локальную и удаленную сессии
-	session, err := rest.store.Get(req, sessionName)
-	if err != nil {
-		rest.logger.Info("Error getting session: ", err)
-		respwr.WriteHeader(http.StatusInternalServerError)
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
 		return
 	}
 	// Вызвать logout для удаленной сессии
-	err = rest.sessionsMap[sessionName].Logout()
+	err := rest.sessionsMap[sessionName].Logout()
 	if err != nil {
-		rest.logger.Error("Error remote log out", err)
+		rest.logger.Error("REST: Error occured when loggin out from site", "Error", err, "IP", req.RemoteAddr)
 	}
+	// Удалить удаленную сессию
 	delete(rest.sessionsMap, sessionName)
+	// Удалить локальную сессию
 	session.Options.MaxAge = -1
 	session.Save(req, respwr)
 	respwr.WriteHeader(http.StatusOK)
-	rest.logger.Info("Successful logout for session ", sessionName)
+	// Отправить ответ клиенту
+	rest.logger.Info("REST: Successfully logged out", "IP", req.RemoteAddr)
 }
 
 // signInRequest используется в SignInHandler
@@ -1690,9 +1473,11 @@ type signInRequest struct {
 
 // SignInHandler обрабатывает вход в учетную запись на сайте школы
 func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("SignInHandler called")
+	rest.logger.Info("REST: SignInHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
 	if req.Method != "POST" {
-		rest.logger.Error("Wrong method: ", req.Method)
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	// Чтение запроса от клиента
@@ -1700,15 +1485,24 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	decoder := json.NewDecoder(req.Body)
 	err := decoder.Decode(&rReq)
 	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		rest.logger.Error("Malformed request data")
 		return
 	}
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
 	// Проверим разрешение у школы
 	perm, err := rest.db.GetSchoolPermission(rReq.ID)
 	if err != nil {
-		rest.logger.Error("Invalid id param specified")
-		respwr.WriteHeader(http.StatusBadRequest)
+		if err.Error() == "record not found" {
+			// Школа не найдена
+			rest.logger.Info("REST: Invalid school id specified", "Id", rReq.ID, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting school permission from db", "Error", err, "Id", rReq.ID, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+		}
 		return
 	}
 	if !perm {
@@ -1716,85 +1510,90 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		userPerm, err := rest.db.GetUserPermission(rReq.Login, rReq.ID)
 		if err != nil {
 			if err.Error() == "record not found" {
-				// Пользователь новый, вернем true
+				// Пользователь новый: вернем true, чтобы он мог залогиниться и
+				// купить подписку
 				perm = true
 			} else {
-				rest.logger.Error("Getting permission from db: ", err)
+				// Другая ошибка
+				rest.logger.Error("REST: Error occured when getting user permission from db", "Error", err, "Login", rReq.Login, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+		} else {
+			perm = userPerm
 		}
-		perm = userPerm
 	}
 	if !perm {
-		rest.logger.Info("Access to service denied!")
+		// Если у пользователя тоже нет разрешения
+		rest.logger.Info("REST: Access to service denied", "Username", rReq.Login, "SchoolID", rReq.ID, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	rest.logger.Info("Valid data:", rReq)
+	// Взять из конфига структуру школы
 	school := rest.config.Schools[rReq.ID-1]
 	school.Login = rReq.Login
 	school.Password = rReq.Passkey
-	// Создание удаленной сессии
+	// Создать удаленную сессию и залогиниться
 	newRemoteSession := ss.NewSession(&school)
 	err = newRemoteSession.Login()
 	if err != nil {
-		rest.logger.Error("Error remote signing in", err)
-		respwr.WriteHeader(http.StatusBadRequest)
+		rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// Сразу получим мапу имен детей в их ID
 	err = newRemoteSession.GetChildrenMap()
 	if err != nil {
-		rest.logger.Error("Error: can't get children map", err)
+		rest.logger.Error("REST: Error occured when getting children map from site", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// Проверить мапу на ошибки
 	if newRemoteSession.Base.ChildrenIDS == nil || len(newRemoteSession.Base.ChildrenIDS) == 0 {
-		rest.logger.Error("Error getting childrenMap: empty or non-existing")
+		rest.logger.Error("REST: Error occured when getting children map", "Error", "ChildrenIDS nil or empty", "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// Если удаленная авторизация прошла успешно, создать локальную сессию
+	// Сгенерировать имя локальной сессии
 	timeString := time.Now().String()
 	hasher := md5.New()
 	if _, err = hasher.Write([]byte(timeString)); err != nil {
-		rest.logger.Error("Md5 hashing error: ", err)
+		rest.logger.Error("REST: Error occured when hashing for session name", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// Создать локальную сессию
 	newSessionName := hex.EncodeToString(hasher.Sum(nil))
 	newLocalSession, err := rest.store.Get(req, newSessionName)
 	if err != nil {
-		rest.logger.Error("Error creating new local session")
+		rest.logger.Error("REST: Error occured when creating local session", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// ... и привязать к ней удаленную сессию
+	// Привязать к ней удаленную сессию
 	rest.sessionsMap[newSessionName] = newRemoteSession
+	// Запихать в сессионные переменные имя пользователя и номер школы
 	newLocalSession.Values["userName"] = rReq.Login
 	newLocalSession.Values["schoolID"] = rReq.ID
 	newLocalSession.Save(req, respwr)
 	// Устанавливаем в куки значение sessionName
 	expiration := time.Now().Add(365 * 24 * time.Hour)
-	cookie := http.Cookie{
-		Name: "sessionName", Value: newSessionName, Expires: expiration,
-	}
+	cookie := http.Cookie{Name: "sessionName", Value: newSessionName, Expires: expiration}
 	http.SetCookie(respwr, &cookie)
 	// Обновляем базу данных
 	isParent := true
 	err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.ChildrenIDS)
 	if err != nil {
-		rest.logger.Error("Error updating database: ", err)
+		rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	rest.logger.Info("Successfully signed in as user: ", rReq.Login)
+	rest.logger.Info("REST: Successfully signed in", "Username", rReq.Login, "SchoolID", rReq.ID, "IP", req.RemoteAddr)
+	respwr.WriteHeader(http.StatusOK)
 }
 
 // Handler временный абстрактный handler для некоторых еще не реализованных
 // обработчиков запросов.
 func (rest *RestAPI) Handler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("Handler called (not implemented yet)", req.URL.EscapedPath())
+	rest.logger.Info("REST: Handler called (not implemented yet)", "Path", req.URL.EscapedPath())
 }
