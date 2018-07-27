@@ -42,7 +42,7 @@ type School struct {
 // User struct представляет структуру записи пользователя
 type User struct {
 	gorm.Model
-	SchoolID   uint
+	SchoolID   uint      // parent id
 	IsParent   bool      `sql:"DEFAULT:false"`
 	Login      string    `sql:"size:255;index"`
 	Password   string    `sql:"size:255"`
@@ -53,8 +53,8 @@ type User struct {
 // Student struct представляет структуру ученика
 type Student struct {
 	gorm.Model
-	UserID      uint
-	NetSchoolID int
+	UserID      uint   // parent id
+	NetSchoolID int    // id ученика в системе NetSchool
 	Name        string `sql:"size:255"`
 	Days        []Day  // has-many relation
 }
@@ -62,7 +62,7 @@ type Student struct {
 // Day struct представляет структуру дня с дз
 type Day struct {
 	gorm.Model
-	StudentID uint
+	StudentID uint   // parent id
 	Date      string `sql:"size:255"`
 	Tasks     []Task // has-many relation
 }
@@ -70,11 +70,11 @@ type Day struct {
 // Task представляет структуру задания
 type Task struct {
 	gorm.Model
-	DayID      uint
-	LessonID   int // id урока (CID)
-	HometaskID int // id домашнего задания (AID)
-	TP         int // TP
-	Status     int // новое\просмотренное\выполненное
+	DayID      uint // parent id
+	LessonID   int  // id урока (CID)
+	HometaskID int  // id домашнего задания (AID)
+	TP         int  // TP
+	Status     int  // новое\просмотренное\выполненное
 }
 
 // NewDatabase создает Database и возвращает указатель на неё
@@ -87,46 +87,46 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 	// Если таблицы с пользователями не существует, создадим её
 	if !sdb.HasTable(&User{}) {
 		// User
-		logger.Info("Table 'users' doesn't exist! Creating new one")
+		logger.Info("DB: Table 'users' doesn't exist! Creating new one")
 		err := sdb.CreateTable(&User{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("Successfully created 'users' table")
+		logger.Info("DB: Successfully created 'users' table")
 		// Student
-		logger.Info("Creating 'students' table")
+		logger.Info("DB: Creating 'students' table")
 		err = sdb.CreateTable(&Student{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("Successfully created 'students' table")
+		logger.Info("DB: Successfully created 'students' table")
 		// Day
-		logger.Info("Creating 'day' table")
+		logger.Info("DB: Creating 'day' table")
 		err = sdb.CreateTable(&Day{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("Successfully created 'day' table")
+		logger.Info("DB: Successfully created 'day' table")
 		// Task
-		logger.Info("Creating 'task' table")
+		logger.Info("DB: Creating 'task' table")
 		err = sdb.CreateTable(&Task{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("Successfully created 'task' table")
+		logger.Info("DB: Successfully created 'task' table")
 	} else {
-		logger.Info("Table 'users' exists")
+		logger.Info("DB: Table 'users' exists")
 	}
 	// Если таблицы со школами не существует, создадим её
 	if !sdb.HasTable(&School{}) {
-		logger.Info("'schools' table doesn't exist! Creating new one")
+		logger.Info("DB: 'schools' table doesn't exist! Creating new one")
 		err := sdb.CreateTable(&School{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("Successfully created 'schools' table")
+		logger.Info("DB: Successfully created 'schools' table")
 	} else {
-		logger.Info("Table 'schools' exists")
+		logger.Info("DB: Table 'schools' exists")
 	}
 	var count int
 	err = sdb.Table("schools").Count(&count).Error
@@ -134,7 +134,7 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 		return nil, err
 	}
 	if count == 0 {
-		logger.Info("Table 'schools' empty. Adding our schools")
+		logger.Info("DB: Table 'schools' empty. Adding our schools")
 		// Добавим записи поддерживаемых школ
 		school1 := School{
 			Address: "http://62.117.74.43/", Name: "Европейская гимназия",
@@ -143,9 +143,8 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("Successfully added our schools")
+		logger.Info("DB: Successfully added our schools")
 	}
-
 	return &Database{SchoolServerDB: sdb, Logger: logger}, nil
 }
 
@@ -159,7 +158,7 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 	// Получаем запись школы
 	err := db.SchoolServerDB.First(&school, schoolID).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting school by id")
+		db.Logger.Info("DB: Error getting school by id", "SchoolID", schoolID)
 		return err
 	}
 	// Получаем запись пользователя
@@ -171,16 +170,16 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 			students := make([]Student, len(childrenMap))
 			i := 0
 			for childName, childID := range childrenMap {
-				id, err := strconv.Atoi(childID)
-				if err != nil {
-					db.Logger.Info("DB: Error converting IDS from childrenMap")
-					return err
+				id, errInner := strconv.Atoi(childID)
+				if errInner != nil {
+					db.Logger.Info("DB: Error occured when converting IDs from childrenMap", "ChildID", childID)
+					return errInner
 				}
 				student = Student{Name: childName, NetSchoolID: id, Days: []Day{}}
-				err = db.SchoolServerDB.Create(&student).Error
-				if err != nil {
-					db.Logger.Info("DB: Error creating Students for user")
-					return err
+				errInner = db.SchoolServerDB.Create(&student).Error
+				if errInner != nil {
+					db.Logger.Info("DB: Error occured when creating student for user", "User", user, "Student", student)
+					return errInner
 				}
 				students[i] = student
 				i++
@@ -192,23 +191,21 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 				Password: passkey,
 				Students: students,
 			}
-			err = db.SchoolServerDB.Create(&user).Error
-			if err != nil {
-				db.Logger.Error("DB: Error when creating user")
+			errInner := db.SchoolServerDB.Create(&user).Error
+			if errInner != nil {
+				db.Logger.Error("DB: Error occured when creating user", "User", user)
 			}
-		} else {
-			db.Logger.Error("DB: Error when getting user")
-
+			return errInner
 		}
+		db.Logger.Error("DB: Error occured when getting user from db", "User params", where)
 		return err
 	}
 	// Пользователь найден, обновим
 	user.Password = passkey
 	user.SchoolID = uint(schoolID)
-	// Пока без childrenMap'ы
 	err = db.SchoolServerDB.Save(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error saving updated data for user")
+		db.Logger.Info("DB: Error occured when saving updated data for user", "User", user)
 	}
 	return err
 }
@@ -229,7 +226,7 @@ func (db *Database) GetUserPermission(userName string, schoolID int) (bool, erro
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting permission for user")
+		db.Logger.Info("DB: Error occured when getting permission for user", "User params", where)
 		return false, err
 	}
 	return user.Permission, nil
@@ -251,13 +248,13 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting user for updating tasks status")
+		db.Logger.Info("DB: Error occured getting user for updating tasks status", "User params", where)
 		return err
 	}
 	// Получаем ученика по studentID
 	err = db.SchoolServerDB.Model(&user).Related(&students).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting students list for updating tasks status")
+		db.Logger.Info("DB: Error occured when getting user's students list for updating tasks status", "User", user)
 		return err
 	}
 	studentFound := false
@@ -269,13 +266,13 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 		}
 	}
 	if !studentFound {
-		db.Logger.Info("DB: No student found for updating tasks status")
-		return err
+		db.Logger.Info("DB: No student found for updating tasks status", "StudentID", studentID)
+		return fmt.Errorf("record not found")
 	}
 	// Получаем список дней у ученика
 	err = db.SchoolServerDB.Model(&student).Related(&days).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting days list for updating tasks status")
+		db.Logger.Info("DB: Error occured when getting student's days list for updating tasks status", "Student", student)
 		return err
 	}
 	// Гоняем по дням из пакета
@@ -295,15 +292,15 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 			newDay = Day{StudentID: student.ID, Date: date, Tasks: []Task{}}
 			err = db.SchoolServerDB.Create(&newDay).Error
 			if err != nil {
-				db.Logger.Info("DB: Error saving new day for updating tasks status")
+				db.Logger.Info("DB: Error occured when saving new day for updating tasks status", "newDay", newDay)
 				return err
 			}
 			days = append(days, newDay)
 		}
-		// Получаем список задания для дня
+		// Получаем список заданий для дня
 		err = db.SchoolServerDB.Model(&newDay).Related(&tasks).Error
 		if err != nil {
-			db.Logger.Info("DB: Error getting tasks list for updating tasks status")
+			db.Logger.Info("DB: Error getting tasks list for updating tasks status", "newDAy", newDay)
 			return err
 		}
 		// Гоняем по заданиям
@@ -322,7 +319,7 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 				newTask = Task{DayID: newDay.ID, LessonID: task.CID, HometaskID: task.AID, Status: StatusTaskNew, TP: task.TP}
 				err = db.SchoolServerDB.Create(&newTask).Error
 				if err != nil {
-					db.Logger.Info("DB: Error creating new task for updating tasks status")
+					db.Logger.Info("DB: Error occured when creating new task for updating tasks status", "newTask", newTask)
 					return err
 				}
 				tasks = append(tasks, newTask)
@@ -332,17 +329,15 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 		}
 		err = db.SchoolServerDB.Save(&newDay).Error
 		if err != nil {
-			db.Logger.Info("DB:")
+			db.Logger.Info("DB: Error occured when saving new day", "newDay", newDay)
 			return err
 		}
 	}
-
 	err = db.SchoolServerDB.Save(&student).Error
 	if err != nil {
-		db.Logger.Info("DB:")
-		return err
+		db.Logger.Info("DB: Error occured when saving student", "Student", student)
 	}
-	return nil
+	return err
 }
 
 // GetTaskInfo получает информацию о задании - дату, CID, TP, id ученика
@@ -357,14 +352,14 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting user for getting task date")
+		db.Logger.Info("DB: Error occured when getting user for getting task info", "User params", where)
 		return "", -1, -1, -1, err
 	}
 	// Получаем таски с таким taskID
-	where_ := Task{HometaskID: taskID}
-	err = db.SchoolServerDB.Where(where_).Find(&tasks).Error
+	w := Task{HometaskID: taskID}
+	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting tasks for getting task date")
+		db.Logger.Info("DB: Error occured when getting tasks for getting task info", "Task params", w)
 		return "", -1, -1, -1, err
 	}
 	// Найдем нужный таск
@@ -372,13 +367,13 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error getting days for getting task date")
+			db.Logger.Info("DB: Error occured when getting days for getting task info", "DayID", t.DayID)
 			return "", -1, -1, -1, err
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error getting student for getting task date")
+			db.Logger.Info("DB: Error occured when getting student for getting task info", "StudentID", day.StudentID)
 			return "", -1, -1, -1, err
 		}
 
@@ -388,7 +383,7 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 				t.Status = StatusTaskSeen
 				err = db.SchoolServerDB.Save(&t).Error
 				if err != nil {
-					db.Logger.Error("DB: Error when saving updated task status")
+					db.Logger.Error("DB: Error occured when saving updated task status", "Task", t)
 					return "", -1, -1, -1, err
 				}
 			}
@@ -396,7 +391,7 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 		}
 	}
 	// Таск не найден
-	db.Logger.Info("DB: Error when searching for task when getting task date")
+	db.Logger.Info("DB: Error occured when searching for task when getting task info")
 	return "", -1, -1, -1, fmt.Errorf("record not found")
 }
 
@@ -412,14 +407,14 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting user for updating tasks status")
+		db.Logger.Info("DB: Error occured when getting user for updating tasks status", "User params", where)
 		return err
 	}
 	// Получаем таски с таким taskID
-	where_ := Task{HometaskID: taskID}
-	err = db.SchoolServerDB.Where(where_).Find(&tasks).Error
+	w := Task{HometaskID: taskID}
+	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting tasks for updating tasks status")
+		db.Logger.Info("DB: Error occured when getting tasks for updating tasks status", "Task params", w)
 		return err
 	}
 	// Найдем нужный таск
@@ -427,13 +422,13 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error getting days for updating tasks status")
+			db.Logger.Info("DB: Error occured when getting days for updating tasks status", "DayID", t.DayID)
 			return err
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error getting student for updating tasks status")
+			db.Logger.Info("DB: Error occured when getting student for updating tasks status", "StudentID", day.StudentID)
 			return err
 		}
 
@@ -442,14 +437,14 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 			t.Status = StatusTaskDone
 			err = db.SchoolServerDB.Save(&t).Error
 			if err != nil {
-				db.Logger.Error("DB: Error when saving updated task status")
+				db.Logger.Error("DB: Error occured when saving updated task status", "Task", t)
 				return err
 			}
 			return nil
 		}
 	}
 	// Таск не найден
-	db.Logger.Info("DB: Error when searching for task to update status")
+	db.Logger.Info("DB: Error occured when searching for task to update status")
 	return fmt.Errorf("record not found")
 }
 
@@ -465,14 +460,14 @@ func (db *Database) TaskMarkUndone(userName string, schoolID int, taskID int) er
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting user for updating tasks status")
+		db.Logger.Info("DB: Error occured when getting user for updating tasks status", "User params", where)
 		return err
 	}
 	// Получаем таски с таким taskID
-	where_ := Task{HometaskID: taskID}
-	err = db.SchoolServerDB.Where(where_).Find(&tasks).Error
+	w := Task{HometaskID: taskID}
+	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting tasks for updating tasks status")
+		db.Logger.Info("DB: Error occured when getting tasks for updating tasks status", "TaskID", taskID)
 		return err
 	}
 	// Найдем нужный таск
@@ -480,29 +475,27 @@ func (db *Database) TaskMarkUndone(userName string, schoolID int, taskID int) er
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error getting days for updating tasks status")
+			db.Logger.Info("DB: Error occured when getting days for updating tasks status", "DayID", t.DayID)
 			return err
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error getting student for updating tasks status")
+			db.Logger.Info("DB: Error occured when getting student for updating tasks status", "StudentID", day.StudentID)
 			return err
 		}
-
 		// Если совпал id пользователя - поменять статус, сохранить и закончить цикл
 		if user.ID == student.UserID {
 			t.Status = StatusTaskSeen
 			err = db.SchoolServerDB.Save(&t).Error
 			if err != nil {
-				db.Logger.Error("DB: Error when saving updated task status")
-				return err
+				db.Logger.Error("DB: Error occured when saving updated task status", "Task", t)
 			}
-			return nil
+			return err
 		}
 	}
 	// Таск не найден
-	db.Logger.Info("DB: Error when searching for task to update status")
+	db.Logger.Info("DB: Error occured when searching for task to update status")
 	return fmt.Errorf("record not found")
 }
 
@@ -534,13 +527,13 @@ func (db *Database) GetStudents(userName string, schoolID int) (map[string]int, 
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting user for getting childrenMap")
+		db.Logger.Info("DB: Error occured when getting user for getting childrenMap", "User params", where)
 		return nil, err
 	}
 	// Получаем ассоциированных с пользователем учеников
 	err = db.SchoolServerDB.Model(&user).Related(&students).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting students list for getting childrenMap")
+		db.Logger.Info("DB: Error occured when getting students list for getting childrenMap", "User", user)
 		return nil, err
 	}
 	// Заполним ответ
