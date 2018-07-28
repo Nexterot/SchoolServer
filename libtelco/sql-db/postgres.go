@@ -32,6 +32,7 @@ type Database struct {
 type School struct {
 	gorm.Model
 	Name       string `sql:"size:255;unique"`
+	Initials   string `sql:"size:255"`
 	Address    string `sql:"size:255;unique"`
 	Permission bool   `sql:"DEFAULT:true"`
 	Users      []User // has-many relation
@@ -138,7 +139,7 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 		logger.Info("DB: Table 'schools' empty. Adding our schools")
 		// Добавим записи поддерживаемых школ
 		school1 := School{
-			Address: "http://62.117.74.43/", Name: "Европейская гимназия",
+			Address: "http://62.117.74.43/", Name: "Европейская гимназия", Initials: "ЕГ",
 		}
 		err = sdb.Save(&school1).Error
 		if err != nil {
