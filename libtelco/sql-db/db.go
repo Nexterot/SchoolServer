@@ -56,6 +56,7 @@ type Student struct {
 	gorm.Model
 	UserID      uint   // parent id
 	NetSchoolID int    // id ученика в системе NetSchool
+	ClassID     int    // id класса, в котором учится ученик
 	Name        string `sql:"size:255"`
 	Days        []Day  // has-many relation
 }
@@ -215,9 +216,12 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, error) {
 	var user User
 	// Получаем пользователя по школе и логину
-	where := User{Login: userName}
+	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
-	return &cp.School{Link: "user.School.Address", Login: userName, Password: user.Password}, err
+	if err != nil {
+		return nil, err
+	}
+	return &cp.School{Link: "user.School.Address", Login: userName, Password: user.Password}, nil
 }
 
 // GetUserPermission проверяет разрешение пользователя на работу с сервисом
