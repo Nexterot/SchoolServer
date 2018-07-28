@@ -10,22 +10,14 @@ import (
 	"os"
 )
 
-// Config struct содержит конфигурацию бота.
-// Для упрощения чтения конфигов использовано тэгирование.
-// - адрес сервера;
-// - sql базы данных;
-// - inMemory базу данных;
-// - максимальное количество потоков;
-// - размер пула;
-// - время обновления (в секундах);
-// - информация о лог-файле;
-// - параметры школьных серверов;
+// Config struct содержит конфигурацию сервера.
 type Config struct {
-	ServerAddr string   `json:"serverAddr"`
-	Postgres   string   `json:"postgres"`
-	MaxProcs   int      `json:"maxProcs"`
-	LogFile    string   `json:"logFile"`
-	Schools    []School `json:"schools"`
+	ServerAddr string    `json:"serverAddr"`
+	Postgres   *Postgres `json:"postgres"`
+	Redis      *Redis    `json:"redis"`
+	MaxProcs   int       `json:"maxProcs"`
+	LogFile    string    `json:"logFile"`
+	Schools    []School  `json:"schools"`
 }
 
 // Типы серверов.
@@ -34,6 +26,24 @@ const (
 	FirstType   = iota
 	SecondType  = iota
 )
+
+// Postgres struct содержит конфигурацию PostgreSQL-базы данных.
+type Postgres struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	User     string `json:"user"`
+	Password string `json:"password"`
+	DBname   string `json:"dbname"`
+	SSLmode  string `json:"sslmode"`
+}
+
+// Redis struct содержит конфигурацию Redis-базы данных.
+type Redis struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	Password string `json:"password"`
+	DBname   int    `json:"dbname"`
+}
 
 // School содержит информацию об очередной школе.
 // Так как школьные сервера бывают разные, то по полю Type мы определяем,

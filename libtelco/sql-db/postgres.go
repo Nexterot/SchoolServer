@@ -1,5 +1,3 @@
-// db.go
-
 /*
 Package db содержит необходимое API для работы с базой данных PostgreSQL с использованием библиотеки gorm
 */
@@ -80,7 +78,10 @@ type Task struct {
 // NewDatabase создает Database и возвращает указатель на неё
 func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 	// Подключение к базе данных
-	sdb, err := gorm.Open("postgres", config.Postgres)
+	conf := "host=" + config.Postgres.Host + " port=" + config.Postgres.Port +
+		" user=" + config.Postgres.User + " password=" + config.Postgres.Password +
+		" dbname=" + config.Postgres.DBname + " sslmode=" + config.Postgres.SSLmode
+	sdb, err := gorm.Open("postgres", conf)
 	if err != nil {
 		return nil, err
 	}

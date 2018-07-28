@@ -58,7 +58,6 @@ func (serv *Server) Run() error {
 							fmt.Println(err)
 						}
 	*/
-	// Подключаем handler'ы из RestAPI.
 	serv.api.BindHandlers()
 	return http.ListenAndServe(serv.config.ServerAddr, context.ClearHandler(http.DefaultServeMux))
 }
