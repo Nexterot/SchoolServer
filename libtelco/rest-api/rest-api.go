@@ -926,9 +926,10 @@ func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter
 
 // school struct используется в GetSchoolListHandler
 type school struct {
-	Name    string `json:"name"`
-	ID      int    `json:"id"`
-	Website string `json:"website"`
+	Name     string `json:"name"`
+	ID       int    `json:"id"`
+	Website  string `json:"website"`
+	Shortcut string `json:"shortcut"`
 }
 
 // SchoolListResponse используется в GetSchoolListHandler
@@ -955,7 +956,7 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 	// Заполняем пакет ответа
 	schoolList := make([]school, 0)
 	for _, sch := range schools {
-		schoolList = append(schoolList, school{sch.Name, int(sch.ID), sch.Address})
+		schoolList = append(schoolList, school{sch.Name, int(sch.ID), sch.Address, sch.Initials})
 	}
 	resp := SchoolListResponse{schoolList}
 	// Закодировать ответ в JSON

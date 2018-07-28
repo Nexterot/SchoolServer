@@ -33,7 +33,8 @@
 		{
 			"id": "number", 
 			"name": "string",
-			"website": "string"
+			"website": "string",
+			"shortcut": "string",
 		}
     ]
 }
@@ -44,6 +45,7 @@
 | `id` |  Id школы. |
 | `name` | Название школы. |
 | `website` | Ссылка на электронный дневник школы. |
+| `shortcut` | Инициалы школы (1-2 буквы). |
 
 ### 1.2 Запрос доступа
 
