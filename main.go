@@ -6,6 +6,7 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	"SchoolServer/libtelco/server"
+	"fmt"
 	"os"
 )
 
@@ -23,9 +24,11 @@ var (
 // - создание логгера;
 func init() {
 	if config, err = cp.ReadConfig(); err != nil {
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 	if logger, err = log.NewLogger(config.LogFile); err != nil {
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 
