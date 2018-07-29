@@ -7,6 +7,7 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	dt "SchoolServer/libtelco/sessions/data-types"
+	ss "SchoolServer/libtelco/sessions/session"
 	"fmt"
 	"strconv"
 
@@ -152,7 +153,7 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 }
 
 // UpdateUser обновляет данные о пользователе
-func (db *Database) UpdateUser(login string, passkey string, isParent bool, schoolID int, childrenMap map[string]string) error {
+func (db *Database) UpdateUser(login string, passkey string, isParent bool, schoolID int, childrenMap map[string]ss.Student) error {
 	var (
 		school  School
 		student Student
@@ -172,10 +173,10 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 			// Пользователь не найден, создадим
 			students := make([]Student, len(childrenMap))
 			i := 0
-			for childName, childID := range childrenMap {
-				id, errInner := strconv.Atoi(childID)
+			for childName, childInfo := range childrenMap {
+				id, errInner := strconv.Atoi(childInfo.SID)
 				if errInner != nil {
-					db.Logger.Info("DB: Error occured when converting IDs from childrenMap", "ChildID", childID)
+					db.Logger.Info("DB: Error occured when converting IDs from childrenMap", "ChildID", childInfo.SID)
 					return errInner
 				}
 				student = Student{Name: childName, NetSchoolID: id, Days: []Day{}}

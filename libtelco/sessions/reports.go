@@ -20,7 +20,7 @@ func (s *Session) GetTotalMarkReport(studentID string) (*dt.TotalMarkReport, err
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var finalMarkReport *dt.TotalMarkReport
@@ -42,7 +42,7 @@ func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type, studentID strin
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var averageMarkReport *dt.AverageMarkReport
@@ -64,7 +64,7 @@ func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type, studentID st
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var averageMarkDynReport *dt.AverageMarkDynReport
@@ -86,7 +86,7 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, subjectID, studentID
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var studentGradeReport *dt.StudentGradeReport
@@ -108,7 +108,7 @@ func (s *Session) GetStudentTotalReport(dateBegin, dateEnd, studentID string) (*
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var studentTotalReport *dt.StudentTotalReport
@@ -138,7 +138,7 @@ func (s *Session) GetJournalAccessReport(studentID string) (*dt.JournalAccessRep
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var studentTotalReport *dt.JournalAccessReport
@@ -160,7 +160,7 @@ func (s *Session) GetParentInfoLetterReport(reportTypeID, periodID, studentID st
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var parentInfoLetterRepport *dt.ParentInfoLetterReport

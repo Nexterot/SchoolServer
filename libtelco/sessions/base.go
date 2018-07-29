@@ -52,6 +52,7 @@ func (s *Session) Login() error {
 /*
 Выход из системы.
 */
+
 // Logout выходит с сервера.
 func (s *Session) Logout() error {
 	s.Base.MU.Lock()
@@ -97,7 +98,7 @@ func (s *Session) GetLessonsMap(studentID string) (*dt.LessonsMap, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var lessonsMap *dt.LessonsMap

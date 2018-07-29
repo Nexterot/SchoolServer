@@ -1100,7 +1100,7 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 	var stud student
 	studs := make([]student, 0)
 	// Проверить наличие мапы у сессии парсеров
-	if remoteSession.Base.ChildrenIDS == nil || len(remoteSession.Base.ChildrenIDS) == 0 {
+	if remoteSession.Base.Children == nil || len(remoteSession.Base.Children) == 0 {
 		// Если мапа не существует или пустая, полезем в БД
 		userName := session.Values["userName"]
 		schoolID := session.Values["schoolID"]
@@ -1116,9 +1116,9 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 		}
 	} else {
 		// Если мапа есть
-		res := remoteSession.Base.ChildrenIDS
+		res := remoteSession.Base.Children
 		for k, v := range res {
-			vs, err := strconv.Atoi(v)
+			vs, err := strconv.Atoi(v.SID)
 			if err != nil {
 				rest.logger.Error("REST: Error occured when converting student id", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -1710,6 +1710,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		return
 	}
 	var sessionName string
+	var session *sessions.Session
 	if exists {
 		rest.logger.Info("REST: exists in redis", "IP", req.RemoteAddr)
 		// Если существует, проверим пароль
@@ -1732,11 +1733,23 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			return
 		}
 		if isCorrect {
-			// Если пароль верный, достанем имя сессии и вернем его
+			// Если пароль верный, достанем имя сессии
 			rest.logger.Info("REST: correct pass", "IP", req.RemoteAddr)
 			sessionName, err = rest.redis.GetCookie(uniqueUserKey)
 			if err != nil {
 				rest.logger.Error("REST: Error occured when getting existing key from redis", "Error", err, "uniqueUserKey", uniqueUserKey, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			// Получить существующий объект сессии
+			session, err = rest.store.Get(req, sessionName)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when getting session from cookiestore", "Error", err, "Session name", sessionName, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if session.IsNew {
+				rest.logger.Info("REST: No session exists", "Error", err.Error(), "Session name", sessionName, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
@@ -1773,8 +1786,8 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			return
 		}
 		// Проверить мапу на ошибки
-		if newRemoteSession.Base.ChildrenIDS == nil || len(newRemoteSession.Base.ChildrenIDS) == 0 {
-			rest.logger.Error("REST: Error occured when getting children map", "Error", "ChildrenIDS nil or empty", "IP", req.RemoteAddr)
+		if newRemoteSession.Base.Children == nil || len(newRemoteSession.Base.Children) == 0 {
+			rest.logger.Error("REST: Error occured when getting children map", "Error", "Children nil or empty", "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadGateway)
 			return
 		}
@@ -1804,20 +1817,22 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		}
 		// Привязать к ней удаленную сессию
 		rest.sessionsMap[newSessionName] = newRemoteSession
-		// Запихать в сессионные переменные имя пользователя и номер школы
-		newLocalSession.Values["userName"] = rReq.Login
-		newLocalSession.Values["schoolID"] = rReq.ID
-		newLocalSession.Save(req, respwr)
+		// Записать сессию
 		sessionName = newSessionName
+		session = newLocalSession
 		// Обновляем базу данных
 		isParent := true
-		err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.ChildrenIDS)
+		err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.Children)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}
+	// Запихать в сессионные переменные имя пользователя и номер школы
+	session.Values["userName"] = rReq.Login
+	session.Values["schoolID"] = rReq.ID
+	session.Save(req, respwr)
 	// Устанавливаем в куки значение sessionName
 	expiration := time.Now().Add(365 * 24 * time.Hour)
 	cookie := http.Cookie{Name: "sessionName", Value: sessionName, Expires: expiration}

@@ -16,7 +16,7 @@ func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMark
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var weekSchoolMarks *dt.WeekSchoolMarks
@@ -38,7 +38,7 @@ func (s *Session) GetLessonDescription(date string, AID, CID, TP int, studentID 
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var lessonDescription *dt.LessonDescription

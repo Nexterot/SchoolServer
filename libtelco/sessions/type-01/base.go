@@ -201,9 +201,9 @@ func GetChildrenMap(s *ss.Session) error {
 	}
 
 	// Находит ID учеников и также определяет тип сессии
-	getChildrenIDs := func(node *html.Node) (map[string]string, bool, error) {
-		// Находим ID учеников/ученика
-		childrenIDs := make(map[string]string)
+	getChildrenIDs := func(node *html.Node) (map[string]ss.Student, bool, error) {
+		// Находим ID учеников/ученика.
+		childrenIDs := make(map[string]ss.Student)
 		idNode := getChildrenIDNode(node)
 		if idNode != nil {
 			if idNode.FirstChild == nil {
@@ -227,9 +227,9 @@ func GetChildrenMap(s *ss.Session) error {
 							if nameNode != nil && !flag {
 								for _, a2 := range nameNode.Attr {
 									if a2.Key == "value" {
-										childrenIDs[a2.Val] = a.Val
+										childrenIDs[a2.Val] = ss.Student{a.Val, ""}
 										if _, err := strconv.Atoi(a.Val); err != nil {
-											return childrenIDs, false, errors.New("ID has incorrect format")
+											return nil, false, errors.New("ID has incorrect format")
 										}
 									}
 								}
@@ -242,9 +242,9 @@ func GetChildrenMap(s *ss.Session) error {
 					if len(n.Attr) != 0 {
 						for _, a := range n.Attr {
 							if a.Key == "value" {
-								childrenIDs[n.FirstChild.Data] = a.Val
+								childrenIDs[n.FirstChild.Data] = ss.Student{a.Val, ""}
 								if _, err := strconv.Atoi(a.Val); err != nil {
-									return childrenIDs, false, errors.New("ID has incorrect format")
+									return nil, false, errors.New("ID has incorrect format")
 								}
 							}
 						}
@@ -252,10 +252,10 @@ func GetChildrenMap(s *ss.Session) error {
 				}
 			}
 		} else {
-			return childrenIDs, false, errors.New("Couldn't find children IDs Node")
+			return nil, false, errors.New("Couldn't find children IDs Node")
 		}
 
-		// Находим тип сессии
+		// Находим тип сессии.
 		sessTypeNode := idNode.Parent
 		if sessTypeNode != nil && sessTypeNode.Data == "select" {
 			sessTypeNode = sessTypeNode.Parent
@@ -269,25 +269,102 @@ func GetChildrenMap(s *ss.Session) error {
 				isParent = true
 			}
 		} else {
-			return childrenIDs, false, errors.New("Couldn't find type of session")
+			return nil, false, errors.New("Couldn't find type of session")
 		}
 
 		return childrenIDs, isParent, nil
 	}
 
 	var isParent bool
-	s.ChildrenIDS, isParent, err = getChildrenIDs(parsedHTML)
+	s.Children, isParent, err = getChildrenIDs(parsedHTML)
 	if err != nil {
 		return err
 	}
 	if isParent {
 		s.Type = ss.Parent
 	} else {
-		s.Type = ss.Student
+		s.Type = ss.Child
 	}
-	if len(s.ChildrenIDS) == 1 {
-		for _, v := range s.ChildrenIDS {
-			s.ID = v
+
+	// Если мы дошли до этого места, то можно начать искать CLID каждого ребенка.
+	for k, v := range s.Children {
+		// 0-ой Post-запрос.
+		requestOptions0 := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"LoginType": "0",
+				"RPTID":     "3",
+				"ThmID":     "2",
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+			},
+		}
+		response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/JournalAccess.asp", requestOptions0)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = response0.Close()
+		}()
+		if err := checkResponse(s, response0); err != nil {
+			return err
+		}
+
+		type Filter struct {
+			ID    string `json:"filterId"`
+			Value string `json:"filterValue"`
+		}
+
+		type SelectedData struct {
+			SelectedData []Filter `json:"selectedData"`
+		}
+
+		json := SelectedData{
+			SelectedData: []Filter{Filter{"SID", v.SID}},
+		}
+
+		// 1-ый Post-запрос.
+		requestOptions1 := &gr.RequestOptions{
+			JSON: json,
+			Headers: map[string]string{
+				"Origin":           p + s.Serv.Link,
+				"X-Requested-With": "XMLHttpRequest",
+				"at":               s.AT,
+				"Referer":          p + s.Serv.Link + "/asp/Reports/ReportJournalAccess.asp",
+			},
+		}
+		response1, err := s.Sess.Post(p+s.Serv.Link+"/webapi/reports/journal_access/initfilters", requestOptions1)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			_ = response1.Close()
+		}()
+		if err := checkResponse(s, response1); err != nil {
+			return err
+		}
+		CLID := string(response1.Bytes())
+		index := strings.Index(CLID, "\"value\":\"")
+		if index == -1 {
+			return fmt.Errorf("Invalid SID")
+		}
+		CLID = CLID[index+len("\"value\":\""):]
+		index = strings.Index(CLID, "\"")
+		if index == -1 {
+			return fmt.Errorf("Invalid SID")
+		}
+		CLID = CLID[:index]
+		v.CLID = CLID
+		s.Children[k] = v
+	}
+
+	if len(s.Children) == 1 {
+		for _, v := range s.Children {
+			s.Child = v
 		}
 	}
 	return nil
