@@ -45,6 +45,8 @@ func (serv *Server) Run() error {
 	// Закрыть БД
 	defer serv.api.Db.Close()
 	defer serv.api.Redis.Close()
+	// Закрыть кукистор
+	defer serv.api.Store.Close()
 
 	serv.api.BindHandlers()
 	return http.ListenAndServe(serv.config.ServerAddr, context.ClearHandler(http.DefaultServeMux))

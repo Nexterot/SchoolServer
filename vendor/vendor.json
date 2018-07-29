@@ -15,6 +15,18 @@
 			"revisionTime": "2015-10-22T10:31:44Z"
 		},
 		{
+			"checksumSHA1": "6X3O3mfvOyiwV2iAb5GjxARs08c=",
+			"path": "github.com/garyburd/redigo/internal",
+			"revision": "569eae59ada904ea8db7a225c2b47165af08735a",
+			"revisionTime": "2018-04-04T16:07:26Z"
+		},
+		{
+			"checksumSHA1": "TRsWhl8gX4p8xoErljH/oyNmY5M=",
+			"path": "github.com/garyburd/redigo/redis",
+			"revision": "569eae59ada904ea8db7a225c2b47165af08735a",
+			"revisionTime": "2018-04-04T16:07:26Z"
+		},
+		{
 			"checksumSHA1": "p3IB18uJRs4dL2K5yx24MrLYE9A=",
 			"path": "github.com/google/go-querystring/query",
 			"revision": "53e6ce116135b80d037921a7fdd5138cf32d7a8a",
@@ -227,6 +239,12 @@
 			"path": "golang.org/x/tools/go/vcs",
 			"revision": "75d2ffb453d53bed20f95f0d563ee000dc4c0c83",
 			"revisionTime": "2018-07-03T04:15:06Z"
+		},
+		{
+			"checksumSHA1": "53Wt63TZkYzzbdh4Yo/B7kVGiyQ=",
+			"path": "gopkg.in/boj/redistore.v1",
+			"revision": "fc113767cd6b051980f260d6dbe84b2740c46ab0",
+			"revisionTime": "2016-01-28T11:33:10Z"
 		},
 		{
 			"checksumSHA1": "OU/wHTJqhyQfyRnXMVWx1Ox06kQ=",

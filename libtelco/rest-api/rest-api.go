@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/gorilla/sessions"
+	redistore "gopkg.in/boj/redistore.v1"
 )
 
 // RestAPI struct содержит конфигурацию Rest API.
@@ -28,7 +29,7 @@ import (
 // в объекты сессий на удаленном сервере.
 type RestAPI struct {
 	config      *cp.Config
-	store       *sessions.CookieStore
+	Store       *redistore.RediStore
 	logger      *log.Logger
 	sessionsMap map[string]*ss.Session
 	Db          *db.Database
@@ -40,8 +41,21 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	key := make([]byte, 32)
 	rand.Read(key)
 	logger.Info("REST: Successfully generated secure key", "Key", key)
-	newStore := sessions.NewCookieStore(key)
-	newStore.MaxAge(86400 * 365)
+	// redistore
+	newStore, err := redistore.NewRediStoreWithDB(
+		1,
+		"tcp",
+		":"+config.CookieStore.Port,
+		config.CookieStore.Password,
+		config.CookieStore.DBname,
+		key,
+	)
+	if err != nil {
+		logger.Error("REST: Error occured when creating redistore", "Error", err)
+	} else {
+		logger.Info("REST: Successfully initialized redistore")
+	}
+	newStore.SetMaxAge(86400 * 365)
 	// gorm
 	database, err := db.NewDatabase(logger, config)
 	if err != nil {
@@ -58,7 +72,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	}
 	return &RestAPI{
 		config:      config,
-		store:       newStore,
+		Store:       newStore,
 		logger:      logger,
 		sessionsMap: make(map[string]*ss.Session),
 		Db:          database,
@@ -229,7 +243,7 @@ func (rest *RestAPI) getLocalSession(respwr http.ResponseWriter, req *http.Reque
 	}
 	sessionName := cookie.Value
 	// Получить существующий объект сессии
-	session, err := rest.store.Get(req, sessionName)
+	session, err := rest.Store.Get(req, sessionName)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when getting session from cookiestore", "Error", err, "Session name", sessionName, "IP", req.RemoteAddr)
 		delete(rest.sessionsMap, sessionName)
@@ -1595,19 +1609,6 @@ func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request
 	if session == nil {
 		return
 	}
-	/*
-		// Вызвать logout для удаленной сессии
-		err := rest.sessionsMap[sessionName].Logout()
-		if err != nil {
-			rest.logger.Error("REST: Error occured when loggin out from site", "Error", err, "IP", req.RemoteAddr)
-		}
-
-		// Удалить удаленную сессию
-		delete(rest.sessionsMap, sessionName)
-	*/
-	// Удалить локальную сессию
-	session.Options.MaxAge = -1
-	session.Save(req, respwr)
 	// Удалить куки
 	expiration := time.Now().Add(-24 * time.Hour)
 	cookie := http.Cookie{Name: "sessionName", Value: sessionName, Expires: expiration}
@@ -1742,7 +1743,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				return
 			}
 			// Получить существующий объект сессии
-			session, err = rest.store.Get(req, sessionName)
+			session, err = rest.Store.Get(req, sessionName)
 			if err != nil {
 				rest.logger.Error("REST: Error occured when getting session from cookiestore", "Error", err, "Session name", sessionName, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -1802,7 +1803,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		}
 		// Создать локальную сессию
 		newSessionName := hex.EncodeToString(hasher.Sum(nil))
-		newLocalSession, err := rest.store.Get(req, newSessionName)
+		newLocalSession, err := rest.Store.Get(req, newSessionName)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when creating local session", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
