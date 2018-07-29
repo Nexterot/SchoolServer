@@ -222,7 +222,7 @@ func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, 
 	if err != nil {
 		return nil, err
 	}
-	return &cp.School{Link: "user.School.Address", Login: userName, Password: user.Password}, nil
+	return &cp.School{Link: "user.School.Address", Login: userName, Password: user.Password, Type: 1}, nil
 }
 
 // GetUserPermission проверяет разрешение пользователя на работу с сервисом
@@ -548,4 +548,17 @@ func (db *Database) GetStudents(userName string, schoolID int) (map[string]int, 
 		childrenMap[st.Name] = st.NetSchoolID
 	}
 	return childrenMap, nil
+}
+
+// CheckPassword сверяет пароль с хранящимся в БД
+func (db *Database) CheckPassword(userName string, schoolID int, pass string) (bool, error) {
+	var user User
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		db.Logger.Info("DB: Error occured when getting user for checking password", "User params", where)
+		return false, err
+	}
+	return user.Password == pass, nil
 }

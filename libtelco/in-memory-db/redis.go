@@ -18,9 +18,9 @@ type Database struct {
 // NewDatabase создает клиента базы данных.
 func NewDatabase(config *cp.Config) (*Database, error) {
 	sdb := redis.NewClient(&redis.Options{
-		Addr:     config.Redis.Host + ":" + config.Redis.Port,
-		Password: config.Redis.Password,
-		DB:       config.Redis.DBname,
+		Addr: config.Redis.Host + ":" + config.Redis.Port,
+		//Password: config.Redis.Password,
+		DB: config.Redis.DBname,
 	})
 	if sdb == nil {
 		return nil, fmt.Errorf("Unable to connect to Redis")
@@ -28,6 +28,11 @@ func NewDatabase(config *cp.Config) (*Database, error) {
 	return &Database{
 		sdb,
 	}, nil
+}
+
+// FlushAll стирает ВСЕ
+func (db *Database) FlushAll() error {
+	return db.schoolServerDB.FlushAll().Err()
 }
 
 // Работа с cookie.
