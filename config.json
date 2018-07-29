@@ -5,7 +5,7 @@
         "port" : "5432",
         "user" : "test_user",
         "password": "qwerty",
-        "dbname": "schoolServerDB",
+        "dbname": "schoolserverdb",
         "sslmode" : "disable"
     },
     "redis" :{

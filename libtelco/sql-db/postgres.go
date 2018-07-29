@@ -55,7 +55,7 @@ type Student struct {
 	gorm.Model
 	UserID      uint   // parent id
 	NetSchoolID int    // id ученика в системе NetSchool
-	ClassID     int    // id класса, в котором учится ученик
+	ClassID     string // id класса, в котором учится ученик
 	Name        string `sql:"size:255"`
 	Days        []Day  // has-many relation
 }
@@ -174,12 +174,12 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 			students := make([]Student, len(childrenMap))
 			i := 0
 			for childName, childInfo := range childrenMap {
-				id, errInner := strconv.Atoi(childInfo.SID)
+				sid, errInner := strconv.Atoi(childInfo.SID)
 				if errInner != nil {
-					db.Logger.Info("DB: Error occured when converting IDs from childrenMap", "ChildID", childInfo.SID)
+					db.Logger.Info("DB: Error occured when converting SIDs from childrenMap", "ChildSID", childInfo.SID)
 					return errInner
 				}
-				student = Student{Name: childName, NetSchoolID: id, Days: []Day{}}
+				student = Student{Name: childName, NetSchoolID: sid, Days: []Day{}, ClassID: childInfo.CLID}
 				errInner = db.SchoolServerDB.Create(&student).Error
 				if errInner != nil {
 					db.Logger.Info("DB: Error occured when creating student for user", "User", user, "Student", student)
@@ -223,7 +223,7 @@ func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, 
 	if err != nil {
 		return nil, err
 	}
-	return &cp.School{Link: "user.School.Address", Login: userName, Password: user.Password}, nil
+	return &cp.School{Link: "user.School.Address", Login: userName, Password: user.Password, Type: 1}, nil
 }
 
 // GetUserPermission проверяет разрешение пользователя на работу с сервисом
@@ -549,4 +549,17 @@ func (db *Database) GetStudents(userName string, schoolID int) (map[string]int, 
 		childrenMap[st.Name] = st.NetSchoolID
 	}
 	return childrenMap, nil
+}
+
+// CheckPassword сверяет пароль с хранящимся в БД
+func (db *Database) CheckPassword(userName string, schoolID int, pass string) (bool, error) {
+	var user User
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		db.Logger.Info("DB: Error occured when getting user for checking password", "User params", where)
+		return false, err
+	}
+	return user.Password == pass, nil
 }

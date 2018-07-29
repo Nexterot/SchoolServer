@@ -7,6 +7,7 @@ package restapi
 
 import (
 	cp "SchoolServer/libtelco/config-parser"
+	red "SchoolServer/libtelco/in-memory-db"
 	"SchoolServer/libtelco/log"
 	ss "SchoolServer/libtelco/sessions"
 	db "SchoolServer/libtelco/sql-db"
@@ -16,6 +17,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gorilla/sessions"
@@ -30,6 +32,7 @@ type RestAPI struct {
 	logger      *log.Logger
 	sessionsMap map[string]*ss.Session
 	db          *db.Database
+	redis       *red.Database
 }
 
 // NewRestAPI создает структуру для работы с Rest API.
@@ -39,11 +42,19 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	logger.Info("REST: Successfully generated secure key", "Key", key)
 	newStore := sessions.NewCookieStore(key)
 	newStore.MaxAge(86400 * 365)
+	// gorm
 	database, err := db.NewDatabase(logger, config)
 	if err != nil {
 		logger.Error("REST: Error occured when initializing database", "Error", err)
 	} else {
 		logger.Info("REST: Successfully initialized database")
+	}
+	// redis
+	redis, err := red.NewDatabase(config)
+	if err != nil {
+		logger.Error("REST: Error occured when initializing redis", "Error", err)
+	} else {
+		logger.Info("REST: Successfully initialized redis")
 	}
 	return &RestAPI{
 		config:      config,
@@ -51,6 +62,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		logger:      logger,
 		sessionsMap: make(map[string]*ss.Session),
 		db:          database,
+		redis:       redis,
 	}
 }
 
@@ -128,7 +140,13 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -140,7 +158,13 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 			// Школа не найдена
 			rest.logger.Info("REST: Invalid school id specified", "Id", rReq.ID, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			respwr.Write([]byte("invalid id"))
+			resp := "invalid id"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
 		} else {
 			// Другая ошибка
 			rest.logger.Error("REST: Error occured when getting school permission from db", "Error", err, "Id", rReq.ID, "IP", req.RemoteAddr)
@@ -242,7 +266,7 @@ func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, 
 	remoteSession := ss.NewSession(school)
 	err = remoteSession.Login()
 	if err != nil {
-		rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when remote signing in", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadGateway)
 		return nil
 	}
@@ -273,7 +297,13 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -362,7 +392,13 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -442,7 +478,13 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -527,7 +569,13 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -615,7 +663,13 @@ func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, r
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -702,7 +756,13 @@ func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, re
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -788,7 +848,13 @@ func (rest *RestAPI) GetReportJournalAccessHandler(respwr http.ResponseWriter, r
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -876,7 +942,13 @@ func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -1101,11 +1173,21 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
 	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Надо по протоколу
+	if rReq.Week == "" {
+		rReq.Week = time.Now().Format("02.01.2006")
+	}
 	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
@@ -1195,7 +1277,13 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -1220,7 +1308,13 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 			// Такого таска нет
 			rest.logger.Info("REST: Invalid task id specified", "Error", err.Error(), "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			respwr.Write([]byte("invalid id"))
+			resp := "invalid id"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
 		} else {
 			// Другая ошибка
 			rest.logger.Error("REST: Error occured when getting task date from db", "Error", err, "IP", req.RemoteAddr)
@@ -1296,7 +1390,13 @@ func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Req
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -1310,7 +1410,13 @@ func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Req
 			// Такого таска нет в БД
 			rest.logger.Info("REST: Task with specified id not found in db", "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			respwr.Write([]byte("invalid id"))
+			resp := "invalid id"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
 		} else {
 			// Другая ошибка
 			rest.logger.Error("REST: Error occured when marking task as done in db", "Error", err, "IP", req.RemoteAddr)
@@ -1344,7 +1450,13 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -1358,7 +1470,13 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 			// Такого таска нет в БД
 			rest.logger.Info("REST: Task with specified id not found in db", "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			respwr.Write([]byte("invalid id"))
+			resp := "invalid id"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
 		} else {
 			// Другая ошибка
 			rest.logger.Error("REST: Error occured when marking task as undone in db", "Error", err, "IP", req.RemoteAddr)
@@ -1398,7 +1516,13 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -1471,16 +1595,23 @@ func (rest *RestAPI) LogOutHandler(respwr http.ResponseWriter, req *http.Request
 	if session == nil {
 		return
 	}
-	// Вызвать logout для удаленной сессии
-	err := rest.sessionsMap[sessionName].Logout()
-	if err != nil {
-		rest.logger.Error("REST: Error occured when loggin out from site", "Error", err, "IP", req.RemoteAddr)
-	}
-	// Удалить удаленную сессию
-	delete(rest.sessionsMap, sessionName)
+	/*
+		// Вызвать logout для удаленной сессии
+		err := rest.sessionsMap[sessionName].Logout()
+		if err != nil {
+			rest.logger.Error("REST: Error occured when loggin out from site", "Error", err, "IP", req.RemoteAddr)
+		}
+
+		// Удалить удаленную сессию
+		delete(rest.sessionsMap, sessionName)
+	*/
 	// Удалить локальную сессию
 	session.Options.MaxAge = -1
 	session.Save(req, respwr)
+	// Удалить куки
+	expiration := time.Now().Add(-24 * time.Hour)
+	cookie := http.Cookie{Name: "sessionName", Value: sessionName, Expires: expiration}
+	http.SetCookie(respwr, &cookie)
 	// Отправить ответ клиенту
 	rest.logger.Info("REST: Successfully logged out", "IP", req.RemoteAddr)
 	respwr.WriteHeader(http.StatusOK)
@@ -1509,7 +1640,13 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		respwr.Write([]byte("malformed data"))
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
 		return
 	}
 	// Распечатаем запрос от клиента
@@ -1521,7 +1658,13 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			// Школа не найдена
 			rest.logger.Info("REST: Invalid school id specified", "Id", rReq.ID, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			respwr.Write([]byte("invalid id"))
+			resp := "invalid data"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
 		} else {
 			// Другая ошибка
 			rest.logger.Error("REST: Error occured when getting school permission from db", "Error", err, "Id", rReq.ID, "IP", req.RemoteAddr)
@@ -1557,61 +1700,143 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	school := rest.config.Schools[rReq.ID-1]
 	school.Login = rReq.Login
 	school.Password = rReq.Passkey
-	// Создать удаленную сессию и залогиниться
-	newRemoteSession := ss.NewSession(&school)
-	err = newRemoteSession.Login()
+	// Создать ключ
+	uniqueUserKey := strconv.Itoa(rReq.ID) + strings.ToUpper(rReq.Login)
+	// Проверить существование локальной сессии в редисе
+	exists, err := rest.redis.ExistsCookie(uniqueUserKey)
 	if err != nil {
-		rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
-		respwr.WriteHeader(http.StatusBadGateway)
-		return
-	}
-	// Сразу получим мапу имен детей в их ID
-	err = newRemoteSession.GetChildrenMap()
-	if err != nil {
-		rest.logger.Error("REST: Error occured when getting children map from site", err, "IP", req.RemoteAddr)
-		respwr.WriteHeader(http.StatusBadGateway)
-		return
-	}
-	// Проверить мапу на ошибки
-	if newRemoteSession.Base.Children == nil || len(newRemoteSession.Base.Children) == 0 {
-		rest.logger.Error("REST: Error occured when getting children map", "Error", "ChildrenIDS nil or empty", "IP", req.RemoteAddr)
-		respwr.WriteHeader(http.StatusBadGateway)
-		return
-	}
-	// Сгенерировать имя локальной сессии
-	timeString := time.Now().String()
-	hasher := md5.New()
-	if _, err = hasher.Write([]byte(timeString)); err != nil {
-		rest.logger.Error("REST: Error occured when hashing for session name", "Error", err, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when checking key existence in redis", "Error", err, "uniqueUserKey", uniqueUserKey, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	// Создать локальную сессию
-	newSessionName := hex.EncodeToString(hasher.Sum(nil))
-	newLocalSession, err := rest.store.Get(req, newSessionName)
-	if err != nil {
-		rest.logger.Error("REST: Error occured when creating local session", "Error", err, "IP", req.RemoteAddr)
-		respwr.WriteHeader(http.StatusInternalServerError)
-		return
+	var sessionName string
+	var session *sessions.Session
+	if exists {
+		rest.logger.Info("REST: exists in redis", "IP", req.RemoteAddr)
+		// Если существует, проверим пароль
+		isCorrect, err := rest.db.CheckPassword(rReq.Login, rReq.ID, rReq.Passkey)
+		if err != nil {
+			if err.Error() == "record not found" {
+				rest.logger.Info("REST: Invalid id or login specified", "Error", err.Error(), "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusBadRequest)
+				resp := "invalid login or id"
+				status, err := respwr.Write([]byte(resp))
+				if err != nil {
+					rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				} else {
+					rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				}
+				return
+			}
+			rest.logger.Error("REST: Error occured when checking password in db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		if isCorrect {
+			// Если пароль верный, достанем имя сессии
+			rest.logger.Info("REST: correct pass", "IP", req.RemoteAddr)
+			sessionName, err = rest.redis.GetCookie(uniqueUserKey)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when getting existing key from redis", "Error", err, "uniqueUserKey", uniqueUserKey, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			// Получить существующий объект сессии
+			session, err = rest.store.Get(req, sessionName)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when getting session from cookiestore", "Error", err, "Session name", sessionName, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if session.IsNew {
+				rest.logger.Info("REST: No session exists", "Error", err.Error(), "Session name", sessionName, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		} else {
+			// Если неверный, пошлем BadRequest
+			rest.logger.Info("REST: incorrect pass", "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			// Отправить ответ клиенту
+			resp := "invalid login or passkey"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
+			return
+		}
+	} else {
+		rest.logger.Info("REST: doesn't exist in redis", "IP", req.RemoteAddr)
+		// Если не существует, попробуем авторизоваться на удаленном сервере.
+		// Создать удаленную сессию и залогиниться
+		newRemoteSession := ss.NewSession(&school)
+		err = newRemoteSession.Login()
+		if err != nil {
+			rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		// Сразу получим мапу имен детей в их ID
+		err = newRemoteSession.GetChildrenMap()
+		if err != nil {
+			rest.logger.Error("REST: Error occured when getting children map from site", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		// Проверить мапу на ошибки
+		if newRemoteSession.Base.Children == nil || len(newRemoteSession.Base.Children) == 0 {
+			rest.logger.Error("REST: Error occured when getting children map", "Error", "Children nil or empty", "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		// Если логин и пароль правильные, создадим локальную сессию
+		// Сгенерировать имя локальной сессии
+		timeString := time.Now().String()
+		hasher := md5.New()
+		if _, err = hasher.Write([]byte(timeString)); err != nil {
+			rest.logger.Error("REST: Error occured when hashing for creating session name", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Создать локальную сессию
+		newSessionName := hex.EncodeToString(hasher.Sum(nil))
+		newLocalSession, err := rest.store.Get(req, newSessionName)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when creating local session", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Записать в редис
+		err = rest.redis.AddCookie(uniqueUserKey, newSessionName)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when adding cookie to redis", "Error", err, "Key", uniqueUserKey, "Value", newSessionName, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Привязать к ней удаленную сессию
+		rest.sessionsMap[newSessionName] = newRemoteSession
+		// Записать сессию
+		sessionName = newSessionName
+		session = newLocalSession
+		// Обновляем базу данных
+		isParent := true
+		err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.Children)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
-	// Привязать к ней удаленную сессию
-	rest.sessionsMap[newSessionName] = newRemoteSession
 	// Запихать в сессионные переменные имя пользователя и номер школы
-	newLocalSession.Values["userName"] = rReq.Login
-	newLocalSession.Values["schoolID"] = rReq.ID
-	newLocalSession.Save(req, respwr)
+	session.Values["userName"] = rReq.Login
+	session.Values["schoolID"] = rReq.ID
+	session.Save(req, respwr)
 	// Устанавливаем в куки значение sessionName
 	expiration := time.Now().Add(365 * 24 * time.Hour)
-	cookie := http.Cookie{Name: "sessionName", Value: newSessionName, Expires: expiration}
+	cookie := http.Cookie{Name: "sessionName", Value: sessionName, Expires: expiration}
 	http.SetCookie(respwr, &cookie)
-	// Обновляем базу данных
-	isParent := true
-	err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.Children)
-	if err != nil {
-		rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
-		respwr.WriteHeader(http.StatusInternalServerError)
-		return
-	}
 	rest.logger.Info("REST: Successfully signed in", "Username", rReq.Login, "SchoolID", rReq.ID, "IP", req.RemoteAddr)
 	respwr.WriteHeader(http.StatusOK)
 }
