@@ -571,3 +571,8 @@ func (db *Database) CheckPassword(userName string, schoolID int, pass string) (b
 	}
 	return user.Password == pass, nil
 }
+
+// Close закрывает БД
+func (db *Database) Close() error {
+	return db.SchoolServerDB.Close()
+}

@@ -31,8 +31,8 @@ type RestAPI struct {
 	store       *sessions.CookieStore
 	logger      *log.Logger
 	sessionsMap map[string]*ss.Session
-	db          *db.Database
-	redis       *red.Database
+	Db          *db.Database
+	Redis       *red.Database
 }
 
 // NewRestAPI создает структуру для работы с Rest API.
@@ -61,8 +61,8 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		store:       newStore,
 		logger:      logger,
 		sessionsMap: make(map[string]*ss.Session),
-		db:          database,
-		redis:       redis,
+		Db:          database,
+		Redis:       redis,
 	}
 }
 
@@ -152,7 +152,7 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 	// Распечатаем запрос от клиента
 	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
 	// Проверим разрешение у школы
-	perm, err := rest.db.GetSchoolPermission(rReq.ID)
+	perm, err := rest.Db.GetSchoolPermission(rReq.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Школа не найдена
@@ -174,7 +174,7 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 	}
 	if !perm {
 		// Если у школы нет разрешения, проверить разрешение пользователя
-		userPerm, err := rest.db.GetUserPermission(rReq.Login, rReq.ID)
+		userPerm, err := rest.Db.GetUserPermission(rReq.Login, rReq.ID)
 		if err != nil {
 			if err.Error() == "record not found" {
 				// Пользователь новый: вернем true, чтобы он мог залогиниться и
@@ -255,7 +255,7 @@ func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, 
 	// Полезть в базу данных за данными для авторизации
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	school, err := rest.db.GetUserAuthData(userName.(string), schoolID.(int))
+	school, err := rest.Db.GetUserAuthData(userName.(string), schoolID.(int))
 	if err != nil {
 		// Ошибок тут быть не должно
 		rest.logger.Error("REST: Error occured when getting user auth data from db", "Username", userName, "SchoolID", schoolID, "IP", req.RemoteAddr)
@@ -1032,7 +1032,7 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 		return
 	}
 	// Залезть в БД за списком школ
-	schools, err := rest.db.GetSchools()
+	schools, err := rest.Db.GetSchools()
 	if err != nil {
 		rest.logger.Error("REST: Error occured when getting school list from db", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
@@ -1104,7 +1104,7 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 		// Если мапа не существует или пустая, полезем в БД
 		userName := session.Values["userName"]
 		schoolID := session.Values["schoolID"]
-		res, err := rest.db.GetStudents(userName.(string), schoolID.(int))
+		res, err := rest.Db.GetStudents(userName.(string), schoolID.(int))
 		if err != nil {
 			rest.logger.Error("REST: Error occured when getting children map from db", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -1229,7 +1229,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
 	// Сходить в бд
-	err = rest.db.UpdateTasksStatuses(userName.(string), schoolID.(int), rReq.ID, weekMarks)
+	err = rest.Db.UpdateTasksStatuses(userName.(string), schoolID.(int), rReq.ID, weekMarks)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when updating statuses for tasks and marks", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
@@ -1302,7 +1302,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	// Сходить в бд за информацией о таске
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	date, cid, tp, studentID, err := rest.db.GetTaskInfo(userName.(string), schoolID.(int), rReq.ID)
+	date, cid, tp, studentID, err := rest.Db.GetTaskInfo(userName.(string), schoolID.(int), rReq.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Такого таска нет
@@ -1404,7 +1404,7 @@ func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Req
 	// Лезть в БД
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	err = rest.db.TaskMarkDone(userName.(string), schoolID.(int), rReq.ID)
+	err = rest.Db.TaskMarkDone(userName.(string), schoolID.(int), rReq.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Такого таска нет в БД
@@ -1464,7 +1464,7 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 	// Лезть в БД
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	err = rest.db.TaskMarkUndone(userName.(string), schoolID.(int), rReq.ID)
+	err = rest.Db.TaskMarkUndone(userName.(string), schoolID.(int), rReq.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Такого таска нет в БД
@@ -1652,7 +1652,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	// Распечатаем запрос от клиента
 	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
 	// Проверим разрешение у школы
-	perm, err := rest.db.GetSchoolPermission(rReq.ID)
+	perm, err := rest.Db.GetSchoolPermission(rReq.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Школа не найдена
@@ -1674,7 +1674,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	}
 	if !perm {
 		// Если у школы нет разрешения, проверить разрешение пользователя
-		userPerm, err := rest.db.GetUserPermission(rReq.Login, rReq.ID)
+		userPerm, err := rest.Db.GetUserPermission(rReq.Login, rReq.ID)
 		if err != nil {
 			if err.Error() == "record not found" {
 				// Пользователь новый: вернем true, чтобы он мог залогиниться и
@@ -1703,7 +1703,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	// Создать ключ
 	uniqueUserKey := strconv.Itoa(rReq.ID) + strings.ToUpper(rReq.Login)
 	// Проверить существование локальной сессии в редисе
-	exists, err := rest.redis.ExistsCookie(uniqueUserKey)
+	exists, err := rest.Redis.ExistsCookie(uniqueUserKey)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when checking key existence in redis", "Error", err, "uniqueUserKey", uniqueUserKey, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
@@ -1714,7 +1714,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	if exists {
 		rest.logger.Info("REST: exists in redis", "IP", req.RemoteAddr)
 		// Если существует, проверим пароль
-		isCorrect, err := rest.db.CheckPassword(rReq.Login, rReq.ID, rReq.Passkey)
+		isCorrect, err := rest.Db.CheckPassword(rReq.Login, rReq.ID, rReq.Passkey)
 		if err != nil {
 			if err.Error() == "record not found" {
 				rest.logger.Info("REST: Invalid id or login specified", "Error", err.Error(), "IP", req.RemoteAddr)
@@ -1735,7 +1735,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		if isCorrect {
 			// Если пароль верный, достанем имя сессии
 			rest.logger.Info("REST: correct pass", "IP", req.RemoteAddr)
-			sessionName, err = rest.redis.GetCookie(uniqueUserKey)
+			sessionName, err = rest.Redis.GetCookie(uniqueUserKey)
 			if err != nil {
 				rest.logger.Error("REST: Error occured when getting existing key from redis", "Error", err, "uniqueUserKey", uniqueUserKey, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
@@ -1809,7 +1809,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			return
 		}
 		// Записать в редис
-		err = rest.redis.AddCookie(uniqueUserKey, newSessionName)
+		err = rest.Redis.AddCookie(uniqueUserKey, newSessionName)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when adding cookie to redis", "Error", err, "Key", uniqueUserKey, "Value", newSessionName, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -1822,7 +1822,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		session = newLocalSession
 		// Обновляем базу данных
 		isParent := true
-		err = rest.db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.Children)
+		err = rest.Db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.Children)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
