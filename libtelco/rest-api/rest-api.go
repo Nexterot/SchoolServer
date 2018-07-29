@@ -1845,10 +1845,5 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 // обработчиков запросов.
 func (rest *RestAPI) Handler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("REST: Handler called (not implemented yet)", "Path", req.URL.EscapedPath())
-	// Очистить редис
-	err := rest.redis.FlushAll()
-	if err != nil {
-		rest.logger.Error("FLUSH ALL", "Error", err)
-	}
 	respwr.WriteHeader(http.StatusNotImplemented)
 }
