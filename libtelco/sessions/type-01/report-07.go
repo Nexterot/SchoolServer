@@ -80,18 +80,19 @@ func GetJournalAccessReport(s *ss.Session, studentID string) (*dt.JournalAccessR
 	if err := checkResponse(s, response1); err != nil {
 		return nil, err
 	}
+	CLID := string(response1.Bytes())
+	index := strings.Index(CLID, "\"value\":\"")
+	if index == -1 {
+		return nil, fmt.Errorf("Invalid SID")
+	}
+	CLID = CLID[index+len("\"value\":\""):]
+	index = strings.Index(CLID, "\"")
+	if index == -1 {
+		return nil, fmt.Errorf("Invalid SID")
+	}
+	CLID = CLID[:index]
 
 	// 2-ой Post-запрос.
-	PCLID_IUP := string(response1.Bytes())
-	index := strings.Index(PCLID_IUP, "\"value\":\"")
-	if index == -1 {
-		return nil, fmt.Errorf("Invalid SID")
-	}
-	PCLID_IUP = PCLID_IUP[index+len("\"value\":\""):]
-	index = strings.Index(PCLID_IUP, "\"")
-	if index == -1 {
-		return nil, fmt.Errorf("Invalid SID")
-	}
 
 	requestOptions2 := &gr.RequestOptions{
 		Data: map[string]string{
@@ -100,7 +101,7 @@ func GetJournalAccessReport(s *ss.Session, studentID string) (*dt.JournalAccessR
 			"BACK":      "/asp/Reports/ReportJournalAccess.asp",
 			"LoginType": "0",
 			"NA":        "",
-			"PCLID_IUP": PCLID_IUP[:index],
+			"PCLID_IUP": CLID,
 			"PP":        "/asp/Reports/ReportJournalAccess.asp",
 			"RP":        "",
 			"RPTID":     "3",

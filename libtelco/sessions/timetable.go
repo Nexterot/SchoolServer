@@ -17,7 +17,7 @@ func (s *Session) GetTimeTable(date string, n int, studentID string) (*dt.TimeTa
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
-		studentID = s.Base.ID
+		studentID = s.Base.Child.SID
 	}
 	var err error
 	var timeTable *dt.TimeTable
