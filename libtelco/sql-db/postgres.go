@@ -141,7 +141,7 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 		logger.Info("DB: Table 'schools' empty. Adding our schools")
 		// Добавим записи поддерживаемых школ
 		school1 := School{
-			Address: "http://62.117.74.43/", Name: "Европейская гимназия", Initials: "ЕГ",
+			Address: "62.117.74.43", Name: "Европейская гимназия", Initials: "ЕГ",
 		}
 		err = sdb.Save(&school1).Error
 		if err != nil {
@@ -216,14 +216,22 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 
 // GetUserAuthData возвращает данные для повторной удаленной авторизации пользователя
 func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, error) {
-	var user User
-	// Получаем пользователя по школе и логину
-	where := User{Login: userName, SchoolID: uint(schoolID)}
-	err := db.SchoolServerDB.Where(where).First(&user).Error
+	var (
+		user   User
+		school School
+	)
+	// Получаем школу по id
+	err := db.SchoolServerDB.First(&school, schoolID).Error
 	if err != nil {
 		return nil, err
 	}
-	return &cp.School{Link: "user.School.Address", Login: userName, Password: user.Password, Type: 1}, nil
+	// Получаем пользователя по школе и логину
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err = db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return nil, err
+	}
+	return &cp.School{Link: school.Address, Login: userName, Password: user.Password, Type: 1}, nil
 }
 
 // GetUserPermission проверяет разрешение пользователя на работу с сервисом
