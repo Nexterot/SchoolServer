@@ -12,12 +12,13 @@ import (
 
 // Config struct содержит конфигурацию сервера.
 type Config struct {
-	ServerAddr string    `json:"serverAddr"`
-	Postgres   *Postgres `json:"postgres"`
-	Redis      *Redis    `json:"redis"`
-	MaxProcs   int       `json:"maxProcs"`
-	LogFile    string    `json:"logFile"`
-	Schools    []School  `json:"schools"`
+	ServerAddr  string    `json:"serverAddr"`
+	Postgres    *Postgres `json:"postgres"`
+	Redis       *Redis    `json:"redis"`
+	CookieStore *Redis    `json:"cookieStore"`
+	MaxProcs    int       `json:"maxProcs"`
+	LogFile     string    `json:"logFile"`
+	Schools     []School  `json:"schools"`
 }
 
 // Типы серверов.

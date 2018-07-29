@@ -12,6 +12,12 @@
         "host": "localhost",
         "port": "6379",
         "password": "qwerty",
+        "dbname" : 1
+    },
+    "cookieStore" :{
+        "host": "localhost",
+        "port": "6379",
+        "password": "qwerty",
         "dbname" : 0
     },
     "maxProcs" : 2,
