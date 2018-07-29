@@ -298,11 +298,9 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 	}
 	strs := responseMap["data"].(map[string]interface{})
 	var responseString string
-	if strs != nil {
-		for k, v := range strs {
-			if k == "strTable" {
-				responseString = v.(string)
-			}
+	for k, v := range strs {
+		if k == "strTable" {
+			responseString = v.(string)
 		}
 	}
 
@@ -360,8 +358,7 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 		return url, id, nil
 	}
 
-	var formLessonDescription func(*html.Node) (*dt.LessonDescription, error)
-	formLessonDescription = func(node *html.Node) (*dt.LessonDescription, error) {
+	formLessonDescription := func(node *html.Node) (*dt.LessonDescription, error) {
 		if node != nil {
 			details := *new(dt.LessonDescription)
 

@@ -9,6 +9,7 @@ import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
 	"fmt"
+	"time"
 
 	ss "SchoolServer/libtelco/sessions"
 
@@ -53,6 +54,26 @@ func (serv *Server) Run() error {
 		fmt.Println(err)
 	}
 	fmt.Println(kek.Base.Children)
+	data, err := kek.GetWeekSchoolMarks("11.10.2017", "11198")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(data)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	time.Sleep(time.Minute * time.Duration(25))
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	data, err = kek.GetWeekSchoolMarks("11.10.2017", "11198")
+	if err != nil {
+		fmt.Println(err)
+	}
 
 	err = kek.Logout()
 	if err != nil {
