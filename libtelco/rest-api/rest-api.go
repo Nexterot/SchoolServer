@@ -253,7 +253,7 @@ func (rest *RestAPI) getLocalSession(respwr http.ResponseWriter, req *http.Reque
 		return "", nil
 	}
 	if session.IsNew {
-		rest.logger.Info("REST: No session exists", "Error", err.Error(), "Session name", sessionName, "IP", req.RemoteAddr)
+		rest.logger.Info("REST: No session exists", "Session name", sessionName, "IP", req.RemoteAddr)
 		delete(rest.sessionsMap, sessionName)
 		session.Options.MaxAge = -1
 		session.Save(req, respwr)
