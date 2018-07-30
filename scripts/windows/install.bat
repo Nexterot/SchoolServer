@@ -1,2 +1,3 @@
 go build main.go
-mv main SchoolServer
+del SchoolServer.exe
+rename main.exe SchoolServer.exe
