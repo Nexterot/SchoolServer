@@ -1650,6 +1650,8 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		}
 		return
 	}
+	// Приведем логин к uppercase
+	rReq.Login = strings.ToUpper(rReq.Login)
 	// Распечатаем запрос от клиента
 	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
 	// Проверим разрешение у школы
@@ -1702,7 +1704,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	school.Login = rReq.Login
 	school.Password = rReq.Passkey
 	// Создать ключ
-	uniqueUserKey := strconv.Itoa(rReq.ID) + strings.ToUpper(rReq.Login)
+	uniqueUserKey := strconv.Itoa(rReq.ID) + rReq.Login
 	// Проверить существование локальной сессии в редисе
 	exists, err := rest.Redis.ExistsCookie(uniqueUserKey)
 	if err != nil {
@@ -1746,11 +1748,6 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			session, err = rest.Store.Get(req, sessionName)
 			if err != nil {
 				rest.logger.Error("REST: Error occured when getting session from cookiestore", "Error", err, "Session name", sessionName, "IP", req.RemoteAddr)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			if session.IsNew {
-				rest.logger.Info("REST: No session exists", "Error", err.Error(), "Session name", sessionName, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
