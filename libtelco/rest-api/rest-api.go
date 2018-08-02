@@ -1166,6 +1166,29 @@ type tasksMarksRequest struct {
 	ID   int    `json:"id"`
 }
 
+// lesson используется в day
+type lesson struct {
+	ID     int    `json:"id"`
+	Status int    `json:"status"`
+	InTime bool   `json:"inTime"`
+	Name   string `json:"name"`
+	Title  string `json:"title"`
+	Type   string `json:"type"`
+	Mark   string `json:"mark"`
+	Weight string `json:"weight"`
+}
+
+// day используется в tasksMarksResponse
+type day struct {
+	Date    string   `json:"date"`
+	Lessons []lesson `json:"lessons"`
+}
+
+// tasksMarksResponse используется в GetTasksAndMarksHandler
+type tasksMarksResponse struct {
+	Days []day `json:"days"`
+}
+
 // GetTasksAndMarksHandler возвращает задания и оценки на неделю
 func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("REST: GetTasksAndMarksHandler called", "IP", req.RemoteAddr)
@@ -1198,7 +1221,8 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	}
 	// Распечатаем запрос от клиента
 	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
-	// Надо по протоколу
+	// По протоколу пустое поле заменить на дату первого дня текущей недели
+	// (пока просто текущий день)
 	if rReq.Week == "" {
 		rReq.Week = time.Now().Format("02.01.2006")
 	}
@@ -1249,19 +1273,32 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+	// Сформировать ответ по протоколу
+	var resp tasksMarksResponse
+	days := make([]day, 0)
+	for _, d := range weekMarks.Data {
+		lessons := make([]lesson, 0)
+		for _, l := range d.Lessons {
+			newLesson := lesson{ID: l.AID, Status: l.Status, InTime: l.InTime, Name: l.Name, Title: l.Title, Type: l.Type, Mark: l.Mark, Weight: l.Weight}
+			lessons = append(lessons, newLesson)
+		}
+		newDay := day{Date: d.Date, Lessons: lessons}
+		days = append(days, newDay)
+	}
+	resp.Days = days
 	// Закодировать ответ в JSON
-	bytes, err := json.Marshal(weekMarks)
+	bytes, err := json.Marshal(resp)
 	if err != nil {
-		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", weekMarks, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", resp, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// Отправить ответ клиенту
 	status, err := respwr.Write(bytes)
 	if err != nil {
-		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", weekMarks, "Status", status, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
 	} else {
-		rest.logger.Info("REST: Successfully sent response", "Response", weekMarks, "IP", req.RemoteAddr)
+		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
 	}
 }
 
