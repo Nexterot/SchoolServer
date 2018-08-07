@@ -1402,11 +1402,8 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 		}
 	}
 	// Сформировать ответ по протоколу
-	// TODO переделать Comments
-	s := ""
-	for _, v := range lessonDescription.Comments {
-		s += v
-	}
+	// TODO переделать Comments (Сань, я вроде сделал, как надо)
+	s := lessonDescription.Description
 	resp := getLessonDescriptionResponse{Description: s, Author: "Пока не реализовано", File: "http://Пока_не_реализовано", FileName: "Пока не реализовано"}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(resp)
