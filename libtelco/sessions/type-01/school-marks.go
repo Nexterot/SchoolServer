@@ -331,7 +331,7 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 		return nil
 	}
 
-	// Находит из переданной строки путь к файлу и его attachmentId
+	// Находит из переданной строки путь к файлу и его ID
 	findURLAndID := func(str string) (string, string, error) {
 		var url, id string
 		var i, j int
@@ -359,34 +359,48 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 	}
 
 	formLessonDescription := func(node *html.Node) (*dt.LessonDescription, error) {
+		details := *new(dt.LessonDescription)
 		if node != nil {
-			details := *new(dt.LessonDescription)
 
-			tableNode := node.FirstChild.FirstChild
-			if tableNode.FirstChild.FirstChild != nil {
-				details.ThemeType = tableNode.FirstChild.FirstChild.Data
-			}
-			if tableNode.FirstChild.NextSibling.FirstChild != nil {
-				details.ThemeInfo = tableNode.FirstChild.NextSibling.FirstChild.Data
+			var authorNode *html.Node
+			if node.Parent != nil && node.Parent.Parent != nil && node.Parent.Parent.Parent != nil && node.Parent.Parent.Parent.PrevSibling != nil {
+				authorNode = node.Parent.Parent.Parent.PrevSibling
+				if authorNode.FirstChild != nil && authorNode.FirstChild.FirstChild != nil && authorNode.FirstChild.FirstChild.NextSibling != nil {
+					authorNode = authorNode.FirstChild.FirstChild.NextSibling
+					if authorNode.FirstChild != nil {
+						author := authorNode.FirstChild.Data
+						var start, end int
+						for i := 0; i < len(author); i++ {
+							if author[i:i+1] == "(" {
+								start = i + 1
+							} else {
+								if author[i:i+1] == ")" {
+									end = i
+								}
+							}
+						}
+						details.Author = author[start:end]
+					}
+				}
 			}
 
-			tableNode = tableNode.NextSibling
-			if tableNode.FirstChild.FirstChild != nil {
-				details.DateType = tableNode.FirstChild.FirstChild.Data
-			}
-			if tableNode.FirstChild.NextSibling.FirstChild != nil {
-				details.DateInfo = tableNode.FirstChild.NextSibling.FirstChild.Data
-			}
-
-			details.Comments = make([]string, 0, 1)
-			tableNode = tableNode.NextSibling
+			tableNode := node.FirstChild.FirstChild.NextSibling.NextSibling
 			commentNode := tableNode.FirstChild.NextSibling
 			if commentNode.FirstChild != nil {
 				commentNode = commentNode.FirstChild
 				for commentNode != nil {
-					if commentNode.Data != "br" && !(len(commentNode.Data) == 2 && commentNode.Data[0] == 194 && commentNode.Data[1] == 160) {
-						details.Comments = append(details.Comments, commentNode.Data)
+					if commentNode.FirstChild != nil {
+						details.Description += commentNode.FirstChild.Data
+					} else {
+						if commentNode.Data == "br" {
+							details.Description += "\n"
+						} else {
+							if !(len(commentNode.Data) == 2 && commentNode.Data[0] == 194 && commentNode.Data[1] == 160) {
+								details.Description += commentNode.Data
+							}
+						}
 					}
+
 					commentNode = commentNode.NextSibling
 				}
 			}
@@ -394,9 +408,12 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 			tableNode = tableNode.NextSibling
 			if tableNode.FirstChild.NextSibling.FirstChild != nil {
 				if tableNode.FirstChild.NextSibling.FirstChild.FirstChild != nil {
+					if tableNode.FirstChild.NextSibling.FirstChild.FirstChild.FirstChild != nil {
+						details.FileName = tableNode.FirstChild.NextSibling.FirstChild.FirstChild.FirstChild.Data
+					}
 					for _, a := range tableNode.FirstChild.NextSibling.FirstChild.FirstChild.Attr {
 						if a.Key == "href" {
-							details.File, details.AttachmentID, err = findURLAndID(a.Val)
+							details.File, details.ID, err = findURLAndID(a.Val)
 							if err != nil {
 								return &details, err
 							}
@@ -409,7 +426,7 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 			return &details, nil
 		}
 
-		return nil, errors.New("Node is nil in func formLessonDescription")
+		return &details, errors.New("Node is nil in func formLessonDescription")
 	}
 
 	makeLessonDescription := func(node *html.Node) (*dt.LessonDescription, error) {
