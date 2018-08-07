@@ -1074,12 +1074,6 @@ func (rest *RestAPI) GetSchoolListHandler(respwr http.ResponseWriter, req *http.
 	}
 }
 
-// student используется в GetChildrenMapResponse и GetChildrenMapHandler
-type student struct {
-	Name string `json:"name"`
-	ID   int    `json:"id"`
-}
-
 // GetChildrenMapResponse используется в GetChildrenMapHandler
 type GetChildrenMapResponse struct {
 	Students []student `json:"students"`
@@ -1307,6 +1301,14 @@ type getLessonDescriptionRequest struct {
 	ID int `json:"id"`
 }
 
+// getLessonDescriptionResponse использутеся в GetLessonDescriptionHandler
+type getLessonDescriptionResponse struct {
+	Description string `json:"description"`
+	Author      string `json:"author"`
+	File        string `json:"file"`
+	FileName    string `json:"fileName"`
+}
+
 // GetLessonDescriptionHandler обрабатывает запрос на получение подробностей дз
 func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("REST: GetLessonDescriptionHandler called", "IP", req.RemoteAddr)
@@ -1399,8 +1401,15 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 			return
 		}
 	}
+	// Сформировать ответ по протоколу
+	// TODO переделать Comments
+	s := ""
+	for _, v := range lessonDescription.Comments {
+		s += v
+	}
+	resp := getLessonDescriptionResponse{Description: s, Author: "Пока не реализовано", File: "http://Пока_не_реализовано", FileName: "Пока не реализовано"}
 	// Закодировать ответ в JSON
-	bytes, err := json.Marshal(lessonDescription)
+	bytes, err := json.Marshal(resp)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", lessonDescription, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
@@ -1662,6 +1671,17 @@ type signInRequest struct {
 	ID      int    `json:"id"`
 }
 
+// student используется в signInResponse
+type student struct {
+	Name string `json:"name"`
+	ID   int    `json:"id"`
+}
+
+// signInResponse используется в SignInHandler
+type signInResponse struct {
+	Students []student `json:"students"`
+}
+
 // SignInHandler обрабатывает вход в учетную запись на сайте школы
 func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("REST: SignInHandler called", "IP", req.RemoteAddr)
@@ -1751,6 +1771,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	}
 	var sessionName string
 	var session *sessions.Session
+	var remoteSession *ss.Session
 	if exists {
 		rest.logger.Info("REST: exists in redis", "IP", req.RemoteAddr)
 		// Если существует, проверим пароль
@@ -1788,6 +1809,29 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+			// Получим удаленную сессию
+			newRemoteSession, ok := rest.sessionsMap[sessionName]
+			if !ok {
+				// Если нет удаленной сессии
+				rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+				// Создать удаленную сессию и залогиниться
+				newRemoteSession = ss.NewSession(&school)
+				err = newRemoteSession.Login()
+				if err != nil {
+					rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
+					respwr.WriteHeader(http.StatusBadGateway)
+					return
+				}
+			}
+			// Получить мапу
+			err = newRemoteSession.GetChildrenMap()
+			if err != nil {
+				rest.logger.Error("REST: Error occured when getting children map from site", err, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusBadGateway)
+				return
+			}
+			rest.sessionsMap[sessionName] = newRemoteSession
+			remoteSession = newRemoteSession
 		} else {
 			// Если неверный, пошлем BadRequest
 			rest.logger.Info("REST: incorrect pass", "IP", req.RemoteAddr)
@@ -1852,6 +1896,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		}
 		// Привязать к ней удаленную сессию
 		rest.sessionsMap[newSessionName] = newRemoteSession
+		remoteSession = newRemoteSession
 		// Записать сессию
 		sessionName = newSessionName
 		session = newLocalSession
@@ -1872,8 +1917,42 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	expiration := time.Now().Add(365 * 24 * time.Hour)
 	cookie := http.Cookie{Name: "sessionName", Value: sessionName, Expires: expiration}
 	http.SetCookie(respwr, &cookie)
-	rest.logger.Info("REST: Successfully signed in", "Username", rReq.Login, "SchoolID", rReq.ID, "IP", req.RemoteAddr)
-	respwr.WriteHeader(http.StatusOK)
+	// Проверить валидность мапы
+	if remoteSession == nil || remoteSession.Base.Children == nil || len(remoteSession.Base.Children) == 0 {
+		// К этому моменту мапа должна существовать
+		rest.logger.Error("REST: Error occured when getting children map from session.Base.Children", "Error", "map is empty or nil", "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// Если мапа есть, сформировать ответ
+	var stud student
+	studs := make([]student, 0)
+	for k, v := range remoteSession.Base.Children {
+		vs, err := strconv.Atoi(v.SID)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when converting student id", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		stud = student{Name: k, ID: vs}
+		studs = append(studs, stud)
+	}
+	// Замаршалить
+	resp := signInResponse{Students: studs}
+	// Закодировать ответ в JSON
+	bytes, err := json.Marshal(resp)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", resp, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+	}
 }
 
 // Handler временный абстрактный handler для некоторых еще не реализованных
