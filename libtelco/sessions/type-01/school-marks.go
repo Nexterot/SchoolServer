@@ -229,39 +229,12 @@ TODO:
 */
 
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
-func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentID string) (*dt.LessonDescription, error) {
+func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*dt.LessonDescription, error) {
 	p := "http://"
 	var lessonDescription *dt.LessonDescription
 
 	// 0-ой Post-запрос.
 	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"AT":        s.AT,
-			"Date":      date,
-			"LoginType": "0",
-			"PCLID_IUP": "",
-			"SID":       studentID,
-			"VER":       s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
-		},
-	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Curriculum/Assignments.asp", requestOptions0)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	if err := checkResponse(s, response0); err != nil {
-		return nil, err
-	}
-
-	// 1-ый Post-запрос.
-	requestOptions1 := &gr.RequestOptions{
 		Data: map[string]string{
 			"AID":       strconv.Itoa(AID),
 			"AT":        s.AT,
@@ -276,14 +249,14 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 			"Referer":          p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
 		},
 	}
-	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/ajax/Assignments/GetAssignmentInfo.asp", requestOptions1)
+	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/ajax/Assignments/GetAssignmentInfo.asp", requestOptions0)
 	if err != nil {
 		return nil, err
 	}
 	defer func() {
-		_ = response1.Close()
+		_ = response0.Close()
 	}()
-	if err := checkResponse(s, response1); err != nil {
+	if err := checkResponse(s, response0); err != nil {
 		return nil, err
 	}
 
@@ -292,7 +265,7 @@ func GetLessonDescription(s *ss.Session, date string, AID, CID, TP int, studentI
 
 	// Получаем таблицу с подробностями урока из полученной json-структуры
 	responseMap := make(map[string]interface{})
-	err = json.Unmarshal(response1.Bytes(), &responseMap)
+	err = json.Unmarshal(response0.Bytes(), &responseMap)
 	if err != nil {
 		return nil, err
 	}
