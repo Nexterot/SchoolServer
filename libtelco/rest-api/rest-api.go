@@ -1822,15 +1822,34 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 					respwr.WriteHeader(http.StatusBadGateway)
 					return
 				}
+				rest.sessionsMap[sessionName] = newRemoteSession
 			}
 			// Получить мапу
 			err = newRemoteSession.GetChildrenMap()
 			if err != nil {
-				rest.logger.Error("REST: Error occured when getting children map from site", err, "IP", req.RemoteAddr)
-				respwr.WriteHeader(http.StatusBadGateway)
-				return
+				if err.Error() == "You was logged out from server" {
+					// Если удаленная сессия есть, но не активна
+					rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+					// Создать новую
+					newRemoteSession = rest.remoteLogin(respwr, req, session)
+					if newRemoteSession == nil {
+						return
+					}
+					// Повторно получить с сайта школы
+					err = newRemoteSession.GetChildrenMap()
+					if err != nil {
+						// Ошибка
+						rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
+						respwr.WriteHeader(http.StatusBadGateway)
+						return
+					}
+				} else {
+					// Другая ошибка
+					rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
+					respwr.WriteHeader(http.StatusBadGateway)
+					return
+				}
 			}
-			rest.sessionsMap[sessionName] = newRemoteSession
 			remoteSession = newRemoteSession
 		} else {
 			// Если неверный, пошлем BadRequest
