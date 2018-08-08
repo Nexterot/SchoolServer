@@ -3,12 +3,12 @@
 package type01
 
 import (
+	red "SchoolServer/libtelco/in-memory-db"
 	dt "SchoolServer/libtelco/sessions/data-types"
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -225,7 +225,7 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 }
 
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
-func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*dt.LessonDescription, error) {
+func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID, classID string, db *red.Database) (*dt.LessonDescription, error) {
 	p := "http://"
 	var lessonDescription *dt.LessonDescription
 
@@ -408,10 +408,17 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*d
 		return details, ID, err
 	}
 
-	var ID string
-	lessonDescription, ID, err = makeLessonDescription(parsedHTML)
-	// Обрабатываем как нужно ID
-	fmt.Println("ID:", ID)
+	lessonDescription, ID, err := makeLessonDescription(parsedHTML)
+	if err != nil {
+		return nil, err
+	}
+
+	// Если мы дошли до этого места, то можно запустить закачку файла и
+	// подменить нашей ссылкой ссылку NetSchool.
+	lessonDescription.File, err = getFile(s, p+s.Serv.Link+lessonDescription.File, "files/classes/"+classID+"/", lessonDescription.FileName, ID, db)
+	if err != nil {
+		return nil, err
+	}
 
 	return lessonDescription, err
 }
@@ -420,13 +427,13 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*d
 // - true, если файл был скачан;
 // - false, если файл уже был в директории;
 // с сервера первого типа.
-func getFile(s *ss.Session, link, path, filename string, attachmentID string) (bool, error) {
+func getFile(s *ss.Session, link, path, filename string, attachmentID string, db *red.Database) (string, error) {
 	p := "http://"
 
 	// Проверка, есть ли файл на диске.
 	// Если есть, то не будем ничего скачивать.
 	if _, err := os.Stat(path + filename); err == nil {
-		return false, nil
+		return "", nil
 	}
 	// 0-ой POST-запрос.
 	requestOptions0 := &gr.RequestOptions{
@@ -443,30 +450,30 @@ func getFile(s *ss.Session, link, path, filename string, attachmentID string) (b
 	}
 	response0, err := s.Sess.Post(link, requestOptions0)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	defer func() {
 		_ = response0.Close()
 	}()
 	if err := checkResponse(s, response0); err != nil {
-		return false, err
+		return "", err
 	}
 	// Сохранение файла на диск.
 	// Создание папок, если надо.
 	if err = os.MkdirAll(path, 0700); err != nil {
-		return false, err
+		return "", err
 	}
 	// Создание файла.
 	file, err := os.Create(path + filename)
 	if err != nil {
-		return false, err
+		return "", err
 	}
 	defer func() {
 		_ = file.Close()
 	}()
 	// Запись в файл.
 	if _, err = file.Write(response0.Bytes()[:len(response0.Bytes())]); err != nil {
-		return false, err
+		return "", err
 	}
-	return true, nil
+	return "true", nil
 }
