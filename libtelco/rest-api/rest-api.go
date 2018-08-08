@@ -1355,7 +1355,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	// Сходить в бд за информацией о таске
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	date, cid, tp, studentID, err := rest.Db.GetTaskInfo(userName.(string), schoolID.(int), rReq.ID)
+	_, cid, tp, studentID, err := rest.Db.GetTaskInfo(userName.(string), schoolID.(int), rReq.ID)
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Такого таска нет
@@ -1376,7 +1376,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 		return
 	}
 	// Получить описание таска
-	lessonDescription, err := remoteSession.GetLessonDescription(date, rReq.ID, cid, tp, strconv.Itoa(studentID))
+	lessonDescription, err := remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID))
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
 			// Если удаленная сессия есть, но не активна
@@ -1387,7 +1387,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 				return
 			}
 			// Повторно получить с сайта школы
-			lessonDescription, err = remoteSession.GetLessonDescription(date, rReq.ID, cid, tp, strconv.Itoa(studentID))
+			lessonDescription, err = remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID))
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
@@ -1402,11 +1402,8 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 		}
 	}
 	// Сформировать ответ по протоколу
-	// TODO переделать Comments
-	s := ""
-	for _, v := range lessonDescription.Comments {
-		s += v
-	}
+	// TODO переделать Comments (Сань, я вроде сделал, как надо)
+	s := lessonDescription.Description
 	resp := getLessonDescriptionResponse{Description: s, Author: "Пока не реализовано", File: "http://Пока_не_реализовано", FileName: "Пока не реализовано"}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(resp)
