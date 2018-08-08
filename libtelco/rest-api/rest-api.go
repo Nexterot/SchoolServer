@@ -1402,9 +1402,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 		}
 	}
 	// Сформировать ответ по протоколу
-	// TODO переделать Comments (Сань, я вроде сделал, как надо)
-	s := lessonDescription.Description
-	resp := getLessonDescriptionResponse{Description: s, Author: "Пока не реализовано", File: "http://Пока_не_реализовано", FileName: "Пока не реализовано"}
+	resp := getLessonDescriptionResponse{Description: lessonDescription.Description, Author: lessonDescription.Author, File: "http://Пока_не_реализовано", FileName: lessonDescription.FileName}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(resp)
 	if err != nil {
@@ -1415,9 +1413,9 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	// Отправить ответ клиенту
 	status, err := respwr.Write(bytes)
 	if err != nil {
-		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", lessonDescription, "Status", status, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
 	} else {
-		rest.logger.Info("REST: Successfully sent response", "Response", lessonDescription, "IP", req.RemoteAddr)
+		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
 	}
 }
 
