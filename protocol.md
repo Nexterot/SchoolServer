@@ -1025,13 +1025,12 @@ AID, CID, TP - три числа, которые составляют ID под�
 			"class_name": "string",
 			"users": [
 				"student": "string",
-				"student_id": "number",
+				"student_id": "string",
 				"parents": [
 					"parent": "string",
-					"parent_id": "number"
+					"parent_id": "string"
 				]
 			]
-			"name": "string",
 			"id" : "number"
 		]
 	]
