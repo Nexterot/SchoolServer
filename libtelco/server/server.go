@@ -48,14 +48,17 @@ func (serv *Server) Run() error {
 	if err != nil {
 		fmt.Println(err)
 	}
-	err = kek.GetChildrenMap()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
-	data, _ := kek.GetWeekSchoolMarks("30.04.2018", "11198")
-	fmt.Println(data)
-	fmt.Println()
+	/*
+		err = kek.GetChildrenMap()
+		if err != nil {
+			fmt.Println(err)
+			os.Exit(1)
+		}
+
+			data, _ := kek.GetWeekSchoolMarks("30.04.2018", "11198")
+			fmt.Println(data)
+			fmt.Println()
+	*/
 	data1, _ := kek.GetLessonDescription(241817, 13074, 3, "11198")
 	fmt.Println(data1)
 	fmt.Println()
