@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -326,7 +327,8 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*d
 		return url, id, nil
 	}
 
-	formLessonDescription := func(node *html.Node) (*dt.LessonDescription, error) {
+	formLessonDescription := func(node *html.Node) (*dt.LessonDescription, string, error) {
+		var ID string
 		details := *new(dt.LessonDescription)
 		if node != nil {
 
@@ -381,9 +383,9 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*d
 					}
 					for _, a := range tableNode.FirstChild.NextSibling.FirstChild.FirstChild.Attr {
 						if a.Key == "href" {
-							details.File, details.ID, err = findURLAndID(a.Val)
+							details.File, ID, err = findURLAndID(a.Val)
 							if err != nil {
-								return &details, err
+								return &details, ID, err
 							}
 							break
 						}
@@ -391,21 +393,26 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*d
 				}
 			}
 
-			return &details, nil
+			return &details, ID, nil
 		}
 
-		return &details, errors.New("Node is nil in func formLessonDescription")
+		return &details, ID, errors.New("Node is nil in func formLessonDescription")
 	}
 
-	makeLessonDescription := func(node *html.Node) (*dt.LessonDescription, error) {
+	makeLessonDescription := func(node *html.Node) (*dt.LessonDescription, string, error) {
 		var details *dt.LessonDescription
+		var ID string
 		tableNode := findLessonDescriptionTableNode(node)
-		details, err = formLessonDescription(tableNode)
+		details, ID, err = formLessonDescription(tableNode)
 
-		return details, err
+		return details, ID, err
 	}
 
-	lessonDescription, err = makeLessonDescription(parsedHTML)
+	var ID string
+	lessonDescription, ID, err = makeLessonDescription(parsedHTML)
+	// Обрабатываем как нужно ID
+	fmt.Println("ID:", ID)
+
 	return lessonDescription, err
 }
 

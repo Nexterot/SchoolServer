@@ -41,5 +41,4 @@ type LessonDescription struct {
 	Author      string `json:"string"`
 	File        string `json:"file"`
 	FileName    string `json:"fileName"`
-	ID          string `json:"id"`
 }
