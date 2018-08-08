@@ -26,20 +26,3 @@ func (s *Session) GetResourcesList() (*dt.Resources, error) {
 	}
 	return resources, err
 }
-
-// GetFile выкачивает файл по заданной ссылке в заданную директорию (если его там ещё нет) и возвращает
-// - true, если файл был скачан;
-// - false, если файл уже был в директории.
-func (s *Session) GetFile(link, path string) (bool, error) {
-	s.Base.MU.Lock()
-	defer s.Base.MU.Unlock()
-	var err error
-	var flag bool
-	switch s.Base.Serv.Type {
-	case cp.FirstType:
-		flag, err = t01.GetFile(s.Base, link, path)
-	default:
-		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
-	}
-	return flag, err
-}

@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"os"
 	"strconv"
 	"strings"
 	"unicode"
@@ -222,12 +223,6 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 	return weekSchoolMarks, err
 }
 
-/*
-TODO:
-1) чтобы вытащить аякс-запросом подробности урока, мне нужно сначала запросить расписание+оценки, которые будут содержать данный урок, то есть мне нужна "дата". Таким образом, в ответ со списком оценок/уроков тебе надо пихнуть тупо дату, которую передавал пользователь
-2) так как там идёт Ajax-запрос, то там не html, а маленькая фигня прилетает, твой парсер эт учитывает?
-*/
-
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
 func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*dt.LessonDescription, error) {
 	p := "http://"
@@ -412,4 +407,59 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID string) (*d
 
 	lessonDescription, err = makeLessonDescription(parsedHTML)
 	return lessonDescription, err
+}
+
+// getFile выкачивает файл по заданной ссылке в заданную директорию (если его там ещё нет) и возвращает
+// - true, если файл был скачан;
+// - false, если файл уже был в директории;
+// с сервера первого типа.
+func getFile(s *ss.Session, link, path, filename string, attachmentID string) (bool, error) {
+	p := "http://"
+
+	// Проверка, есть ли файл на диске.
+	// Если есть, то не будем ничего скачивать.
+	if _, err := os.Stat(path + filename); err == nil {
+		return false, nil
+	}
+	// 0-ой POST-запрос.
+	requestOptions0 := &gr.RequestOptions{
+		Data: map[string]string{
+			"VER":          s.VER,
+			"at":           s.AT,
+			"attachmentId": attachmentID,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
+		},
+	}
+	response0, err := s.Sess.Post(link, requestOptions0)
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = response0.Close()
+	}()
+	if err := checkResponse(s, response0); err != nil {
+		return false, err
+	}
+	// Сохранение файла на диск.
+	// Создание папок, если надо.
+	if err = os.MkdirAll(path, 0700); err != nil {
+		return false, err
+	}
+	// Создание файла.
+	file, err := os.Create(path + filename)
+	if err != nil {
+		return false, err
+	}
+	defer func() {
+		_ = file.Close()
+	}()
+	// Запись в файл.
+	if _, err = file.Write(response0.Bytes()[:len(response0.Bytes())]); err != nil {
+		return false, err
+	}
+	return true, nil
 }
