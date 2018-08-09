@@ -8,11 +8,11 @@ package dataTypes
 
 // LessonsMap struct содержит в себе список пар {предмет, id}
 type LessonsMap struct {
-	Data []LessonMap
+	Data []LessonMap `json:"lessons"`
 }
 
 // LessonMap struct содержит в себе имя предмета и его id.
 type LessonMap struct {
-	Name string
-	ID   string
+	Name string `json:"name"`
+	ID   string `json:"id"`
 }
