@@ -11,11 +11,13 @@ import (
 	"SchoolServer/libtelco/log"
 	ss "SchoolServer/libtelco/sessions"
 	db "SchoolServer/libtelco/sql-db"
+	"bufio"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"math/rand"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -124,6 +126,9 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/create_message_in_topic", rest.Handler)
 	// Настройки
 	http.HandleFunc("/change_password", rest.Handler)
+	// Файлы
+	http.HandleFunc("/doc/", rest.FileHandler)
+
 	rest.logger.Info("REST: Successfully bound handlers")
 }
 
@@ -223,7 +228,7 @@ func (rest *RestAPI) CheckPermissionHandler(respwr http.ResponseWriter, req *htt
 
 // ErrorHandler обрабатывает некорректные запросы.
 func (rest *RestAPI) ErrorHandler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("Wrong request", "Path", req.URL.EscapedPath(), "IP", req.RemoteAddr)
+	rest.logger.Info("Wrong request", "Path", req.URL.Path, "IP", req.RemoteAddr)
 	respwr.WriteHeader(http.StatusNotFound)
 }
 
@@ -1969,9 +1974,55 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	}
 }
 
+// FileHandler обрабатывает запросы на получение файлов
+func (rest *RestAPI) FileHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("REST: FileHandler called", "Path", req.URL.Path)
+	// Проверка метода запроса
+	if req.Method != "GET" {
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	// Откроем файл с именем fileName
+	fileName := strings.TrimLeft(req.URL.Path, "/doc/")
+	file, err := os.Open("files/classes/" + fileName)
+	if err != nil {
+		rest.logger.Info("REST: Couldn't open file", "Error", err.Error(), "Filename", fileName, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusNotFound)
+		return
+	}
+	defer file.Close()
+	// Узнать его размер
+	stats, statsErr := file.Stat()
+	if statsErr != nil {
+		rest.logger.Error("REST: Error occured when getting file stats", "Error", statsErr, "Filename", fileName, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	size := stats.Size()
+	// Прочитать файл как байты
+	bytes := make([]byte, size)
+	bufr := bufio.NewReader(file)
+	_, err = bufr.Read(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when reading file into memory", "Error", err, "Filename", fileName, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// Установить MIME-тип в application/octet-stream
+	respwr.Header().Set("Content-Type", "application/octet-stream")
+	// Отдать байты клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending file", "Error", err, "Filename", fileName, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Filename", fileName, "IP", req.RemoteAddr)
+	}
+}
+
 // Handler временный абстрактный handler для некоторых еще не реализованных
 // обработчиков запросов.
 func (rest *RestAPI) Handler(respwr http.ResponseWriter, req *http.Request) {
-	rest.logger.Info("REST: Handler called (not implemented yet)", "Path", req.URL.EscapedPath())
+	rest.logger.Info("REST: Handler called (not implemented yet)", "Path", req.URL.Path)
 	respwr.WriteHeader(http.StatusNotImplemented)
 }
