@@ -2,6 +2,7 @@ package sessions
 
 import (
 	cp "SchoolServer/libtelco/config-parser"
+	red "SchoolServer/libtelco/in-memory-db"
 	dt "SchoolServer/libtelco/sessions/data-types"
 	t01 "SchoolServer/libtelco/sessions/type-01"
 	"fmt"
@@ -34,7 +35,7 @@ func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMark
 */
 
 // GetLessonDescription вовзращает подробности урока.
-func (s *Session) GetLessonDescription(AID, CID, TP int, studentID string) (*dt.LessonDescription, error) {
+func (s *Session) GetLessonDescription(AID, CID, TP int, studentID string, classID string, db *red.Database) (*dt.LessonDescription, error) {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	if studentID == "" {
@@ -44,7 +45,7 @@ func (s *Session) GetLessonDescription(AID, CID, TP int, studentID string) (*dt.
 	var lessonDescription *dt.LessonDescription
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		lessonDescription, err = t01.GetLessonDescription(s.Base, AID, CID, TP, studentID)
+		lessonDescription, err = t01.GetLessonDescription(s.Base, AID, CID, TP, studentID, classID, db)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}

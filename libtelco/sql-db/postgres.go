@@ -355,8 +355,8 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 	return err
 }
 
-// GetTaskInfo получает информацию о задании - дату, CID, TP, id ученика
-func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (string, int, int, int, error) {
+// GetTaskInfo получает информацию о задании - дату, CID, TP, id, classID ученика
+func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (string, int, int, int, string, error) {
 	var (
 		tasks   []Task
 		day     Day
@@ -368,14 +368,14 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
 		db.Logger.Info("DB: Error occured when getting user for getting task info", "User params", where)
-		return "", -1, -1, -1, err
+		return "", -1, -1, -1, "", err
 	}
 	// Получаем таски с таким taskID
 	w := Task{HometaskID: taskID}
 	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
 		db.Logger.Info("DB: Error occured when getting tasks for getting task info", "Task params", w)
-		return "", -1, -1, -1, err
+		return "", -1, -1, -1, "", err
 	}
 	// Найдем нужный таск
 	for _, t := range tasks {
@@ -383,13 +383,13 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
 			db.Logger.Info("DB: Error occured when getting days for getting task info", "DayID", t.DayID)
-			return "", -1, -1, -1, err
+			return "", -1, -1, -1, "", err
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
 			db.Logger.Info("DB: Error occured when getting student for getting task info", "StudentID", day.StudentID)
-			return "", -1, -1, -1, err
+			return "", -1, -1, -1, "", err
 		}
 
 		// Если совпал id пользователя, обновить статус и вернуть дату
@@ -399,15 +399,15 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 				err = db.SchoolServerDB.Save(&t).Error
 				if err != nil {
 					db.Logger.Error("DB: Error occured when saving updated task status", "Task", t)
-					return "", -1, -1, -1, err
+					return "", -1, -1, -1, "", err
 				}
 			}
-			return day.Date, t.LessonID, t.TP, student.NetSchoolID, nil
+			return day.Date, t.LessonID, t.TP, student.NetSchoolID, student.ClassID, nil
 		}
 	}
 	// Таск не найден
 	db.Logger.Info("DB: Error occured when searching for task when getting task info")
-	return "", -1, -1, -1, fmt.Errorf("record not found")
+	return "", -1, -1, -1, "", fmt.Errorf("record not found")
 }
 
 // TaskMarkDone меняет статус задания на "Выполненное"
