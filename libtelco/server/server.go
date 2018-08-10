@@ -8,10 +8,10 @@ package server
 import (
 	cp "SchoolServer/libtelco/config-parser"
 	"SchoolServer/libtelco/log"
-	//"fmt"
-	//"os"
+	"fmt"
+	"os"
 
-	//ss "SchoolServer/libtelco/sessions"
+	ss "SchoolServer/libtelco/sessions"
 
 	api "SchoolServer/libtelco/rest-api"
 
@@ -41,6 +41,22 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
+
+	kek := ss.NewSession(&serv.config.Schools[0])
+	err := kek.Login()
+	if err != nil {
+		fmt.Println(err)
+	}
+	data, _ := kek.GetWeekSchoolMarks("18.09.2017", "11198")
+	fmt.Println(data)
+	fmt.Println()
+	data1, _ := kek.GetLessonDescription(213729, 13078, 3, "11198", "10169_0", nil)
+	fmt.Println(data1)
+	fmt.Println()
+	if err = kek.Logout(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	serv.api.BindHandlers()
 	defer func() {
