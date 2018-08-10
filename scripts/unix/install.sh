@@ -1,3 +1,2 @@
 #!/bin/bash
-go build main.go
-mv main SchoolServer
+go build -o SchoolServer
