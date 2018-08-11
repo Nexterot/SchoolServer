@@ -1381,7 +1381,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 		return
 	}
 	// Получить описание таска
-	lessonDescription, err := remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, "localhost:8000", rest.Redis)
+	lessonDescription, err := remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, rest.config.ServerName, rest.Redis)
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
 			// Если удаленная сессия есть, но не активна
@@ -1392,7 +1392,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 				return
 			}
 			// Повторно получить с сайта школы
-			lessonDescription, err = remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, "localhost:8000", rest.Redis)
+			lessonDescription, err = remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, rest.config.ServerName, rest.Redis)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
@@ -1407,7 +1407,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 		}
 	}
 	// Сформировать ответ по протоколу
-	resp := getLessonDescriptionResponse{Description: lessonDescription.Description, Author: lessonDescription.Author, File: "http://Пока_не_реализовано", FileName: lessonDescription.FileName}
+	resp := getLessonDescriptionResponse{Description: lessonDescription.Description, Author: lessonDescription.Author, File: lessonDescription.File, FileName: lessonDescription.FileName}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(resp)
 	if err != nil {
@@ -1985,7 +1985,7 @@ func (rest *RestAPI) FileHandler(respwr http.ResponseWriter, req *http.Request) 
 	}
 	// Откроем файл с именем fileName
 	fileName := strings.TrimLeft(req.URL.Path, "/doc/")
-	file, err := os.Open("files/classes/" + fileName)
+	file, err := os.Open(fileName)
 	if err != nil {
 		rest.logger.Info("REST: Couldn't open file", "Error", err.Error(), "Filename", fileName, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusNotFound)
