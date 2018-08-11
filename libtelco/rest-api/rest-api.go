@@ -49,7 +49,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		"tcp",
 		":"+config.CookieStore.Port,
 		config.CookieStore.Password,
-		config.CookieStore.DBname,
+		strconv.Itoa(config.CookieStore.DBname),
 		key,
 	)
 	if err != nil {

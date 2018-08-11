@@ -1,5 +1,6 @@
 {
     "serverAddr" : "localhost:8000",
+    "serverName" : "",
     "postgres" : {
         "host" : "localhost",
         "port" : "5432",
@@ -18,7 +19,7 @@
         "host": "localhost",
         "port": "6379",
         "password": "qwerty",
-        "dbname" : "0"
+        "dbname" : 0
     },
     "maxProcs" : 2,
     "logFile" : "stdout",

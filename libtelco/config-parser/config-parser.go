@@ -12,13 +12,14 @@ import (
 
 // Config struct содержит конфигурацию сервера.
 type Config struct {
-	ServerAddr  string     `json:"serverAddr"`
-	Postgres    *Postgres  `json:"postgres"`
-	Redis       *Redis     `json:"redis"`
-	CookieStore *RediStore `json:"cookieStore"`
-	MaxProcs    int        `json:"maxProcs"`
-	LogFile     string     `json:"logFile"`
-	Schools     []School   `json:"schools"`
+	ServerAddr  string    `json:"serverAddr"`
+	ServerName  string    `json:"serverName"`
+	Postgres    *Postgres `json:"postgres"`
+	Redis       *Redis    `json:"redis"`
+	CookieStore *Redis    `json:"cookieStore"`
+	MaxProcs    int       `json:"maxProcs"`
+	LogFile     string    `json:"logFile"`
+	Schools     []School  `json:"schools"`
 }
 
 // Типы серверов.
@@ -44,13 +45,6 @@ type Redis struct {
 	Port     string `json:"port"`
 	Password string `json:"password"`
 	DBname   int    `json:"dbname"`
-}
-
-// RediStore struct содержит конфигурацию Redis-хранилища кук
-type RediStore struct {
-	Port     string `json:"port"`
-	Password string `json:"password"`
-	DBname   string `json:"dbname"`
 }
 
 // School содержит информацию об очередной школе.
