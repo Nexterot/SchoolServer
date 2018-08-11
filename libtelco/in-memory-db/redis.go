@@ -30,7 +30,7 @@ func NewDatabase(config *cp.Config) (*Database, error) {
 	}, nil
 }
 
-// FlushAll стирает ВСЕ
+// FlushAll стирает всё.
 func (db *Database) FlushAll() error {
 	return db.schoolServerDB.FlushAll().Err()
 }
@@ -83,37 +83,6 @@ func (db *Database) GetCookie(key string) (string, error) {
 // AddFileDate добавляет новую дату в Redis.
 func (db *Database) AddFileDate(key, value string) error {
 	return db.schoolServerDB.Set(key, value, 0).Err()
-}
-
-// ExistsFileDate проверяет, существует ли данная дата в БД.
-func (db *Database) ExistsFileDate(key string) (bool, error) {
-	return db.schoolServerDB.Exists(key).Result()
-}
-
-// UpdateFileDate обновляет информацию о дате, если она уже сущетсвует.
-func (db *Database) UpdateFileDate(key, value string) (bool, error) {
-	var err error
-	flag, err := db.ExistsFileDate(key)
-	if err != nil {
-		return false, err
-	}
-	if !flag {
-		return false, nil
-	}
-	err = db.AddFileDate(key, value)
-	if err != nil {
-		return false, err
-	}
-	return true, nil
-}
-
-// DeleteFileDate удаляет дату.
-func (db *Database) DeleteFileDate(key, value string) (bool, error) {
-	flag, err := db.schoolServerDB.Del(key).Result()
-	if flag == 1 {
-		return true, err
-	}
-	return false, err
 }
 
 // GetFileDate возвращает дату.

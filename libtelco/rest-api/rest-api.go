@@ -1381,7 +1381,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 		return
 	}
 	// Получить описание таска
-	lessonDescription, err := remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, rest.Redis)
+	lessonDescription, err := remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, "localhost:8000", rest.Redis)
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
 			// Если удаленная сессия есть, но не активна
@@ -1392,7 +1392,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 				return
 			}
 			// Повторно получить с сайта школы
-			lessonDescription, err = remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, rest.Redis)
+			lessonDescription, err = remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, "localhost:8000", rest.Redis)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)

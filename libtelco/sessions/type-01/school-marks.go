@@ -9,9 +9,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	gr "github.com/levigross/grequests"
@@ -225,10 +228,8 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 }
 
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
-func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID, classID string, db *red.Database) (*dt.LessonDescription, error) {
+func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID, classID, serverAddr string, db *red.Database) (*dt.LessonDescription, error) {
 	p := "http://"
-	var lessonDescription *dt.LessonDescription
-
 	// 0-ой Post-запрос.
 	requestOptions0 := &gr.RequestOptions{
 		Data: map[string]string{
@@ -408,39 +409,55 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID, classID st
 		return details, ID, err
 	}
 
-	lessonDescription, ID, err := makeLessonDescription(parsedHTML)
+	lessonDesc, ID, err := makeLessonDescription(parsedHTML)
 	if err != nil {
 		return nil, err
 	}
 
 	// Если мы дошли до этого места, то можно запустить закачку файла и
 	// подменить нашей ссылкой ссылку NetSchool.
-	lessonDescription.File, err = getFile(s, p+s.Serv.Link+lessonDescription.File, "files/classes/"+classID+"/", lessonDescription.FileName, ID, db)
-	if err != nil {
-		return nil, err
-	}
-
-	return lessonDescription, err
+	return getFile(s, lessonDesc, classID, ID, serverAddr, db)
 }
 
 // getFile выкачивает файл по заданной ссылке в заданную директорию (если его там ещё нет) и возвращает
 // - true, если файл был скачан;
 // - false, если файл уже был в директории;
 // с сервера первого типа.
-func getFile(s *ss.Session, link, path, filename string, attachmentID string, db *red.Database) (string, error) {
+func getFile(s *ss.Session, lessonDesc *dt.LessonDescription, classID, ID, serverAddr string, db *red.Database) (*dt.LessonDescription, error) {
 	p := "http://"
 
-	// Проверка, есть ли файл на диске.
-	// Если есть, то не будем ничего скачивать.
-	if _, err := os.Stat(path + filename); err == nil {
-		return "", nil
+	// Проверка, а есть ли вообще прикрепленный файл.
+	if lessonDesc.FileName == "" {
+		return lessonDesc, nil
 	}
+
+	// Проверка, есть ли файл на диске.
+	path := fmt.Sprintf("files/classes/%s/", classID)
+	if _, err := os.Stat(path + lessonDesc.FileName); err == nil {
+		// Проверка, актуален ли он (время "протухания" файла - 12 часов).
+		stringTime, err := db.GetFileDate(path + lessonDesc.FileName)
+		if err != nil {
+			return nil, err
+		}
+		fileTime, err := strconv.ParseInt(stringTime, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		currTime := time.Now().Unix()
+		if (currTime - fileTime) < 12*3600 {
+			lessonDesc.File = serverAddr + "/doc/" + path + lessonDesc.FileName
+			return lessonDesc, nil
+		}
+	}
+
+	// Закачка файла.
+
 	// 0-ой POST-запрос.
 	requestOptions0 := &gr.RequestOptions{
 		Data: map[string]string{
 			"VER":          s.VER,
 			"at":           s.AT,
-			"attachmentId": attachmentID,
+			"attachmentId": ID,
 		},
 		Headers: map[string]string{
 			"Origin":                    p + s.Serv.Link,
@@ -448,32 +465,35 @@ func getFile(s *ss.Session, link, path, filename string, attachmentID string, db
 			"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
 		},
 	}
-	response0, err := s.Sess.Post(link, requestOptions0)
+	response0, err := s.Sess.Post(p+s.Serv.Link+lessonDesc.File, requestOptions0)
 	if err != nil {
-		return "", err
+		lessonDesc.File = ""
+		lessonDesc.FileName = "Broken"
+		return lessonDesc, nil
 	}
 	defer func() {
 		_ = response0.Close()
 	}()
 	if err := checkResponse(s, response0); err != nil {
-		return "", err
+		lessonDesc.File = ""
+		lessonDesc.FileName = "Broken"
+		return lessonDesc, nil
 	}
 	// Сохранение файла на диск.
 	// Создание папок, если надо.
 	if err = os.MkdirAll(path, 0700); err != nil {
-		return "", err
+		return nil, err
 	}
 	// Создание файла.
-	file, err := os.Create(path + filename)
-	if err != nil {
-		return "", err
+	if err := ioutil.WriteFile(path+lessonDesc.FileName, response0.Bytes(), 0700); err != nil {
+		return nil, err
 	}
-	defer func() {
-		_ = file.Close()
-	}()
-	// Запись в файл.
-	if _, err = file.Write(response0.Bytes()[:len(response0.Bytes())]); err != nil {
-		return "", err
+	// Подмена Ссылки.
+	lessonDesc.File = serverAddr + "/doc/" + path + lessonDesc.FileName
+	// Запись в Redis.
+	if err := db.AddFileDate(path+lessonDesc.FileName, fmt.Sprintf("%v", time.Now().Unix())); err != nil {
+		return nil, err
 	}
-	return "true", nil
+
+	return lessonDesc, nil
 }
