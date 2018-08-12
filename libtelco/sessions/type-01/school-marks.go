@@ -8,7 +8,6 @@ import (
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -16,6 +15,8 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	"github.com/pkg/errors"
 
 	gr "github.com/levigross/grequests"
 	"golang.org/x/net/html"
@@ -54,15 +55,15 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 	}
 	b, flag, err := r0()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		b, flag, err = r0()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
@@ -272,15 +273,15 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID, classID, s
 	}
 	b, flag, err := r0()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		b, flag, err = r0()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
 

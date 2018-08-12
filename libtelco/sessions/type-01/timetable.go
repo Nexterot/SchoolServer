@@ -11,6 +11,7 @@ import (
 	"unicode"
 
 	gr "github.com/levigross/grequests"
+	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
 
@@ -50,15 +51,15 @@ func GetDayTimeTable(s *ss.Session, date, studentID string) (*dt.DayTimeTable, e
 	}
 	b, flag, err := r0()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		b, flag, err = r0()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
 

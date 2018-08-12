@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/pkg/errors"
+
 	gr "github.com/levigross/grequests"
 )
 
@@ -48,15 +50,15 @@ func GetJournalAccessReport(s *ss.Session, studentID string) (*dt.JournalAccessR
 	}
 	flag, err := r0()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		flag, err = r0()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
 
@@ -96,26 +98,26 @@ func GetJournalAccessReport(s *ss.Session, studentID string) (*dt.JournalAccessR
 	}
 	b, flag, err := r1()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "1 POST")
 	}
 	if !flag {
 		b, flag, err = r1()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 1 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 1 POST")
 		}
 	}
 	CLID := string(b)
 	index := strings.Index(CLID, "\"value\":\"")
 	if index == -1 {
-		return nil, fmt.Errorf("Invalid SID")
+		return nil, fmt.Errorf("Invalid begin SID substring \"%s\"", CLID)
 	}
 	CLID = CLID[index+len("\"value\":\""):]
 	index = strings.Index(CLID, "\"")
 	if index == -1 {
-		return nil, fmt.Errorf("Invalid SID")
+		return nil, fmt.Errorf("Invalid end SID substring \"%s\"", CLID)
 	}
 	CLID = CLID[:index]
 
@@ -157,15 +159,15 @@ func GetJournalAccessReport(s *ss.Session, studentID string) (*dt.JournalAccessR
 	}
 	b, flag, err = r2()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "2 POST")
 	}
 	if !flag {
 		b, flag, err = r2()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 2 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 2 POST")
 		}
 	}
 

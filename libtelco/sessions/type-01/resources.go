@@ -6,9 +6,10 @@ import (
 	dt "SchoolServer/libtelco/sessions/data-types"
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
-	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	gr "github.com/levigross/grequests"
 	"golang.org/x/net/html"
@@ -47,15 +48,15 @@ func GetResourcesList(s *ss.Session) (*dt.Resources, error) {
 	}
 	b, flag, err := r0()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		b, flag, err = r0()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
 
