@@ -91,7 +91,6 @@ func retry(s *ss.Session, body string) error {
 		return fmt.Errorf("Unknown \"WarnType\" \"%v\" in \n%v", warnType, body)
 	}
 	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/SecurityWarning.asp", requestOptions0)
-	fmt.Println(response0.String())
 	if err != nil {
 		return err
 	}
