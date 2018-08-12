@@ -13,6 +13,7 @@ import (
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Необходимо для gorm
+	"github.com/pkg/errors"
 )
 
 // Статусы заданий
@@ -162,8 +163,7 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 	// Получаем запись школы
 	err := db.SchoolServerDB.First(&school, schoolID).Error
 	if err != nil {
-		db.Logger.Info("DB: Error getting school by id", "SchoolID", schoolID)
-		return err
+		return errors.Wrapf(err, "Error getting school with id='%d'", schoolID)
 	}
 	// Получаем запись пользователя
 	where := User{Login: login, SchoolID: uint(schoolID)}
@@ -176,14 +176,12 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 			for childName, childInfo := range childrenMap {
 				sid, errInner := strconv.Atoi(childInfo.SID)
 				if errInner != nil {
-					db.Logger.Info("DB: Error occured when converting SIDs from childrenMap", "ChildSID", childInfo.SID)
-					return errInner
+					return errors.Wrapf(errInner, "Error converting SID='%s' from string to int", childInfo.SID)
 				}
 				student = Student{Name: childName, NetSchoolID: sid, Days: []Day{}, ClassID: childInfo.CLID}
 				errInner = db.SchoolServerDB.Create(&student).Error
 				if errInner != nil {
-					db.Logger.Info("DB: Error occured when creating student for user", "User", user, "Student", student)
-					return errInner
+					return errors.Wrapf(errInner, "Error creating student='%v' for user='%v'", student, user)
 				}
 				students[i] = student
 				i++
@@ -197,21 +195,20 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 			}
 			errInner := db.SchoolServerDB.Create(&user).Error
 			if errInner != nil {
-				db.Logger.Error("DB: Error occured when creating user", "User", user)
+				return errors.Wrapf(errInner, "Error creating user='%v'", user)
 			}
-			return errInner
+			return nil
 		}
-		db.Logger.Error("DB: Error occured when getting user from db", "User params", where)
-		return err
+		return errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Пользователь найден, обновим
 	user.Password = passkey
 	user.SchoolID = uint(schoolID)
 	err = db.SchoolServerDB.Save(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when saving updated data for user", "User", user)
+		return errors.Wrapf(err, "Error saving updated user='%v'", user)
 	}
-	return err
+	return nil
 }
 
 // GetUserAuthData возвращает данные для повторной удаленной авторизации пользователя
@@ -223,13 +220,13 @@ func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, 
 	// Получаем школу по id
 	err := db.SchoolServerDB.First(&school, schoolID).Error
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Error query school by id='%d'", schoolID)
 	}
 	// Получаем пользователя по школе и логину
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err = db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	return &cp.School{Link: school.Address, Login: userName, Password: user.Password, Type: 1}, nil
 }
@@ -241,8 +238,7 @@ func (db *Database) GetUserPermission(userName string, schoolID int) (bool, erro
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting permission for user", "User params", where)
-		return false, err
+		return false, errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	return user.Permission, nil
 }
@@ -263,14 +259,12 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured getting user for updating tasks status", "User params", where)
-		return err
+		return errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Получаем ученика по studentID
 	err = db.SchoolServerDB.Model(&user).Related(&students).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting user's students list for updating tasks status", "User", user)
-		return err
+		return errors.Wrapf(err, "Error query students for user='%v'", user)
 	}
 	studentFound := false
 	for _, stud := range students {
@@ -281,14 +275,12 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 		}
 	}
 	if !studentFound {
-		db.Logger.Info("DB: No student found for updating tasks status", "StudentID", studentID)
-		return fmt.Errorf("record not found")
+		return errors.Wrapf(fmt.Errorf("record not found"), "No student with id='%d' found for userName='%s'", studentID, userName)
 	}
 	// Получаем список дней у ученика
 	err = db.SchoolServerDB.Model(&student).Related(&days).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting student's days list for updating tasks status", "Student", student)
-		return err
+		return errors.Wrapf(err, "Error getting student='%v' days", student)
 	}
 	// Гоняем по дням из пакета
 	for dayNum, day := range week.Data {
@@ -307,16 +299,14 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 			newDay = Day{StudentID: student.ID, Date: date, Tasks: []Task{}}
 			err = db.SchoolServerDB.Create(&newDay).Error
 			if err != nil {
-				db.Logger.Info("DB: Error occured when saving new day for updating tasks status", "newDay", newDay)
-				return err
+				return errors.Wrapf(err, "Error creating newDay='%v'", newDay)
 			}
 			days = append(days, newDay)
 		}
 		// Получаем список заданий для дня
 		err = db.SchoolServerDB.Model(&newDay).Related(&tasks).Error
 		if err != nil {
-			db.Logger.Info("DB: Error getting tasks list for updating tasks status", "newDAy", newDay)
-			return err
+			return errors.Wrapf(err, "Error getting newDay='%v' tasks", newDay)
 		}
 		// Гоняем по заданиям
 		for taskNum, task := range day.Lessons {
@@ -334,8 +324,7 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 				newTask = Task{DayID: newDay.ID, LessonID: task.CID, HometaskID: task.AID, Status: StatusTaskNew, TP: task.TP}
 				err = db.SchoolServerDB.Create(&newTask).Error
 				if err != nil {
-					db.Logger.Info("DB: Error occured when creating new task for updating tasks status", "newTask", newTask)
-					return err
+					return errors.Wrapf(err, "Error creating newTask='%v'", newTask)
 				}
 				tasks = append(tasks, newTask)
 			}
@@ -344,15 +333,14 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 		}
 		err = db.SchoolServerDB.Save(&newDay).Error
 		if err != nil {
-			db.Logger.Info("DB: Error occured when saving new day", "newDay", newDay)
-			return err
+			return errors.Wrapf(err, "Error saving newDay='%v'", newDay)
 		}
 	}
 	err = db.SchoolServerDB.Save(&student).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when saving student", "Student", student)
+		return errors.Wrapf(err, "Error saving student='%v'", student)
 	}
-	return err
+	return nil
 }
 
 // GetTaskInfo получает информацию о задании - дату, CID, TP, id, classID ученика
@@ -367,29 +355,25 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting user for getting task info", "User params", where)
-		return "", -1, -1, -1, "", err
+		return "", -1, -1, -1, "", errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Получаем таски с таким taskID
 	w := Task{HometaskID: taskID}
 	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting tasks for getting task info", "Task params", w)
-		return "", -1, -1, -1, "", err
+		return "", -1, -1, -1, "", errors.Wrapf(err, "Error query tasks='%v'", w)
 	}
 	// Найдем нужный таск
 	for _, t := range tasks {
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error occured when getting days for getting task info", "DayID", t.DayID)
-			return "", -1, -1, -1, "", err
+			return "", -1, -1, -1, "", errors.Wrapf(err, "Error query day by id='%d'", t.DayID)
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error occured when getting student for getting task info", "StudentID", day.StudentID)
-			return "", -1, -1, -1, "", err
+			return "", -1, -1, -1, "", errors.Wrapf(err, "Error query student by day id='%d'", day.StudentID)
 		}
 
 		// Если совпал id пользователя, обновить статус и вернуть дату
@@ -398,15 +382,13 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 				t.Status = StatusTaskSeen
 				err = db.SchoolServerDB.Save(&t).Error
 				if err != nil {
-					db.Logger.Error("DB: Error occured when saving updated task status", "Task", t)
-					return "", -1, -1, -1, "", err
+					return "", -1, -1, -1, "", errors.Wrapf(err, "Error saving updated task='%v'", t)
 				}
 			}
 			return day.Date, t.LessonID, t.TP, student.NetSchoolID, student.ClassID, nil
 		}
 	}
 	// Таск не найден
-	db.Logger.Info("DB: Error occured when searching for task when getting task info")
 	return "", -1, -1, -1, "", fmt.Errorf("record not found")
 }
 
@@ -422,29 +404,25 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting user for updating tasks status", "User params", where)
-		return err
+		return errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Получаем таски с таким taskID
 	w := Task{HometaskID: taskID}
 	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting tasks for updating tasks status", "Task params", w)
-		return err
+		return errors.Wrapf(err, "Error query tasks with id='%v'", taskID)
 	}
 	// Найдем нужный таск
 	for _, t := range tasks {
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error occured when getting days for updating tasks status", "DayID", t.DayID)
-			return err
+			return errors.Wrapf(err, "Error query day with id='%d'", t.DayID)
 		}
 		// Получим студента по дню
-		err = db.SchoolServerDB.First(&student, day.StudentID).Error
+		err = db.SchoolServerDB.First(&student).Error
 		if err != nil {
-			db.Logger.Info("DB: Error occured when getting student for updating tasks status", "StudentID", day.StudentID)
-			return err
+			return errors.Wrapf(err, "Error query student with id='%v'", day.StudentID)
 		}
 
 		// Если совпал id пользователя - поменять статус, сохранить и закончить цикл
@@ -452,14 +430,12 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 			t.Status = StatusTaskDone
 			err = db.SchoolServerDB.Save(&t).Error
 			if err != nil {
-				db.Logger.Error("DB: Error occured when saving updated task status", "Task", t)
-				return err
+				return errors.Wrapf(err, "Error saving updated task='%v'", t)
 			}
 			return nil
 		}
 	}
 	// Таск не найден
-	db.Logger.Info("DB: Error occured when searching for task to update status")
 	return fmt.Errorf("record not found")
 }
 
@@ -475,42 +451,37 @@ func (db *Database) TaskMarkUndone(userName string, schoolID int, taskID int) er
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting user for updating tasks status", "User params", where)
-		return err
+		return errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Получаем таски с таким taskID
 	w := Task{HometaskID: taskID}
 	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting tasks for updating tasks status", "TaskID", taskID)
-		return err
+		return errors.Wrapf(err, "Error query tasks with id='%v'", taskID)
 	}
 	// Найдем нужный таск
 	for _, t := range tasks {
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error occured when getting days for updating tasks status", "DayID", t.DayID)
-			return err
+			return errors.Wrapf(err, "Error query day with id='%v'", t.DayID)
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
-			db.Logger.Info("DB: Error occured when getting student for updating tasks status", "StudentID", day.StudentID)
-			return err
+			return errors.Wrapf(err, "Error query student with id='%v'", day.StudentID)
 		}
 		// Если совпал id пользователя - поменять статус, сохранить и закончить цикл
 		if user.ID == student.UserID {
 			t.Status = StatusTaskSeen
 			err = db.SchoolServerDB.Save(&t).Error
 			if err != nil {
-				db.Logger.Error("DB: Error occured when saving updated task status", "Task", t)
+				return errors.Wrapf(err, "Error saving updated task='%v'", t)
 			}
-			return err
+			return nil
 		}
 	}
 	// Таск не найден
-	db.Logger.Info("DB: Error occured when searching for task to update status")
 	return fmt.Errorf("record not found")
 }
 
@@ -520,7 +491,7 @@ func (db *Database) GetSchoolPermission(id int) (bool, error) {
 	// Получаем школу по primary key
 	err := db.SchoolServerDB.First(&school, id).Error
 	if err != nil {
-		return false, err
+		return false, errors.Wrapf(err, "Error query school with id='%v'", id)
 	}
 	return school.Permission, nil
 }
@@ -542,14 +513,12 @@ func (db *Database) GetStudents(userName string, schoolID int) (map[string]int, 
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting user for getting childrenMap", "User params", where)
-		return nil, err
+		return nil, errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Получаем ассоциированных с пользователем учеников
 	err = db.SchoolServerDB.Model(&user).Related(&students).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting students list for getting childrenMap", "User", user)
-		return nil, err
+		return nil, errors.Wrapf(err, "Error query user='%v' students", user)
 	}
 	// Заполним ответ
 	childrenMap := make(map[string]int)
@@ -566,8 +535,7 @@ func (db *Database) CheckPassword(userName string, schoolID int, pass string) (b
 	where := User{Login: userName, SchoolID: uint(schoolID)}
 	err := db.SchoolServerDB.Where(where).First(&user).Error
 	if err != nil {
-		db.Logger.Info("DB: Error occured when getting user for checking password", "User params", where)
-		return false, err
+		return false, errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	return user.Password == pass, nil
 }
