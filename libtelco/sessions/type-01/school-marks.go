@@ -24,7 +24,6 @@ import (
 // GetWeekSchoolMarks возвращает оценки на заданную неделю с сервера первого типа.
 func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMarks, error) {
 	p := "http://"
-	var weekSchoolMarks *dt.WeekSchoolMarks
 
 	// 0-ой Post-запрос.
 	requestOptions0 := &gr.RequestOptions{
@@ -223,8 +222,7 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 		return &days, err
 	}
 
-	weekSchoolMarks, err = makeWeekSchoolMarks(parsedHTML, date)
-	return weekSchoolMarks, err
+	return makeWeekSchoolMarks(parsedHTML, date)
 }
 
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
