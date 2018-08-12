@@ -9,10 +9,11 @@ import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	dt "SchoolServer/libtelco/sessions/data-types"
 	ss "SchoolServer/libtelco/sessions/session"
@@ -30,13 +31,13 @@ func Login(s *ss.Session) error {
 	// 0-ой Get-запрос.
 	_, err := s.Sess.Get(p+s.Serv.Link+"/asp/ajax/getloginviewdata.asp", nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "0 GET")
 	}
 
 	// 1-ый Post-запрос.
 	response1, err := s.Sess.Post(p+s.Serv.Link+"/webapi/auth/getdata", nil)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "1 POST")
 	}
 	defer func() {
 		_ = response1.Close()
@@ -48,14 +49,14 @@ func Login(s *ss.Session) error {
 	}
 	fa := &FirstAnswer{}
 	if err = response1.JSON(fa); err != nil {
-		return err
+		return errors.Wrap(err, "decoding JSON")
 	}
 
 	// 2-ой Post-запрос.
 	pw := s.Serv.Password
 	hasher := md5.New()
 	if _, err = hasher.Write([]byte(fa.Salt + pw)); err != nil {
-		return err
+		return errors.Wrap(err, "md5")
 	}
 	pw = hex.EncodeToString(hasher.Sum(nil))
 	requestOption := &gr.RequestOptions{
@@ -79,7 +80,7 @@ func Login(s *ss.Session) error {
 	}
 	response2, err := s.Sess.Post(p+s.Serv.Link+"/asp/postlogin.asp", requestOption)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "2 POST")
 	}
 	defer func() {
 		_ = response2.Close()
@@ -89,7 +90,7 @@ func Login(s *ss.Session) error {
 	// находящуюся в теле ответа, и найти в ней "AT" и "VER".
 	parsedHTML, err := html.Parse(bytes.NewReader(response2.Bytes()))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "parsing HTML")
 	}
 	var f func(*html.Node, string) string
 	f = func(node *html.Node, reqAttr string) string {
@@ -112,7 +113,7 @@ func Login(s *ss.Session) error {
 	s.AT = f(parsedHTML, "AT")
 	s.VER = f(parsedHTML, "VER")
 	if (s.AT == "") || (s.VER == "") {
-		return fmt.Errorf("Problems on school server: %s", s.Serv.Link)
+		return fmt.Errorf("problems on school server: %s", p+s.Serv.Link)
 	}
 	return nil
 }
@@ -145,15 +146,15 @@ func Logout(s *ss.Session) error {
 	}
 	flag, err := r0()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		flag, err = r0()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return fmt.Errorf("Retry didn't work")
+			return fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
 	return nil
@@ -194,22 +195,22 @@ func GetChildrenMap(s *ss.Session) error {
 	}
 	b, flag, err := r0()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		b, flag, err = r0()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return fmt.Errorf("Retry didn't work")
+			return fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней мапу детей в их ID.
 	parsedHTML, err := html.Parse(bytes.NewReader(b))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "parsing HTML")
 	}
 
 	var getChildrenIDNode func(*html.Node) *html.Node
@@ -262,7 +263,7 @@ func GetChildrenMap(s *ss.Session) error {
 									if a2.Key == "value" {
 										childrenIDs[a2.Val] = ss.Student{a.Val, ""}
 										if _, err := strconv.Atoi(a.Val); err != nil {
-											return nil, false, errors.New("ID has incorrect format")
+											return nil, false, fmt.Errorf("ID has incorrect format \"%v\"", a.Val)
 										}
 									}
 								}
@@ -277,7 +278,7 @@ func GetChildrenMap(s *ss.Session) error {
 							if a.Key == "value" {
 								childrenIDs[n.FirstChild.Data] = ss.Student{a.Val, ""}
 								if _, err := strconv.Atoi(a.Val); err != nil {
-									return nil, false, errors.New("ID has incorrect format")
+									return nil, false, fmt.Errorf("ID has incorrect format \"%v\"", a.Val)
 								}
 							}
 						}
@@ -285,7 +286,7 @@ func GetChildrenMap(s *ss.Session) error {
 				}
 			}
 		} else {
-			return nil, false, errors.New("Couldn't find children IDs Node")
+			return nil, false, fmt.Errorf("Couldn't find children IDs Node")
 		}
 
 		// Находим тип сессии.
@@ -311,7 +312,7 @@ func GetChildrenMap(s *ss.Session) error {
 	var isParent bool
 	s.Children, isParent, err = getChildrenIDs(parsedHTML)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "parsing")
 	}
 	if isParent {
 		s.Type = ss.Parent
@@ -380,15 +381,15 @@ func GetChildrenMap(s *ss.Session) error {
 	for k, v := range s.Children {
 		flag, err := r1()
 		if err != nil {
-			return err
+			return errors.Wrap(err, "1 POST")
 		}
 		if !flag {
 			flag, err = r1()
 			if err != nil {
-				return err
+				return errors.Wrap(err, "retrying 1 POST")
 			}
 			if !flag {
-				return fmt.Errorf("Retry didn't work")
+				return fmt.Errorf("retry didn't work for 1 POST")
 			}
 		}
 		json := SelectedData{
@@ -461,15 +462,15 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 	}
 	flag, err := r0()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		flag, err = r0()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("Retry didn't work for 0 POST")
 		}
 	}
 
@@ -514,15 +515,15 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 	}
 	b, flag, err := r1()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "1 POST")
 	}
 	if !flag {
 		b, flag, err = r1()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 1 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("Retry didn't work for 1 POST")
 		}
 	}
 

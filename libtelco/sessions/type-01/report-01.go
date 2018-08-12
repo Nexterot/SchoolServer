@@ -9,6 +9,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	gr "github.com/levigross/grequests"
 )
 
@@ -47,15 +49,15 @@ func GetTotalMarkReport(s *ss.Session, studentID string) (*dt.TotalMarkReport, e
 	}
 	flag, err := r0()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		flag, err = r0()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
 
@@ -97,15 +99,15 @@ func GetTotalMarkReport(s *ss.Session, studentID string) (*dt.TotalMarkReport, e
 	}
 	flag, err = r1()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "1 POST")
 	}
 	if !flag {
 		flag, err = r1()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 1 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 1 POST")
 		}
 	}
 
@@ -148,15 +150,15 @@ func GetTotalMarkReport(s *ss.Session, studentID string) (*dt.TotalMarkReport, e
 	}
 	b, flag, err := r2()
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "2 POST")
 	}
 	if !flag {
 		b, flag, err = r2()
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "retrying 2 POST")
 		}
 		if !flag {
-			return nil, fmt.Errorf("Retry didn't work")
+			return nil, fmt.Errorf("retry didn't work for 2 POST")
 		}
 	}
 
