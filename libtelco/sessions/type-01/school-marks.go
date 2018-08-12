@@ -26,34 +26,48 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 	p := "http://"
 
 	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"AT":        s.AT,
-			"Date":      date,
-			"LoginType": "0",
-			"PCLID_IUP": "",
-			"SID":       studentID,
-			"VER":       s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
-		},
+	r0 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"Date":      date,
+				"LoginType": "0",
+				"PCLID_IUP": "",
+				"SID":       studentID,
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Curriculum/Assignments.asp", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := checkResponse(s, r)
+		return r.Bytes(), flag, err
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Curriculum/Assignments.asp", requestOptions0)
+	b, flag, err := r0()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	if err := checkResponse(s, response0); err != nil {
-		return nil, err
+	if !flag {
+		b, flag, err = r0()
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return nil, fmt.Errorf("Retry didn't work")
+		}
 	}
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней оценки на заданную неделю.
-	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
+	parsedHTML, err := html.Parse(bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}
@@ -228,31 +242,46 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
 func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID, classID, serverAddr string, db *red.Database) (*dt.LessonDescription, error) {
 	p := "http://"
+
 	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"AID":       strconv.Itoa(AID),
-			"AT":        s.AT,
-			"CID":       strconv.Itoa(CID),
-			"PCLID_IUP": "",
-			"TP":        strconv.Itoa(TP),
-		},
-		Headers: map[string]string{
-			"Origin":           p + s.Serv.Link,
-			"X-Requested-With": "XMLHttpRequest",
-			"at":               s.AT,
-			"Referer":          p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
-		},
+	r0 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AID":       strconv.Itoa(AID),
+				"AT":        s.AT,
+				"CID":       strconv.Itoa(CID),
+				"PCLID_IUP": "",
+				"TP":        strconv.Itoa(TP),
+			},
+			Headers: map[string]string{
+				"Origin":           p + s.Serv.Link,
+				"X-Requested-With": "XMLHttpRequest",
+				"at":               s.AT,
+				"Referer":          p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/ajax/Assignments/GetAssignmentInfo.asp", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := checkResponse(s, r)
+		return r.Bytes(), flag, err
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/ajax/Assignments/GetAssignmentInfo.asp", requestOptions0)
+	b, flag, err := r0()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	if err := checkResponse(s, response0); err != nil {
-		return nil, err
+	if !flag {
+		b, flag, err = r0()
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return nil, fmt.Errorf("Retry didn't work")
+		}
 	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
@@ -260,7 +289,7 @@ func GetLessonDescription(s *ss.Session, AID, CID, TP int, studentID, classID, s
 
 	// Получаем таблицу с подробностями урока из полученной json-структуры
 	responseMap := make(map[string]interface{})
-	err = json.Unmarshal(response0.Bytes(), &responseMap)
+	err = json.Unmarshal(b, &responseMap)
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +480,7 @@ func getFile(s *ss.Session, lessonDesc *dt.LessonDescription, classID, ID, serve
 	// Закачка файла.
 
 	// 0-ой POST-запрос.
-	requestOptions0 := &gr.RequestOptions{
+	ro := &gr.RequestOptions{
 		Data: map[string]string{
 			"VER":          s.VER,
 			"at":           s.AT,
@@ -463,16 +492,16 @@ func getFile(s *ss.Session, lessonDesc *dt.LessonDescription, classID, ID, serve
 			"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
 		},
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+lessonDesc.File, requestOptions0)
+	r, err := s.Sess.Post(p+s.Serv.Link+lessonDesc.File, ro)
 	if err != nil {
 		lessonDesc.File = ""
 		lessonDesc.FileName = "Broken"
 		return lessonDesc, nil
 	}
 	defer func() {
-		_ = response0.Close()
+		_ = r.Close()
 	}()
-	if err := checkResponse(s, response0); err != nil {
+	if _, err := checkResponse(s, r); err != nil {
 		lessonDesc.File = ""
 		lessonDesc.FileName = "Broken"
 		return lessonDesc, nil
@@ -483,7 +512,7 @@ func getFile(s *ss.Session, lessonDesc *dt.LessonDescription, classID, ID, serve
 		return nil, err
 	}
 	// Создание файла.
-	if err := ioutil.WriteFile(path+lessonDesc.FileName, response0.Bytes(), 0700); err != nil {
+	if err := ioutil.WriteFile(path+lessonDesc.FileName, r.Bytes(), 0700); err != nil {
 		return nil, err
 	}
 	// Подмена Ссылки.
@@ -492,6 +521,5 @@ func getFile(s *ss.Session, lessonDesc *dt.LessonDescription, classID, ID, serve
 	if err := db.AddFileDate(path+lessonDesc.FileName, fmt.Sprintf("%v", time.Now().Unix())); err != nil {
 		return nil, err
 	}
-
 	return lessonDesc, nil
 }

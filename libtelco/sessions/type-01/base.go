@@ -122,25 +122,41 @@ func Logout(s *ss.Session) error {
 	p := "http://"
 
 	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"AT":  s.AT,
-			"VER": s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
-		},
+	r0 := func() (bool, error) {
+		requestOptions := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":  s.AT,
+				"VER": s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+			},
+		}
+		response, err := s.Sess.Post(p+s.Serv.Link+"/asp/logout.asp", requestOptions)
+		if err != nil {
+			return false, err
+		}
+		defer func() {
+			_ = response.Close()
+		}()
+		return checkResponse(s, response)
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/logout.asp", requestOptions0)
+	flag, err := r0()
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	return checkResponse(s, response0)
+	if !flag {
+		flag, err = r0()
+		if err != nil {
+			return err
+		}
+		if !flag {
+			return fmt.Errorf("Retry didn't work")
+		}
+	}
+	return nil
 }
 
 // GetChildrenMap получает мапу детей в их UID с сервера первого типа.
@@ -148,33 +164,50 @@ func GetChildrenMap(s *ss.Session) error {
 	p := "http://"
 
 	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"AT":        s.AT,
-			"LoginType": "0",
-			"RPTID":     "0",
-			"ThmID":     "1",
-			"VER":       s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
-		},
+	r0 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"LoginType": "0",
+				"RPTID":     "0",
+				"ThmID":     "1",
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := checkResponse(s, r)
+		if err != nil {
+			return nil, false, err
+		}
+		return r.Bytes(), flag, nil
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", requestOptions0)
+	b, flag, err := r0()
 	if err != nil {
 		return err
 	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	if err := checkResponse(s, response0); err != nil {
-		return err
+	if !flag {
+		b, flag, err = r0()
+		if err != nil {
+			return err
+		}
+		if !flag {
+			return fmt.Errorf("Retry didn't work")
+		}
 	}
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней мапу детей в их ID.
-	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
+	parsedHTML, err := html.Parse(bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -286,10 +319,9 @@ func GetChildrenMap(s *ss.Session) error {
 		s.Type = ss.Child
 	}
 
-	// Если мы дошли до этого места, то можно начать искать CLID каждого ребенка.
-	for k, v := range s.Children {
-		// 0-ой Post-запрос.
-		requestOptions0 := &gr.RequestOptions{
+	// 1-ый Post-запрос.
+	r1 := func() (bool, error) {
+		ro := &gr.RequestOptions{
 			Data: map[string]string{
 				"AT":        s.AT,
 				"LoginType": "0",
@@ -303,32 +335,28 @@ func GetChildrenMap(s *ss.Session) error {
 				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 			},
 		}
-		response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/JournalAccess.asp", requestOptions0)
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/JournalAccess.asp", ro)
 		if err != nil {
-			return err
+			return false, err
 		}
 		defer func() {
-			_ = response0.Close()
+			_ = r.Close()
 		}()
-		if err := checkResponse(s, response0); err != nil {
-			return err
-		}
+		return checkResponse(s, r)
+	}
 
-		type Filter struct {
-			ID    string `json:"filterId"`
-			Value string `json:"filterValue"`
-		}
+	type Filter struct {
+		ID    string `json:"filterId"`
+		Value string `json:"filterValue"`
+	}
 
-		type SelectedData struct {
-			SelectedData []Filter `json:"selectedData"`
-		}
+	type SelectedData struct {
+		SelectedData []Filter `json:"selectedData"`
+	}
 
-		json := SelectedData{
-			SelectedData: []Filter{Filter{"SID", v.SID}},
-		}
-
-		// 1-ый Post-запрос.
-		requestOptions1 := &gr.RequestOptions{
+	// 2-ой Post-запрос.
+	r2 := func(json SelectedData) ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
 			JSON: json,
 			Headers: map[string]string{
 				"Origin":           p + s.Serv.Link,
@@ -337,17 +365,49 @@ func GetChildrenMap(s *ss.Session) error {
 				"Referer":          p + s.Serv.Link + "/asp/Reports/ReportJournalAccess.asp",
 			},
 		}
-		response1, err := s.Sess.Post(p+s.Serv.Link+"/webapi/reports/journal_access/initfilters", requestOptions1)
+		r, err := s.Sess.Post(p+s.Serv.Link+"/webapi/reports/journal_access/initfilters", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := checkResponse(s, r)
+		return r.Bytes(), flag, err
+	}
+
+	// Если мы дошли до этого места, то можно начать искать CLID каждого ребенка.
+	for k, v := range s.Children {
+		flag, err := r1()
 		if err != nil {
 			return err
 		}
-		defer func() {
-			_ = response1.Close()
-		}()
-		if err := checkResponse(s, response1); err != nil {
+		if !flag {
+			flag, err = r1()
+			if err != nil {
+				return err
+			}
+			if !flag {
+				return fmt.Errorf("Retry didn't work")
+			}
+		}
+		json := SelectedData{
+			SelectedData: []Filter{Filter{"SID", v.SID}},
+		}
+		b, flag, err := r2(json)
+		if err != nil {
 			return err
 		}
-		CLID := string(response1.Bytes())
+		if !flag {
+			b, flag, err = r2(json)
+			if err != nil {
+				return err
+			}
+			if !flag {
+				return fmt.Errorf("Retry didn't work")
+			}
+		}
+		CLID := string(b)
 		index := strings.Index(CLID, "\"value\":\"")
 		if index == -1 {
 			return fmt.Errorf("Invalid SID")
@@ -375,73 +435,100 @@ func GetLessonsMap(s *ss.Session, studentID string) (*dt.LessonsMap, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"AT":        s.AT,
-			"LoginType": "0",
-			"RPTID":     "0",
-			"ThmID":     "2",
-			"VER":       s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
-		},
+	r0 := func() (bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"LoginType": "0",
+				"RPTID":     "0",
+				"ThmID":     "2",
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", ro)
+		if err != nil {
+			return false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		return checkResponse(s, r)
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", requestOptions0)
+	flag, err := r0()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	if err := checkResponse(s, response0); err != nil {
-		return nil, err
+	if !flag {
+		flag, err = r0()
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return nil, fmt.Errorf("Retry didn't work")
+		}
 	}
 
 	// 1-ый Post-запрос.
-	requestOptions1 := &gr.RequestOptions{
-		Data: map[string]string{
-			"A":         "",
-			"ADT":       "01.09.2017",
-			"AT":        s.AT,
-			"BACK":      "/asp/Reports/ReportStudentGrades.asp",
-			"DDT":       "31.08.2018",
-			"LoginType": "0",
-			"NA":        "",
-			"PCLID_IUP": "",
-			"PP":        "/asp/Reports/ReportStudentGrades.asp",
-			"RP":        "",
-			"RPTID":     "0",
-			"RT":        "",
-			"SCLID":     "",
-			"SID":       studentID,
-			"TA":        "",
-			"ThmID":     "2",
-			"VER":       s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentGrades.asp",
-		},
+	r1 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"A":         "",
+				"ADT":       "01.09.2017",
+				"AT":        s.AT,
+				"BACK":      "/asp/Reports/ReportStudentGrades.asp",
+				"DDT":       "31.08.2018",
+				"LoginType": "0",
+				"NA":        "",
+				"PCLID_IUP": "",
+				"PP":        "/asp/Reports/ReportStudentGrades.asp",
+				"RP":        "",
+				"RPTID":     "0",
+				"RT":        "",
+				"SCLID":     "",
+				"SID":       studentID,
+				"TA":        "",
+				"ThmID":     "2",
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentGrades.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+
+		flag, err := checkResponse(s, r)
+		return r.Bytes(), flag, err
 	}
-	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentGrades.asp", requestOptions1)
+	b, flag, err := r1()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = response1.Close()
-	}()
-
-	if err := checkResponse(s, response1); err != nil {
-		return nil, err
+	if !flag {
+		b, flag, err = r1()
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return nil, fmt.Errorf("Retry didn't work")
+		}
 	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней мапу предметов в их ID.
-	parsedHTML, err := html.Parse(bytes.NewReader(response1.Bytes()))
+	parsedHTML, err := html.Parse(bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}

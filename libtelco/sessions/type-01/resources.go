@@ -7,6 +7,7 @@ import (
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
 	"errors"
+	"fmt"
 	"strings"
 
 	gr "github.com/levigross/grequests"
@@ -18,35 +19,49 @@ func GetResourcesList(s *ss.Session) (*dt.Resources, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"AT":        s.AT,
-			"LoginType": "0",
-			"MenuItem":  "0",
-			"TabItem":   "40",
-			"VER":       s.VER,
-			"optional":  "optional",
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
-		},
+	r0 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"LoginType": "0",
+				"MenuItem":  "0",
+				"TabItem":   "40",
+				"VER":       s.VER,
+				"optional":  "optional",
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Curriculum/SchoolResources.asp", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := checkResponse(s, r)
+		return r.Bytes(), flag, err
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Curriculum/SchoolResources.asp", requestOptions0)
+	b, flag, err := r0()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	if err := checkResponse(s, response0); err != nil {
-		return nil, err
+	if !flag {
+		b, flag, err = r0()
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return nil, fmt.Errorf("Retry didn't work")
+		}
 	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней список ресурсов.
-	parsedHTML, err := html.Parse(bytes.NewReader(response0.Bytes()))
+	parsedHTML, err := html.Parse(bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,7 @@ import (
 	"SchoolServer/libtelco/sessions/inner"
 	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
+	"fmt"
 
 	gr "github.com/levigross/grequests"
 )
@@ -19,110 +20,150 @@ import (
 func GetAverageMarkDynReport(s *ss.Session, dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkDynReport, error) {
 	p := "http://"
 
-	// 0-ой Post-запрос.
-	requestOptions0 := &gr.RequestOptions{
-		Data: map[string]string{
-			"AT":        s.AT,
-			"LoginType": "0",
-			"RPTID":     "2",
-			"ThmID":     "1",
-			"VER":       s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
-		},
+	r0 := func() (bool, error) {
+		// 0-ой Post-запрос.
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"LoginType": "0",
+				"RPTID":     "2",
+				"ThmID":     "1",
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMarkDyn.asp", ro)
+		if err != nil {
+			return false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		return checkResponse(s, r)
 	}
-	response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMarkDyn.asp", requestOptions0)
+	flag, err := r0()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = response0.Close()
-	}()
-	if err := checkResponse(s, response0); err != nil {
-		return nil, err
+	if !flag {
+		flag, err = r0()
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return nil, fmt.Errorf("Retry didn't work")
+		}
 	}
 
 	// 1-ый Post-запрос.
-	requestOptions1 := &gr.RequestOptions{
-		Data: map[string]string{
-			"A":         "",
-			"ADT":       dateBegin,
-			"AT":        s.AT,
-			"BACK":      "/asp/Reports/ReportStudentAverageMarkDyn.asp",
-			"DDT":       dateEnd,
-			"LoginType": "0",
-			"MT":        Type,
-			"NA":        "",
-			"PCLID":     "",
-			"PP":        "/asp/Reports/ReportStudentAverageMarkDyn.asp",
-			"RP":        "",
-			"RPTID":     "2",
-			"RT":        "",
-			"SID":       studentID,
-			"TA":        "",
-			"ThmID":     "1",
-			"VER":       s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":                    p + s.Serv.Link,
-			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMarkDyn.asp",
-		},
+	r1 := func() (bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"A":         "",
+				"ADT":       dateBegin,
+				"AT":        s.AT,
+				"BACK":      "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+				"DDT":       dateEnd,
+				"LoginType": "0",
+				"MT":        Type,
+				"NA":        "",
+				"PCLID":     "",
+				"PP":        "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+				"RP":        "",
+				"RPTID":     "2",
+				"RT":        "",
+				"SID":       studentID,
+				"TA":        "",
+				"ThmID":     "1",
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+			},
+		}
+		r1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMarkDyn.asp", ro)
+		if err != nil {
+			return false, err
+		}
+		defer func() {
+			_ = r1.Close()
+		}()
+		return checkResponse(s, r1)
 	}
-	response1, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentAverageMarkDyn.asp", requestOptions1)
+	flag, err = r1()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = response1.Close()
-	}()
-	if err := checkResponse(s, response1); err != nil {
-		return nil, err
+	if !flag {
+		flag, err = r1()
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return nil, fmt.Errorf("Retry didn't work")
+		}
 	}
 
 	// 2-ой Post-запрос.
-	requestOptions2 := &gr.RequestOptions{
-		Data: map[string]string{
-			"A":         "",
-			"ADT":       dateBegin,
-			"AT":        s.AT,
-			"BACK":      "/asp/Reports/ReportStudentAverageMarkDyn.asp",
-			"DDT":       dateEnd,
-			"LoginType": "0",
-			"MT":        Type,
-			"NA":        "",
-			"PCLID":     "",
-			"PP":        "/asp/Reports/ReportStudentAverageMarkDyn.asp",
-			"RP":        "",
-			"RPTID":     "2",
-			"RT":        "",
-			"SID":       studentID,
-			"TA":        "",
-			"ThmID":     "1",
-			"VER":       s.VER,
-		},
-		Headers: map[string]string{
-			"Origin":           p + s.Serv.Link,
-			"X-Requested-With": "XMLHttpRequest",
-			"at":               s.AT,
-			"Referer":          p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMarkDyn.asp",
-		},
+	r2 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"A":         "",
+				"ADT":       dateBegin,
+				"AT":        s.AT,
+				"BACK":      "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+				"DDT":       dateEnd,
+				"LoginType": "0",
+				"MT":        Type,
+				"NA":        "",
+				"PCLID":     "",
+				"PP":        "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+				"RP":        "",
+				"RPTID":     "2",
+				"RT":        "",
+				"SID":       studentID,
+				"TA":        "",
+				"ThmID":     "1",
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":           p + s.Serv.Link,
+				"X-Requested-With": "XMLHttpRequest",
+				"at":               s.AT,
+				"Referer":          p + s.Serv.Link + "/asp/Reports/ReportStudentAverageMarkDyn.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/StudentAverageMarkDyn.asp", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := checkResponse(s, r)
+		return r.Bytes(), flag, err
 	}
-	response2, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/StudentAverageMarkDyn.asp", requestOptions2)
+	b, flag, err := r2()
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		_ = response2.Close()
-	}()
-	if err := checkResponse(s, response2); err != nil {
-		return nil, err
+	if !flag {
+		b, flag, err = r2()
+		if err != nil {
+			return nil, err
+		}
+		if !flag {
+			return nil, fmt.Errorf("Retry didn't work")
+		}
 	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней отчет о динамике среднего балла.
-	return inner.AverageMarkDynReportParser(bytes.NewReader(response2.Bytes()))
+	return inner.AverageMarkDynReportParser(bytes.NewReader(b))
 }
