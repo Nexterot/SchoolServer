@@ -1,5 +1,7 @@
 # SchoolServer
 
+[![Build Status](https://travis-ci.org/masyagin1998/SchoolServer.svg?branch=master)](https://travis-ci.org/masyagin1998/SchoolServer)
+
 # Описание.
 SchoolServer - это высоконагруженный сервер для мобильных приложений на IOS/Android. Он позволяет ученикам школ и их родителям в режиме реального времени узнавать оценки и расписание уроков, получать отчеты об успеваемости и посещаемости, общаться на форуме. Также доступны PUSH-уведомления.
 
