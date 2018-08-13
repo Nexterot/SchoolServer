@@ -10,6 +10,8 @@ import (
 	dt "SchoolServer/libtelco/sessions/data-types"
 	t01 "SchoolServer/libtelco/sessions/type-01"
 	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 // GetResourcesList возвращает список всех ресурсов.
@@ -21,8 +23,9 @@ func (s *Session) GetResourcesList() (*dt.Resources, error) {
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
 		resources, err = t01.GetResourcesList(s.Base)
+		err = errors.Wrap(err, "type-01")
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return resources, err
+	return resources, errors.Wrap(err, "from GetResourceList")
 }

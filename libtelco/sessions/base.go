@@ -13,6 +13,7 @@ import (
 	"fmt"
 
 	gr "github.com/levigross/grequests"
+	"github.com/pkg/errors"
 )
 
 // Session struct содержит в себе описание сессии к одному из школьных серверов.
@@ -43,10 +44,11 @@ func (s *Session) Login() error {
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
 		err = t01.Login(s.Base)
+		err = errors.Wrap(err, "type-01")
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return err
+	return errors.Wrap(err, "from Login")
 }
 
 /*
@@ -61,17 +63,16 @@ func (s *Session) Logout() error {
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
 		err = t01.Logout(s.Base)
+		err = errors.Wrap(err, "type-01")
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return err
+	return errors.Wrap(err, "from Logout")
 }
 
 /*
 Получение списка детей.
 */
-
-// ПЕРЕДЕЛАТЬ!!!
 
 // GetChildrenMap получает мапу детей в их ID.
 func (s *Session) GetChildrenMap() error {
@@ -84,14 +85,12 @@ func (s *Session) GetChildrenMap() error {
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return err
+	return errors.Wrap(err, "from GetChildrenMap")
 }
 
 /*
 Получение списка предметов.
 */
-
-// ПЕРЕДЕЛАТЬ!!!
 
 // GetLessonsMap возвращает список пар мапу предметов в их ID.
 func (s *Session) GetLessonsMap(studentID string) (*dt.LessonsMap, error) {
@@ -105,8 +104,9 @@ func (s *Session) GetLessonsMap(studentID string) (*dt.LessonsMap, error) {
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
 		lessonsMap, err = t01.GetLessonsMap(s.Base, studentID)
+		err = errors.Wrap(err, "type-01")
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return lessonsMap, err
+	return lessonsMap, errors.Wrap(err, "from GetLessonsMap")
 }

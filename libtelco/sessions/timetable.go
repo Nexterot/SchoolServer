@@ -6,6 +6,8 @@ import (
 	"SchoolServer/libtelco/sessions/inner"
 	t01 "SchoolServer/libtelco/sessions/type-01"
 	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 /*
@@ -22,7 +24,7 @@ func (s *Session) GetTimeTable(date string, n int, studentID string) (*dt.TimeTa
 	var err error
 	var timeTable *dt.TimeTable
 	if (n < 1) || (n > 7) {
-		err = fmt.Errorf("Invalid days number")
+		err = fmt.Errorf("Invalid days number %v", n)
 		return nil, err
 	}
 	timeTable = &dt.TimeTable{
@@ -36,10 +38,10 @@ func (s *Session) GetTimeTable(date string, n int, studentID string) (*dt.TimeTa
 		timeTable.Days = append(timeTable.Days, *day)
 		date, err = inner.IncDate(date)
 		if err != nil {
-			return nil, err
+			return nil, errors.Wrap(err, "incrementing date")
 		}
 	}
-	return timeTable, err
+	return timeTable, nil
 }
 
 // getDayTimeTable возвращает расписание на один день.
@@ -49,8 +51,9 @@ func (s *Session) getDayTimeTable(date, studentID string) (*dt.DayTimeTable, err
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
 		dayTimeTable, err = t01.GetDayTimeTable(s.Base, date, studentID)
+		err = errors.Wrap(err, "type-01")
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return dayTimeTable, err
+	return dayTimeTable, errors.Wrap(err, "from getDayTimeTable")
 }

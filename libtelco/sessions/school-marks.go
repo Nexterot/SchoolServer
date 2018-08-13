@@ -6,6 +6,8 @@ import (
 	dt "SchoolServer/libtelco/sessions/data-types"
 	t01 "SchoolServer/libtelco/sessions/type-01"
 	"fmt"
+
+	"github.com/pkg/errors"
 )
 
 /*
@@ -27,7 +29,7 @@ func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMark
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return weekSchoolMarks, err
+	return weekSchoolMarks, errors.Wrap(err, "from GetWeekSchoolMarks")
 }
 
 /*
@@ -49,5 +51,5 @@ func (s *Session) GetLessonDescription(AID, CID, TP int, studentID, classID, ser
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return lessonDescription, err
+	return lessonDescription, errors.Wrap(err, "from GetLessonDescription")
 }
