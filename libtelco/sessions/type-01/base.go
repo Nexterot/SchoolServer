@@ -411,12 +411,12 @@ func GetChildrenMap(s *ss.Session) error {
 		CLID := string(b)
 		index := strings.Index(CLID, "\"value\":\"")
 		if index == -1 {
-			return fmt.Errorf("Invalid SID")
+			return fmt.Errorf("Invalid begin SID substring \"%s\"", CLID)
 		}
 		CLID = CLID[index+len("\"value\":\""):]
 		index = strings.Index(CLID, "\"")
 		if index == -1 {
-			return fmt.Errorf("Invalid SID")
+			return fmt.Errorf("Invalid end SID substring \"%s\"", CLID)
 		}
 		CLID = CLID[:index]
 		v.CLID = CLID
