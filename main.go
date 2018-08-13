@@ -3,11 +3,12 @@
 package main
 
 import (
-	cp "SchoolServer/libtelco/config-parser"
-	"SchoolServer/libtelco/log"
-	"SchoolServer/libtelco/server"
 	"fmt"
 	"os"
+
+	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
+	"github.com/masyagin1998/SchoolServer/libtelco/log"
+	"github.com/masyagin1998/SchoolServer/libtelco/server"
 )
 
 var (

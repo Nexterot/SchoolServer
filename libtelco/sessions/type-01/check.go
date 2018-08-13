@@ -6,9 +6,10 @@ Package type01 - данный файл содержит в себе провер
 package type01
 
 import (
-	ss "SchoolServer/libtelco/sessions/session"
 	"fmt"
 	"strings"
+
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions/session"
 
 	gr "github.com/levigross/grequests"
 )

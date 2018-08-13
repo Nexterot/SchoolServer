@@ -4,8 +4,9 @@ Package redis содержит в себе необходимое API для р�
 package redis
 
 import (
-	cp "SchoolServer/libtelco/config-parser"
 	"fmt"
+
+	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 
 	redis "gopkg.in/redis.v5"
 )

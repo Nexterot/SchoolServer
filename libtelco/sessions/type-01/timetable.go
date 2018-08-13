@@ -3,12 +3,13 @@
 package type01
 
 import (
-	dt "SchoolServer/libtelco/sessions/data-types"
-	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
 	"fmt"
 	"strings"
 	"unicode"
+
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/data-types"
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions/session"
 
 	gr "github.com/levigross/grequests"
 	"github.com/pkg/errors"

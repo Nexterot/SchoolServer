@@ -1,11 +1,12 @@
 package inner
 
 import (
-	dt "SchoolServer/libtelco/sessions/data-types"
 	"errors"
 	"io"
 	"strconv"
 	"strings"
+
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/data-types"
 
 	"golang.org/x/net/html"
 )
@@ -41,8 +42,7 @@ func ParentInfoLetterReportParser(r io.Reader) (*dt.ParentInfoLetterReport, erro
 	}
 
 	// Формирует отчёт
-	var formParentInfoLetterReportTable func(*html.Node) ([]dt.ParentInfoLetterReportNote, error)
-	formParentInfoLetterReportTable = func(node *html.Node) ([]dt.ParentInfoLetterReportNote, error) {
+	formParentInfoLetterReportTable := func(node *html.Node) ([]dt.ParentInfoLetterReportNote, error) {
 		notes := make([]dt.ParentInfoLetterReportNote, 0, 10)
 		if node != nil {
 			// Определяем вид отчёта
@@ -65,7 +65,7 @@ func ParentInfoLetterReportParser(r io.Reader) (*dt.ParentInfoLetterReport, erro
 				if c.FirstChild != nil {
 					note.Name = c.FirstChild.Data
 				}
-				note.Marks = make([]int, 8, 8)
+				note.Marks = make([]int, 8)
 				for i := 0; i < 8; i++ {
 					c = c.NextSibling
 					if c.FirstChild != nil {
@@ -116,7 +116,7 @@ func ParentInfoLetterReportParser(r io.Reader) (*dt.ParentInfoLetterReport, erro
 				if c.FirstChild != nil {
 					note.Name = c.FirstChild.Data
 				}
-				note.Marks = make([]int, 8, 8)
+				note.Marks = make([]int, 8)
 				for i := 0; i < 8; i++ {
 					c = c.NextSibling
 					if c.FirstChild != nil {

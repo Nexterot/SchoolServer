@@ -6,9 +6,10 @@ Package session содержит в себе структуру сессии.
 package session
 
 import (
-	cp "SchoolServer/libtelco/config-parser"
 	"sync"
 	"time"
+
+	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 
 	gr "github.com/levigross/grequests"
 )

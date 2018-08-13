@@ -4,12 +4,13 @@ Package db содержит необходимое API для работы с б
 package db
 
 import (
-	cp "SchoolServer/libtelco/config-parser"
-	"SchoolServer/libtelco/log"
-	dt "SchoolServer/libtelco/sessions/data-types"
-	ss "SchoolServer/libtelco/sessions/session"
 	"fmt"
 	"strconv"
+
+	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
+	"github.com/masyagin1998/SchoolServer/libtelco/log"
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/data-types"
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions/session"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Необходимо для gorm

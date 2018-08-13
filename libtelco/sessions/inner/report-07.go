@@ -1,10 +1,11 @@
 package inner
 
 import (
-	dt "SchoolServer/libtelco/sessions/data-types"
 	"errors"
 	"io"
 	"strconv"
+
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/data-types"
 
 	"golang.org/x/net/html"
 )

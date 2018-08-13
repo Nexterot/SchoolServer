@@ -3,9 +3,6 @@
 package type01
 
 import (
-	red "SchoolServer/libtelco/in-memory-db"
-	dt "SchoolServer/libtelco/sessions/data-types"
-	ss "SchoolServer/libtelco/sessions/session"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -15,6 +12,10 @@ import (
 	"strings"
 	"time"
 	"unicode"
+
+	red "github.com/masyagin1998/SchoolServer/libtelco/in-memory-db"
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/data-types"
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions/session"
 
 	"github.com/pkg/errors"
 

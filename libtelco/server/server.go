@@ -6,11 +6,11 @@ Package server содержит основную функциональност�
 package server
 
 import (
-	cp "SchoolServer/libtelco/config-parser"
-	"SchoolServer/libtelco/log"
+	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
+	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	// ss "SchoolServer/libtelco/sessions"
 
-	api "SchoolServer/libtelco/rest-api"
+	api "github.com/masyagin1998/SchoolServer/libtelco/rest-api"
 
 	"net/http"
 	"runtime"

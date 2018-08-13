@@ -15,8 +15,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	dt "SchoolServer/libtelco/sessions/data-types"
-	ss "SchoolServer/libtelco/sessions/session"
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/data-types"
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions/session"
 
 	gr "github.com/levigross/grequests"
 	"golang.org/x/net/html"

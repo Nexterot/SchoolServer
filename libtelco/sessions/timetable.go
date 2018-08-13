@@ -3,11 +3,13 @@
 package sessions
 
 import (
-	cp "SchoolServer/libtelco/config-parser"
-	dt "SchoolServer/libtelco/sessions/data-types"
-	"SchoolServer/libtelco/sessions/inner"
-	t01 "SchoolServer/libtelco/sessions/type-01"
 	"fmt"
+
+	t01 "github.com/masyagin1998/SchoolServer/libtelco/sessions/type-01"
+
+	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/data-types"
+	"github.com/masyagin1998/SchoolServer/libtelco/sessions/inner"
 
 	"github.com/pkg/errors"
 )

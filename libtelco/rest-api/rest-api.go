@@ -6,11 +6,6 @@ Package restapi содержит handler'ы для взаимодействия 
 package restapi
 
 import (
-	cp "SchoolServer/libtelco/config-parser"
-	red "SchoolServer/libtelco/in-memory-db"
-	"SchoolServer/libtelco/log"
-	ss "SchoolServer/libtelco/sessions"
-	db "SchoolServer/libtelco/sql-db"
 	"bufio"
 	"crypto/md5"
 	"encoding/hex"
@@ -21,6 +16,12 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
+	red "github.com/masyagin1998/SchoolServer/libtelco/in-memory-db"
+	"github.com/masyagin1998/SchoolServer/libtelco/log"
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
+	db "github.com/masyagin1998/SchoolServer/libtelco/sql-db"
 
 	"github.com/gorilla/sessions"
 	redistore "gopkg.in/boj/redistore.v1"
