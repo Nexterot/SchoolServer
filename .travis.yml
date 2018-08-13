@@ -1,9 +1,6 @@
 language: go
+go:
   - "1.10.x"
-go_import_path: GOPATH/src
-cache: cargo
-script: go build ./
-git:
-  depth: 1
-notifications:
-  email: false
+script:
+- "go build ./"
+
