@@ -25,7 +25,7 @@ func GetTotalMarkReport(s *ss.Session, studentID string) (*dt.TotalMarkReport, e
 
 	// 0-ой Post-запрос.
 	r0 := func() (bool, error) {
-		ro0 := &gr.RequestOptions{
+		ro := &gr.RequestOptions{
 			Data: map[string]string{
 				"AT":        s.AT,
 				"LoginType": "0",
@@ -39,14 +39,14 @@ func GetTotalMarkReport(s *ss.Session, studentID string) (*dt.TotalMarkReport, e
 				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
 			},
 		}
-		response0, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", ro0)
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportStudentTotalMarks.asp", ro)
 		if err != nil {
 			return false, err
 		}
 		defer func() {
-			_ = response0.Close()
+			_ = r.Close()
 		}()
-		return checkResponse(s, response0)
+		return checkResponse(s, r)
 	}
 	flag, err := r0()
 	if err != nil {
