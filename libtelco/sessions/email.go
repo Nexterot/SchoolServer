@@ -32,3 +32,18 @@ func (s *Session) GetEmailsList(nBoxID, startInd, pageSize, sequence string) (*d
 	}
 	return emailsList, errors.Wrap(err, "from GetEmailsList")
 }
+
+// GetEmailDescription возвращает подробности заданного электронного письма.
+func (s *Session) GetEmailDescription(MID, MBID string) (*dt.EmailDescription, error) {
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	var err error
+	var emailDescription *dt.EmailDescription
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		emailDescription, err = t01.GetEmailDescription(s.Base, MID, MBID)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return emailDescription, errors.Wrap(err, "from GetEmailDescription")
+}
