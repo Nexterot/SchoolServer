@@ -19,10 +19,11 @@ func checkResponse(s *ss.Session, response *gr.Response) (bool, error) {
 	str := response.String()
 	// Проверяем на Warning.
 	if (response.StatusCode == 200) && strings.Contains(str, `ACTION="/asp/SecurityWarning.asp"`) {
-		if err := retry(s, str); err != nil {
-			return false, err
-		}
-		return false, nil
+		return false, retry(s, str)
+	}
+	// Проверяем на "безопасный выброс с сервера".
+	if (response.StatusCode == 200) && strings.Contains(str, "<!--Jumptologin page-->") {
+		return false, Login(s)
 	}
 
 	// Проверка на "выброс с сервера".

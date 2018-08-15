@@ -56,14 +56,17 @@ func GetWeekSchoolMarks(s *ss.Session, date, studentID string) (*dt.WeekSchoolMa
 	}
 	b, flag, err := r0()
 	if err != nil {
+		fmt.Println(string(b))
 		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
 		b, flag, err = r0()
 		if err != nil {
+			fmt.Println(string(b))
 			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
 		if !flag {
+			fmt.Println(string(b))
 			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}

@@ -6,9 +6,11 @@ Package server содержит основную функциональност�
 package server
 
 import (
+
+	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
+
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
-	// ss "SchoolServer/libtelco/sessions"
 
 	api "github.com/masyagin1998/SchoolServer/libtelco/rest-api"
 
@@ -46,16 +48,7 @@ func (serv *Server) Run() error {
 		if err != nil {
 			fmt.Println(err)
 		}
-		data, err := kek.GetWeekSchoolMarks("19.02.2018", "11198")
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(data)
-		fmt.Println()
-
-		time.Sleep(time.Second * time.Duration(10))
-
-		data, err = kek.GetWeekSchoolMarks("19.02.2018", "11198")
+		data, err := kek.GetWeekSchoolMarks("18.09.2017", "11198")
 		if err != nil {
 			fmt.Println(err)
 		}
