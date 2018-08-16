@@ -6,10 +6,10 @@ Package server содержит основную функциональност�
 package server
 
 import (
-	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
-
 	"fmt"
 	"os"
+
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
@@ -50,20 +50,11 @@ func (serv *Server) Run() error {
 		fmt.Println(err)
 	}
 
-	data, err := kek.GetEmailsList("1", "0", "10", "DESC")
+	data, err := kek.GetForumThemesList()
 	if err != nil {
 		fmt.Println(err)
 	}
 	fmt.Println(data)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
-	data1, err := kek.GetEmailDescription("13647", "1")
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(data1)
 
 	if err = kek.Logout(); err != nil {
 		fmt.Println(err)
