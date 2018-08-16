@@ -7,8 +7,8 @@ package type01
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	gr "github.com/levigross/grequests"
@@ -64,124 +64,13 @@ func GetEmailsList(s *ss.Session, nBoxID, startInd, pageSize, sequence string) (
 		}
 	}
 
-	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
-	// находящуюся в теле ответа, и найти в ней список всех сообщений.
-	parsedHTML, err := html.Parse(bytes.NewReader(b))
-	if err != nil {
+	// Если мы дошли до этого места, то можно распарсить JSON,
+	// находящийся в теле ответа, и найти в нем список всех сообщений.
+	emailsList := &dt.EmailsList{}
+	if err := json.Unmarshal(b, emailsList); err != nil {
 		return nil, err
 	}
-
-	var findEmailsListTableNode func(*html.Node) *html.Node
-	findEmailsListTableNode = func(node *html.Node) *html.Node {
-		if node.Type == html.ElementNode {
-			if node.Data == "table" && len(node.Attr) != 0 {
-				for _, a := range node.Attr {
-					if a.Key == "class" && a.Val == "jtable" {
-						return node
-					}
-				}
-			}
-		}
-		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			n := findEmailsListTableNode(c)
-			if n != nil {
-				return n
-			}
-		}
-
-		return nil
-	}
-
-	formEmailsList := func(node *html.Node) ([]dt.Email, error) {
-		letters := make([]dt.Email, 0, 1)
-		if node == nil {
-			return letters, errors.New("Node is nil in func formEmailsList")
-		}
-		if node.FirstChild == nil {
-			return letters, errors.New("Couldn't find list of letters in func formEmailsList")
-		}
-		infoNode := node.FirstChild
-		if infoNode.NextSibling == nil {
-			return letters, errors.New("Couldn't find list of letters in func formEmailsList")
-		}
-		infoNode = infoNode.NextSibling
-		for letterNode := infoNode.FirstChild; letterNode != nil; letterNode = letterNode.NextSibling {
-			if letterNode.FirstChild == nil {
-				continue
-			}
-			c := letterNode.FirstChild
-			if c.NextSibling == nil {
-				continue
-			}
-			c = c.NextSibling
-			if c.NextSibling == nil {
-				continue
-			}
-			c = c.NextSibling
-
-			// Нашли письмо
-			letter := dt.Email{}
-			if c.FirstChild != nil {
-				if len(c.FirstChild.Attr) != 0 {
-					// Находим ID
-					for _, a := range c.FirstChild.Attr {
-						if a.Key == "href" {
-							var start, end int
-							for i := 0; i < len(a.Val); i++ {
-								if a.Val[i:i+1] == "(" {
-									start = i + 1
-								}
-								if a.Val[i:i+1] == "," {
-									end = i
-									break
-								}
-							}
-							letter.ID, err = strconv.Atoi(a.Val[start:end])
-							if err != nil {
-								return letters, err
-							}
-						}
-					}
-				}
-				if c.FirstChild.FirstChild != nil {
-					// Находим автора письма
-					letter.Author = c.FirstChild.FirstChild.Data
-				}
-			}
-			if c.NextSibling == nil {
-				letters = append(letters, letter)
-				continue
-			}
-			c = c.NextSibling
-			if c.FirstChild != nil && c.FirstChild.FirstChild != nil {
-				// Находим тему письма
-				letter.Title = c.FirstChild.FirstChild.Data
-			}
-			if c.NextSibling == nil {
-				letters = append(letters, letter)
-				continue
-			}
-			c = c.NextSibling
-			if c.FirstChild != nil && c.FirstChild.FirstChild != nil {
-				// Находим дату письма
-				letter.Date = c.FirstChild.FirstChild.Data
-			}
-
-			letters = append(letters, letter)
-		}
-
-		return letters, nil
-	}
-
-	makeMailLettersList := func(node *html.Node) (*dt.EmailsList, error) {
-		letters := &dt.EmailsList{}
-		tableNode := findEmailsListTableNode(node)
-		letters.Letters, err = formEmailsList(tableNode)
-
-		return letters, err
-	}
-
-	return makeMailLettersList(parsedHTML)
+	return emailsList, nil
 }
 
 // GetEmailDescription возвращает подробности заданного электронного письма с сервера первого типа.

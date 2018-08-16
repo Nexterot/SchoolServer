@@ -4,18 +4,21 @@ package dataTypes
 
 // EmailsList struct содержит в себе список писем.
 type EmailsList struct {
-	Letters []Email `json:"letters"`
+	TotalRecordCount int     `json:"TotalRecordCount"`
+	ResultStatus     int     `json:"ResultStatus"`
+	Result           string  `json:"Result"`
+	Record           []Email `json:"Records"`
 }
 
 // Email struct содержит в себе одно заголовок одного письма.
 type Email struct {
-	Date   string `json:"date"`
-	ID     int    `json:"id"`
-	Author string `json:"author"`
-	Title  string `json:"title"`
-
-	// Это поле заполняется из БД.
-	Unread bool `json:"unread"`
+	MessageID  int    `json:"MessageId"`
+	FromName   string `json:"FromName"`
+	FromEOName string `json:"FromEOName"`
+	Subj       string `json:"Subj"`
+	Sent       string `json:"Sent"`
+	Read       string `json:"Read"`
+	SentTo     string `json:"SentTo"`
 }
 
 // EmailUser struct - пользователь электронной почты.

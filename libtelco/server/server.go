@@ -6,8 +6,10 @@ Package server содержит основную функциональност�
 package server
 
 import (
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 
-	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
+	"fmt"
+	"os"
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
@@ -41,25 +43,23 @@ func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
-	/*
-		// ТЕСТЫ.
-		kek := ss.NewSession(&serv.config.Schools[0])
-		err := kek.Login()
-		if err != nil {
-			fmt.Println(err)
-		}
-		data, err := kek.GetWeekSchoolMarks("18.09.2017", "11198")
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(data)
-		fmt.Println()
+	// ТЕСТЫ.
+	kek := ss.NewSession(&serv.config.Schools[0])
+	err := kek.Login()
+	if err != nil {
+		fmt.Println(err)
+	}
 
-		if err = kek.Logout(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	*/
+	data, err := kek.GetEmailsList("1", "0", "10", "ASC")
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(data)
+
+	if err = kek.Logout(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 
 	serv.api.BindHandlers()
 	defer func() {
