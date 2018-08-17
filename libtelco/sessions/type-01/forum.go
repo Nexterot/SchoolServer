@@ -18,7 +18,7 @@ import (
 )
 
 // GetForumThemesList возвращает список тем форума c сервера первого типа.
-func GetForumThemesList(s *ss.Session) (*dt.ForumThemesList, error) {
+func GetForumThemesList(s *ss.Session, page string) (*dt.ForumThemesList, error) {
 	p := "http://"
 
 	// 0-ой Get-запрос (не дублирующийся).
@@ -32,9 +32,53 @@ func GetForumThemesList(s *ss.Session) (*dt.ForumThemesList, error) {
 		return nil, errors.Wrap(err, "0 GET")
 	}
 
+	// 1-ый POST-запрос.
+	r1 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"BACK":      "",
+				"DELARR":    "",
+				"LoginType": "0",
+				"PAGE":      page,
+				"PAGESIZE":  "25",
+				"VER":       s.VER,
+				"\"":        "",
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + fmt.Sprintf("/asp/Forum/Forum.asp?AT=%s&VER=%s", s.AT, s.VER),
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+
+			fmt.Sprintf("/asp/Forum/Forum.asp?PAGE=%s&PAGESIZE=25", page), ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := checkResponse(s, r)
+		return r.Bytes(), flag, err
+	}
+	b, flag, err := r1()
+	if err != nil {
+		return nil, errors.Wrap(err, "1 POST")
+	}
+	if !flag {
+		b, flag, err = r1()
+		if err != nil {
+			return nil, errors.Wrap(err, "retrying 1 POST")
+		}
+		if !flag {
+			return nil, fmt.Errorf("retry didn't work for 1 POST")
+		}
+	}
+
 	// Если мы дошли до этого места, то можно распарсить JSON,
 	// находящийся в теле ответа, и найти в нем список всех сообщений.
-	parsedHTML, err := html.Parse(bytes.NewReader([]byte{}))
+	parsedHTML, err := html.Parse(bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}

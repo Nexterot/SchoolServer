@@ -50,11 +50,13 @@ func (serv *Server) Run() error {
 		fmt.Println(err)
 	}
 
-	data, err := kek.GetForumThemesList()
+	data, err := kek.GetForumThemesList("2")
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(data)
+	for i, k := range data.Posts {
+		fmt.Println(i, k)
+	}
 
 	if err = kek.Logout(); err != nil {
 		fmt.Println(err)

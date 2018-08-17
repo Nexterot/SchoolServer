@@ -37,6 +37,7 @@ func GetEmailsList(s *ss.Session, nBoxID, startInd, pageSize, sequence string) (
 	r1 := func() ([]byte, bool, error) {
 		ro := &gr.RequestOptions{
 			Headers: map[string]string{},
+			Data:    map[string]string{},
 		}
 		r, err := s.Sess.Post(p+s.Serv.Link+
 			fmt.Sprintf("/asp/ajax/GetMessagesAjax.asp?AT=%v&nBoxID=%v&jtStartIndex=%v&jtPageSize=%v&jtSorting=Sent%%20%v",
