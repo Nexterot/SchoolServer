@@ -121,7 +121,7 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/send_letter", rest.Handler)
 	http.HandleFunc("/get_address_book", rest.Handler)
 	// Форум
-	http.HandleFunc("/get_forum", rest.Handler)
+	http.HandleFunc("/get_forum", rest.GetForumHandler) // in dev
 	http.HandleFunc("/get_forum_messages", rest.Handler)
 	http.HandleFunc("/create_topic", rest.Handler)
 	http.HandleFunc("/create_message_in_topic", rest.Handler)
@@ -2089,7 +2089,7 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 		}
 		return
 	}
-	// Сходить за списком писем по удаленной сесиии
+	// Сходить за списком писем по удаленной сессии
 	emailsList, err := remoteSession.GetEmailsList(strconv.Itoa(rReq.Section), strconv.Itoa(rReq.StartIndex), strconv.Itoa(rReq.PageSize), rReq.Order)
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
@@ -2180,7 +2180,7 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 			return
 		}
 	}
-	// Сходить по удаленной сесиии
+	// Сходить по удаленной сессии
 	emailDesc, err := remoteSession.GetEmailDescription(rReq.MID, rReq.MBID)
 	if err != nil {
 		if err.Error() == "You was logged out from server" {
@@ -2219,6 +2219,100 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", emailDesc, "Status", status, "IP", req.RemoteAddr)
 	} else {
 		rest.logger.Info("REST: Successfully sent response", "Response", emailDesc, "IP", req.RemoteAddr)
+	}
+}
+
+// getForumRequest используется в GetForumHandler
+type getForumRequest struct {
+	Page int `json:"page"`
+}
+
+// GetForumHandler обрабатывает запросы на получение тем форума
+func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Request) {
+	rest.logger.Info("REST: GetForumHandler called", "IP", req.RemoteAddr)
+	// Проверка метода запроса
+	if req.Method != "POST" {
+		rest.logger.Info("REST: Wrong method", "Method", req.Method, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	// Получить существующие имя и объект локальной сессии
+	sessionName, session := rest.getLocalSession(respwr, req)
+	if session == nil {
+		return
+	}
+	// Чтение запроса от клиента
+	var rReq getForumRequest
+	decoder := json.NewDecoder(req.Body)
+	err := decoder.Decode(&rReq)
+	if err != nil {
+		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		resp := "malformed data"
+		status, err := respwr.Write([]byte(resp))
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		}
+		return
+	}
+	// Распечатаем запрос от клиента
+	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Получим удаленную сессию
+	remoteSession, ok := rest.sessionsMap[sessionName]
+	if !ok {
+		// Если нет удаленной сессии
+		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+		// Создать новую
+		remoteSession = rest.remoteLogin(respwr, req, session)
+		if remoteSession == nil {
+			return
+		}
+	}
+	// Если страница пустая поставить в 1
+	if rReq.Page == 0 {
+		rReq.Page = 1
+	}
+	// Сходить по удаленной сессии
+	forumThemes, err := remoteSession.GetForumThemesList(strconv.Itoa(rReq.Page))
+	if err != nil {
+		if err.Error() == "You was logged out from server" {
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteLogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить с сайта школы
+			forumThemes, err = remoteSession.GetForumThemesList(strconv.Itoa(rReq.Page))
+			if err != nil {
+				// Ошибка
+				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusBadGateway)
+				return
+			}
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadGateway)
+			return
+		}
+	}
+	// Закодировать ответ в JSON
+	bytes, err := json.Marshal(forumThemes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", forumThemes, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	// Отправить ответ клиенту
+	status, err := respwr.Write(bytes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", forumThemes, "Status", status, "IP", req.RemoteAddr)
+	} else {
+		rest.logger.Info("REST: Successfully sent response", "Response", forumThemes, "IP", req.RemoteAddr)
 	}
 }
 
