@@ -290,6 +290,12 @@ func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, 
 		respwr.WriteHeader(http.StatusBadGateway)
 		return nil
 	}
+	err = remoteSession.GetChildrenMap()
+	if err != nil {
+		rest.logger.Error("REST: Error occured when remote signing in", "Error", err, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadGateway)
+		return nil
+	}
 	rest.sessionsMap[session.Name()] = remoteSession
 	rest.logger.Info("REST: Successfully created new remote session", "IP", req.RemoteAddr)
 	return remoteSession

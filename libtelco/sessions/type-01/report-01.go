@@ -153,6 +153,7 @@ func GetTotalMarkReport(s *ss.Session, studentID string) (*dt.TotalMarkReport, e
 	if err != nil {
 		return nil, errors.Wrap(err, "2 POST")
 	}
+
 	if !flag {
 		b, flag, err = r2()
 		if err != nil {
