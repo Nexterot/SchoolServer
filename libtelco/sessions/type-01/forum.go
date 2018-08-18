@@ -389,3 +389,13 @@ func GetForumThemeMessages(s *ss.Session, TID, page, pageSize string) (*dt.Forum
 
 	return makeForumPostMessages(parsedHTML)
 }
+
+// CreateForumTheme создаёт новую тему на форуме на сервере первого типа.
+func CreateForumTheme(s *ss.Session) error {
+	return nil
+}
+
+// CreateForumThemeMessage создаёт новое сообщение в теме на форуме на сервере первого типа.
+func CreateForumThemeMessage(s *ss.Session) error {
+	return nil
+}

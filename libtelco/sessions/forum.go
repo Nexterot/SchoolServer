@@ -43,3 +43,31 @@ func (s *Session) GetForumThemeMessages(TID, page, pageSize string) (*dt.ForumTh
 	}
 	return forumThemeMessages, errors.Wrap(err, "from GetForumTheme")
 }
+
+// CreateForumTheme создаёт новую тему на форуме.
+func (s *Session) CreateForumTheme() error {
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	var err error
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		err = t01.CreateForumTheme(s.Base)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return errors.Wrap(err, "from GetForumTheme")
+}
+
+// CreateForumThemeMessage создаёт новое сообщение в теме на форуме.
+func (s *Session) CreateForumThemeMessage() error {
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	var err error
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		err = t01.CreateForumThemeMessage(s.Base)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return errors.Wrap(err, "from GetForumTheme")
+}
