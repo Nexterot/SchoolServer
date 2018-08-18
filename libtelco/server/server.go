@@ -49,9 +49,14 @@ func (serv *Server) Run() error {
 		fmt.Println(err)
 	}
 
-	if err := kek.CreateForumTheme("1", "А сейчас я слушаю Gogol Bordello - Wonderlust King", "AutoTest"); err != nil {
-		fmt.Println(err)
-	}
+	data, err := kek.GetForumThemesList("1")
+	fmt.Println(err)
+	fmt.Println(data)
+	data1, err := kek.GetForumThemeMessages("10055", "1", "25")
+	fmt.Println(err)
+	fmt.Println(data1)
+	err = kek.CreateForumThemeMessage("1", "Gasmac Gilmore", "10055")
+	fmt.Println(err)
 
 	if err := kek.Logout(); err != nil {
 		fmt.Println(err)

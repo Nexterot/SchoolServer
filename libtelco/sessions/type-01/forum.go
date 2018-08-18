@@ -480,6 +480,51 @@ func CreateForumTheme(s *ss.Session, page, name, message string) error {
 }
 
 // CreateForumThemeMessage создаёт новое сообщение в теме на форуме на сервере первого типа.
-func CreateForumThemeMessage(s *ss.Session) error {
+func CreateForumThemeMessage(s *ss.Session, page, message, TID string) error {
+	p := "http://"
+
+	// 0-ой POST-запрос.
+	r0 := func() (bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"DELARR":    "",
+				"LoginType": "0",
+				"MESSAGE":   message,
+				"PAGE":      page,
+				"PAGESIZE":  "25",
+				"TID":       TID,
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + fmt.Sprintf("/asp/Forum/Forum.asp?AT=%s&VER=%s", s.AT, s.VER),
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+fmt.Sprintf("/asp/Forum/AddReply.asp?TPAGE=%s", page), ro)
+		if err != nil {
+			return false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := checkResponse(s, r)
+		return flag, err
+	}
+	flag, err := r0()
+	if err != nil {
+		return errors.Wrap(err, "0 POST")
+	}
+	if !flag {
+		flag, err = r0()
+		if err != nil {
+			return errors.Wrap(err, "retrying 0 POST")
+		}
+		if !flag {
+			return fmt.Errorf("retry didn't work for 0 POST")
+		}
+	}
+
 	return nil
 }
