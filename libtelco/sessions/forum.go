@@ -45,13 +45,13 @@ func (s *Session) GetForumThemeMessages(TID, page, pageSize string) (*dt.ForumTh
 }
 
 // CreateForumTheme создаёт новую тему на форуме.
-func (s *Session) CreateForumTheme() error {
+func (s *Session) CreateForumTheme(page, name, message string) error {
 	s.Base.MU.Lock()
 	defer s.Base.MU.Unlock()
 	var err error
 	switch s.Base.Serv.Type {
 	case cp.FirstType:
-		err = t01.CreateForumTheme(s.Base)
+		err = t01.CreateForumTheme(s.Base, page, name, message)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
