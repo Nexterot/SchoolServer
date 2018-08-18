@@ -1814,6 +1814,9 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
+			if session.IsNew {
+				rest.logger.Error("REST: Non existing session!")
+			}
 			// Получим удаленную сессию
 			newRemoteSession, ok := rest.sessionsMap[sessionName]
 			if !ok {

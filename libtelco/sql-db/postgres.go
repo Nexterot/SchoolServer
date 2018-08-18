@@ -218,17 +218,23 @@ func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, 
 		user   User
 		school School
 	)
+	db.Logger.Info("getting school by id")
 	// Получаем школу по id
 	err := db.SchoolServerDB.First(&school, schoolID).Error
+	db.Logger.Info("1")
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error query school by id='%d'", schoolID)
 	}
+	db.Logger.Info("2")
 	// Получаем пользователя по школе и логину
 	where := User{Login: userName, SchoolID: uint(schoolID)}
+	db.Logger.Info("3")
 	err = db.SchoolServerDB.Where(where).First(&user).Error
+	db.Logger.Info("4")
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error query user='%v'", where)
 	}
+	db.Logger.Info("5")
 	return &cp.School{Link: school.Address, Login: userName, Password: user.Password, Type: 1}, nil
 }
 
