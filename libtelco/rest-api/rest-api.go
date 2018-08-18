@@ -290,12 +290,6 @@ func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, 
 		respwr.WriteHeader(http.StatusBadGateway)
 		return nil
 	}
-	err = remoteSession.GetChildrenMap()
-	if err != nil {
-		rest.logger.Error("REST: Error occured when remote signing in", "Error", err, "IP", req.RemoteAddr)
-		respwr.WriteHeader(http.StatusBadGateway)
-		return nil
-	}
 	rest.sessionsMap[session.Name()] = remoteSession
 	rest.logger.Info("REST: Successfully created new remote session", "IP", req.RemoteAddr)
 	return remoteSession
@@ -348,7 +342,7 @@ func (rest *RestAPI) GetReportStudentTotalMarksHandler(respwr http.ResponseWrite
 	// Получить отчет с сайта школы
 	totalMarkReport, err := remoteSession.GetTotalMarkReport(strconv.Itoa(rReq.ID))
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -443,7 +437,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkHandler(respwr http.ResponseWrit
 	// Получить отчет с сайта школы
 	averageMarkReport, err := remoteSession.GetAverageMarkReport(rReq.From, rReq.To, rReq.Type, strconv.Itoa(rReq.ID))
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -529,7 +523,7 @@ func (rest *RestAPI) GetReportStudentAverageMarkDynHandler(respwr http.ResponseW
 	// Получить отчет с сайта школы
 	averageMarkDynReport, err := remoteSession.GetAverageMarkDynReport(rReq.From, rReq.To, rReq.Type, strconv.Itoa(rReq.ID))
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -620,7 +614,7 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 	// Получить отчет с сайта школы
 	lessonsMap, err := remoteSession.GetLessonsMap(strconv.Itoa(rReq.ID))
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -714,7 +708,7 @@ func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, r
 	// Получить отчет с сайта школы
 	gradeReport, err := remoteSession.GetStudentGradeReport(rReq.From, rReq.To, strconv.Itoa(rReq.LessonID), strconv.Itoa(rReq.StudentID))
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -808,7 +802,7 @@ func (rest *RestAPI) GetReportStudentTotalHandler(respwr http.ResponseWriter, re
 	studentID := strconv.Itoa(rReq.ID)
 	totalReport, err := remoteSession.GetStudentTotalReport(rReq.From, rReq.To, studentID)
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -900,7 +894,7 @@ func (rest *RestAPI) GetReportJournalAccessHandler(respwr http.ResponseWriter, r
 	studentID := strconv.Itoa(rReq.ID)
 	accessReport, err := remoteSession.GetJournalAccessReport(studentID)
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -996,7 +990,7 @@ func (rest *RestAPI) GetReportParentInfoLetterHandler(respwr http.ResponseWriter
 	periodID := strconv.Itoa(rReq.PeriodID)
 	parentLetter, err := remoteSession.GetParentInfoLetterReport(reportID, periodID, studentID)
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -1246,7 +1240,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	// Получить с сайта школы
 	weekMarks, err := remoteSession.GetWeekSchoolMarks(rReq.Week, strconv.Itoa(rReq.ID))
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -1390,7 +1384,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	// Получить описание таска
 	lessonDescription, err := remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, rest.config.ServerName, rest.Redis)
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -1609,7 +1603,7 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 	id := strconv.Itoa(rReq.ID)
 	timeTable, err := remoteSession.GetTimeTable(today, rReq.Days, id)
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -1834,7 +1828,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			// Получить мапу
 			err = newRemoteSession.GetChildrenMap()
 			if err != nil {
-				if err.Error() == "You was logged out from server" {
+				if strings.Contains(err.Error(), "You was logged out from server") {
 					// Если удаленная сессия есть, но не активна
 					rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 					// Создать новую
@@ -2098,7 +2092,7 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 	// Сходить за списком писем по удаленной сессии
 	emailsList, err := remoteSession.GetEmailsList(strconv.Itoa(rReq.Section), strconv.Itoa(rReq.StartIndex), strconv.Itoa(rReq.PageSize), rReq.Order)
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -2189,7 +2183,7 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 	// Сходить по удаленной сессии
 	emailDesc, err := remoteSession.GetEmailDescription(rReq.MID, rReq.MBID)
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
@@ -2283,7 +2277,7 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 	// Сходить по удаленной сессии
 	forumThemes, err := remoteSession.GetForumThemesList(strconv.Itoa(rReq.Page))
 	if err != nil {
-		if err.Error() == "You was logged out from server" {
+		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
