@@ -2,6 +2,48 @@
 
 package dataTypes
 
+// Email adresses.
+
+// AddressBook struct содержит в себе адресную книгу.
+type AddressBook struct {
+	Groups  []AddressBookGroup `json:"groups"`
+	Classes []AddressBookClass `json:"classes"`
+}
+
+// AddressBookGroupUser struct -- пользователь в группе из адресной книги
+type AddressBookGroupUser struct {
+	Name string `json:"name"`
+	ID   int    `json:"id"`
+}
+
+// AddressBookGroup struct -- группа пользователей в адресной книге
+type AddressBookGroup struct {
+	Title string                 `json:"title"`
+	Users []AddressBookGroupUser `json:"users"`
+}
+
+// AddressBookClassParent struct -- родитель ученика в адресной книге
+type AddressBookClassParent struct {
+	Parent   string `json:"parent"`
+	ParentID string `json:"parent_id"`
+}
+
+// AddressBookClassUser struct -- пользователь в классе из адресной книге
+type AddressBookClassUser struct {
+	Student   string                   `json:"string"`
+	StudentID string                   `json:"student_id"`
+	Parents   []AddressBookClassParent `json:"parents"`
+}
+
+// AddressBookClass struct -- класс (школьный) в адресной книге
+type AddressBookClass struct {
+	ClassName string                 `json:"class_name"`
+	Users     []AddressBookClassUser `json:"users"`
+	ID        int                    `json:"id"`
+}
+
+// Email.
+
 // EmailsList struct содержит в себе список писем.
 type EmailsList struct {
 	TotalRecordCount int     `json:"TotalRecordCount"`

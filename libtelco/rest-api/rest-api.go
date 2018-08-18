@@ -275,6 +275,7 @@ func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, 
 	// Полезть в базу данных за данными для авторизации
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
+	rest.logger.Info("go to database")
 	school, err := rest.Db.GetUserAuthData(userName.(string), schoolID.(int))
 	if err != nil {
 		// Ошибок тут быть не должно
@@ -282,14 +283,17 @@ func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, 
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return nil
 	}
+	rest.logger.Info("successfully gone to database")
 	// Создать удаленную сессию и залогиниться
 	remoteSession := ss.NewSession(school)
+	rest.logger.Info("create session")
 	err = remoteSession.Login()
 	if err != nil {
 		rest.logger.Error("REST: Error occured when remote signing in", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadGateway)
 		return nil
 	}
+	rest.logger.Info("successfully created session")
 	rest.sessionsMap[session.Name()] = remoteSession
 	rest.logger.Info("REST: Successfully created new remote session", "IP", req.RemoteAddr)
 	return remoteSession

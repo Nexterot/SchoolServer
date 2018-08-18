@@ -18,6 +18,8 @@ import (
 Получение списка писем.
 */
 
+// GetAddressBook
+
 // GetEmailsList возвращает список электронных писем на одной странице.
 func (s *Session) GetEmailsList(nBoxID, startInd, pageSize, sequence string) (*dt.EmailsList, error) {
 	s.Base.MU.Lock()
