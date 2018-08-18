@@ -48,19 +48,6 @@ func (serv *Server) Run() error {
 		if err != nil {
 			fmt.Println(err)
 		}
-
-		data, err := kek.GetForumThemesList("2")
-		if err != nil {
-			fmt.Println(err)
-		}
-		for i, k := range data.Posts {
-			fmt.Println(i, k)
-		}
-
-		if err = kek.Logout(); err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
 	*/
 	serv.api.BindHandlers()
 	defer func() {

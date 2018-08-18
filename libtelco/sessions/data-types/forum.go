@@ -19,3 +19,19 @@ type ForumTheme struct {
 	// Это поле заполняется из БД.
 	Unread bool `json:"unread"`
 }
+
+// ForumThemeMessages struct содержит в себе все сообщения из темы форума.
+type ForumThemeMessages struct {
+	Messages []ForumThemeMessage `json:"messages"`
+}
+
+// ForumThemeMessage struct содержит в себе подробности одного сообщения на форуме.
+type ForumThemeMessage struct {
+	Date    string `json:"date"`
+	Author  string `json:"author"`
+	Role    string `json:"role"`
+	Message string `json:"message"`
+
+	// Это поле заполняется из БД.
+	Unread bool `json:"unread"`
+}

@@ -26,5 +26,20 @@ func (s *Session) GetForumThemesList(page string) (*dt.ForumThemesList, error) {
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
-	return forumThemesList, errors.Wrap(err, "from GetEmailsList")
+	return forumThemesList, errors.Wrap(err, "from GetForumThemesList")
+}
+
+// GetForumThemeMessages возвращает список всех сообщений одной темы форума.
+func (s *Session) GetForumThemeMessages(TID, page, pageSize string) (*dt.ForumThemeMessages, error) {
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	var err error
+	var forumThemeMessages *dt.ForumThemeMessages
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		forumThemeMessages, err = t01.GetForumThemeMessages(s.Base, TID, page, pageSize)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return forumThemeMessages, errors.Wrap(err, "from GetForumTheme")
 }
