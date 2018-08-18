@@ -425,3 +425,8 @@ func GetEmailDescription(s *ss.Session, MID, MBID string) (*dt.EmailDescription,
 
 	return makeEmailDescription(parsedHTML)
 }
+
+// CreateEmail создает сообщение и отправляет его адресатам с сервера первого типа.
+func CreateEmail(s *ss.Session) error {
+	return nil
+}

@@ -14,10 +14,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-/*
-Получение списка писем.
-*/
-
 // GetAddressBook возвращает список всех возможных адресатов.
 func (s *Session) GetAddressBook() (*dt.AddressBook, error) {
 	s.Base.MU.Lock()
@@ -61,4 +57,18 @@ func (s *Session) GetEmailDescription(MID, MBID string) (*dt.EmailDescription, e
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
 	}
 	return emailDescription, errors.Wrap(err, "from GetEmailDescription")
+}
+
+// CreateEmail создает сообщение и отправляет его адресатам.
+func (s *Session) CreateEmail() error {
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	var err error
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		err = t01.CreateEmail(s.Base)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return errors.Wrap(err, "from GetEmailDescription")
 }
