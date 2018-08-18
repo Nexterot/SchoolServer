@@ -18,6 +18,12 @@ import (
 	"golang.org/x/net/html"
 )
 
+// GetAddressBook возвращает список всех возможных адресатов с сервера первого типа.
+func GetAddressBook(s *ss.Session) (*dt.AddressBook, error) {
+	// TODO
+	return nil, nil
+}
+
 // GetEmailsList возвращает список электронных писем на одной странице с сервера первого типа.
 func GetEmailsList(s *ss.Session, nBoxID, startInd, pageSize, sequence string) (*dt.EmailsList, error) {
 	p := "http://"

@@ -18,7 +18,20 @@ import (
 Получение списка писем.
 */
 
-// GetAddressBook
+// GetAddressBook возвращает список всех возможных адресатов.
+func (s *Session) GetAddressBook() (*dt.AddressBook, error) {
+	s.Base.MU.Lock()
+	defer s.Base.MU.Unlock()
+	var err error
+	var addressBook *dt.AddressBook
+	switch s.Base.Serv.Type {
+	case cp.FirstType:
+		addressBook, err = t01.GetAddressBook(s.Base)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Base.Serv.Type)
+	}
+	return addressBook, errors.Wrap(err, "from GetAddressBook")
+}
 
 // GetEmailsList возвращает список электронных писем на одной странице.
 func (s *Session) GetEmailsList(nBoxID, startInd, pageSize, sequence string) (*dt.EmailsList, error) {
