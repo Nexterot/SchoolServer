@@ -47,7 +47,7 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 	var stud Student
 	studs := make([]Student, 0)
 	// Проверить наличие мапы у сессии парсеров
-	if remoteSession.Base.Children == nil || len(remoteSession.Base.Children) == 0 {
+	if remoteSession.Children == nil || len(remoteSession.Children) == 0 {
 		// Если мапа не существует или пустая, полезем в БД
 		userName := session.Values["userName"]
 		schoolID := session.Values["schoolID"]
@@ -63,7 +63,7 @@ func (rest *RestAPI) GetChildrenMapHandler(respwr http.ResponseWriter, req *http
 		}
 	} else {
 		// Если мапа есть
-		res := remoteSession.Base.Children
+		res := remoteSession.Children
 		for k, v := range res {
 			vs, err := strconv.Atoi(v.SID)
 			if err != nil {

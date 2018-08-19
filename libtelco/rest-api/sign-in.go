@@ -239,7 +239,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			return
 		}
 		// Проверить мапу на ошибки
-		if newRemoteSession.Base.Children == nil || len(newRemoteSession.Base.Children) == 0 {
+		if newRemoteSession.Children == nil || len(newRemoteSession.Children) == 0 {
 			rest.logger.Error("REST: Error occured when getting children map", "Error", "Children nil or empty", "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadGateway)
 			return
@@ -276,7 +276,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		session = newLocalSession
 		// Обновляем базу данных
 		isParent := true
-		err = rest.Db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Base.Children)
+		err = rest.Db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Children)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -292,16 +292,16 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	cookie := http.Cookie{Name: "sessionName", Value: sessionName, Expires: expiration}
 	http.SetCookie(respwr, &cookie)
 	// Проверить валидность мапы
-	if remoteSession == nil || remoteSession.Base.Children == nil || len(remoteSession.Base.Children) == 0 {
+	if remoteSession == nil || remoteSession.Children == nil || len(remoteSession.Children) == 0 {
 		// К этому моменту мапа должна существовать
-		rest.logger.Error("REST: Error occured when getting children map from session.Base.Children", "Error", "map is empty or nil", "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when getting children map from session.Children", "Error", "map is empty or nil", "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// Если мапа есть, сформировать ответ
 	var stud student
 	studs := make([]student, 0)
-	for k, v := range remoteSession.Base.Children {
+	for k, v := range remoteSession.Children {
 		vs, err := strconv.Atoi(v.SID)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when converting student id", "Error", err, "IP", req.RemoteAddr)
