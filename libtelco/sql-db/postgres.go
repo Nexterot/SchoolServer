@@ -9,8 +9,7 @@ import (
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
-	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/data-types"
-	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions/session"
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres" // Необходимо для gorm
@@ -155,7 +154,7 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 }
 
 // UpdateUser обновляет данные о пользователе
-func (db *Database) UpdateUser(login string, passkey string, isParent bool, schoolID int, childrenMap map[string]ss.Student) error {
+func (db *Database) UpdateUser(login string, passkey string, isParent bool, schoolID int, childrenMap map[string]dt.Student) error {
 	var (
 		school  School
 		student Student
