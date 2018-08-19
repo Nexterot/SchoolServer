@@ -11,6 +11,7 @@ package log
 import (
 	"io"
 	"os"
+	"time"
 
 	"github.com/mgutz/logxi/v1"
 )
@@ -38,7 +39,8 @@ func NewLogger(config string) (logger *Logger, err error) {
 	case "":
 	default:
 		logger.useLog = true
-		logFile, err := os.Create(config)
+		fileName := config + "/log_from_" + time.Now().Format("02_01_2006_15h_04m_05s") + ".txt"
+		logFile, err := os.Create(fileName)
 		if err != nil {
 			return nil, err
 		}
