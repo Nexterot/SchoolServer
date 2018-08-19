@@ -1,3 +1,5 @@
+// Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
+
 package base
 
 // Login логинится к серверу первого типа и создает очередную сессию.
