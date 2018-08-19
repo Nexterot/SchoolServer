@@ -1815,7 +1815,9 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				return
 			}
 			if session.IsNew {
-				rest.logger.Error("REST: Non existing session!")
+				rest.logger.Info("REST: Session is new!")
+				session.Values["userName"] = rReq.Login
+				session.Values["schoolID"] = rReq.ID
 			}
 			// Получим удаленную сессию
 			newRemoteSession, ok := rest.sessionsMap[sessionName]
