@@ -1,8 +1,3 @@
-// Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
-
-/*
-Package email содержит в себе функции для отправки и чтения электронной почты.
-*/
 package email
 
 import (
@@ -17,12 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/html"
 )
-
-// GetAddressBook возвращает список всех возможных адресатов с сервера первого типа.
-func GetAddressBook(s *dt.Session) (*dt.AddressBook, error) {
-	// TODO
-	return nil, nil
-}
 
 // GetEmailsList возвращает список электронных писем на одной странице с сервера первого типа.
 func GetEmailsList(s *dt.Session, nBoxID, startInd, pageSize, sequence string) (*dt.EmailsList, error) {
@@ -424,9 +413,4 @@ func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription,
 	}
 
 	return makeEmailDescription(parsedHTML)
-}
-
-// CreateEmail создает сообщение и отправляет его адресатам с сервера первого типа.
-func CreateEmail(s *dt.Session) error {
-	return nil
 }
