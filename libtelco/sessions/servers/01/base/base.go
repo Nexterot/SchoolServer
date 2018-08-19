@@ -1,9 +1,9 @@
 // Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
 
 /*
-Package base01 содержит в себе функции для логина/логаута/получения списка детей с сервера первого типа.
+Package base содержит в себе функции для логина/логаута/получения списка детей с сервера первого типа.
 */
-package base01
+package base
 
 import (
 	"bytes"

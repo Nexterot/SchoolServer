@@ -1,9 +1,9 @@
 // Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
 
 /*
-Package forum01 содержит в себе функции для отправки и чтения сообщений на форуме.
+Package forum содержит в себе функции для отправки и чтения сообщений на форуме.
 */
-package forum01
+package forum
 
 import (
 	"bytes"

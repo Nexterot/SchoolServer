@@ -1,6 +1,6 @@
 // Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
 
-package resources01
+package resources
 
 import (
 	"bytes"

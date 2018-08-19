@@ -21,8 +21,8 @@ import (
 
 // Login логинится к серверу и создает очередную сессию.
 func (s *Session) Login() error {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:
@@ -40,8 +40,8 @@ func (s *Session) Login() error {
 
 // Logout выходит с сервера.
 func (s *Session) Logout() error {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:
@@ -59,8 +59,8 @@ func (s *Session) Logout() error {
 
 // GetChildrenMap получает мапу детей в их ID.
 func (s *Session) GetChildrenMap() error {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:
@@ -77,8 +77,8 @@ func (s *Session) GetChildrenMap() error {
 
 // GetLessonsMap возвращает список пар мапу предметов в их ID.
 func (s *Session) GetLessonsMap(studentID string) (*dt.LessonsMap, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}

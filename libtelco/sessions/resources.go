@@ -17,8 +17,8 @@ import (
 
 // GetResourcesList возвращает список всех ресурсов.
 func (s *Session) GetResourcesList() (*dt.Resources, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var resources *dt.Resources
 	switch s.Serv.Type {

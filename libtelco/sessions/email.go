@@ -16,8 +16,8 @@ import (
 
 // GetAddressBook возвращает список всех возможных адресатов.
 func (s *Session) GetAddressBook() (*dt.AddressBook, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var addressBook *dt.AddressBook
 	switch s.Serv.Type {
@@ -31,8 +31,8 @@ func (s *Session) GetAddressBook() (*dt.AddressBook, error) {
 
 // GetEmailsList возвращает список электронных писем на одной странице.
 func (s *Session) GetEmailsList(nBoxID, startInd, pageSize, sequence string) (*dt.EmailsList, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var emailsList *dt.EmailsList
 	switch s.Serv.Type {
@@ -46,8 +46,8 @@ func (s *Session) GetEmailsList(nBoxID, startInd, pageSize, sequence string) (*d
 
 // GetEmailDescription возвращает подробности заданного электронного письма.
 func (s *Session) GetEmailDescription(MID, MBID string) (*dt.EmailDescription, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var emailDescription *dt.EmailDescription
 	switch s.Serv.Type {
@@ -61,8 +61,8 @@ func (s *Session) GetEmailDescription(MID, MBID string) (*dt.EmailDescription, e
 
 // CreateEmail создает сообщение и отправляет его адресатам.
 func (s *Session) CreateEmail() error {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:

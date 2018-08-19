@@ -1,6 +1,6 @@
 // Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
 
-package reports01
+package reports
 
 /*
 06 тип.

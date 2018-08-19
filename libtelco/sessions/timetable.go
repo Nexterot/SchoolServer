@@ -22,8 +22,8 @@ import (
 
 // GetTimeTable возвращает расписание на n дней, начиная с текущего.
 func (s *Session) GetTimeTable(date string, n int, studentID string) (*dt.TimeTable, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}

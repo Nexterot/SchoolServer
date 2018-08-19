@@ -3,6 +3,8 @@
 package sessions
 
 import (
+	"sync"
+
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 
@@ -12,6 +14,7 @@ import (
 // Session struct содержит в себе описание сессии к одному из школьных серверов.
 type Session struct {
 	dt.Session
+	mu sync.Mutex
 }
 
 // NewSession создает новую сессию на базе информации о школьном сервере,

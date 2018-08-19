@@ -1,6 +1,6 @@
 // Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
 
-package timetable01
+package timetable
 
 import (
 	"bytes"

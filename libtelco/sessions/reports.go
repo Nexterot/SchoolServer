@@ -22,8 +22,8 @@ import (
 
 // GetTotalMarkReport возвращает успеваемость ученика.
 func (s *Session) GetTotalMarkReport(studentID string) (*dt.TotalMarkReport, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}
@@ -45,8 +45,8 @@ func (s *Session) GetTotalMarkReport(studentID string) (*dt.TotalMarkReport, err
 
 // GetAverageMarkReport возвращает средние баллы ученика.
 func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkReport, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}
@@ -68,8 +68,8 @@ func (s *Session) GetAverageMarkReport(dateBegin, dateEnd, Type, studentID strin
 
 // GetAverageMarkDynReport возвращает динамику среднего балла ученика.
 func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type, studentID string) (*dt.AverageMarkDynReport, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}
@@ -91,8 +91,8 @@ func (s *Session) GetAverageMarkDynReport(dateBegin, dateEnd, Type, studentID st
 
 // GetStudentGradeReport возвращает отчет об успеваемости ученика по предмету.
 func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, subjectID, studentID string) (*dt.StudentGradeReport, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}
@@ -114,8 +114,8 @@ func (s *Session) GetStudentGradeReport(dateBegin, dateEnd, subjectID, studentID
 
 // GetStudentTotalReport возвращает отчет о посещениях ученика.
 func (s *Session) GetStudentTotalReport(dateBegin, dateEnd, studentID string) (*dt.StudentTotalReport, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}
@@ -145,8 +145,8 @@ func (s *Session) GetStudentTotalReport(dateBegin, dateEnd, studentID string) (*
 
 // GetJournalAccessReport возвращает отчет о доступе к журналу.
 func (s *Session) GetJournalAccessReport(studentID string) (*dt.JournalAccessReport, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}
@@ -168,8 +168,8 @@ func (s *Session) GetJournalAccessReport(studentID string) (*dt.JournalAccessRep
 
 // GetParentInfoLetterReport возвращает шаблон письма родителям.
 func (s *Session) GetParentInfoLetterReport(reportTypeID, periodID, studentID string) (*dt.ParentInfoLetterReport, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}

@@ -16,8 +16,8 @@ import (
 
 // GetForumThemesList возвращает список тем форума.
 func (s *Session) GetForumThemesList(page string) (*dt.ForumThemesList, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var forumThemesList *dt.ForumThemesList
 	switch s.Serv.Type {
@@ -31,8 +31,8 @@ func (s *Session) GetForumThemesList(page string) (*dt.ForumThemesList, error) {
 
 // GetForumThemeMessages возвращает список всех сообщений одной темы форума.
 func (s *Session) GetForumThemeMessages(TID, page, pageSize string) (*dt.ForumThemeMessages, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	var forumThemeMessages *dt.ForumThemeMessages
 	switch s.Serv.Type {
@@ -46,8 +46,8 @@ func (s *Session) GetForumThemeMessages(TID, page, pageSize string) (*dt.ForumTh
 
 // CreateForumTheme создаёт новую тему на форуме.
 func (s *Session) CreateForumTheme(page, name, message string) error {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:
@@ -60,8 +60,8 @@ func (s *Session) CreateForumTheme(page, name, message string) error {
 
 // CreateForumThemeMessage создаёт новое сообщение в теме на форуме.
 func (s *Session) CreateForumThemeMessage(page, message, TID string) error {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:

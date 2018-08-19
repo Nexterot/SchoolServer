@@ -1,9 +1,9 @@
 // Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
 
 /*
-Package email01 содержит в себе функции для отправки и чтения электронной почты.
+Package email содержит в себе функции для отправки и чтения электронной почты.
 */
-package email01
+package email
 
 import (
 	"bytes"

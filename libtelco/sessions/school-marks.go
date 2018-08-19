@@ -19,8 +19,8 @@ import (
 
 // GetWeekSchoolMarks возвращает оценки на заданную неделю.
 func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMarks, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}
@@ -41,8 +41,8 @@ func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMark
 
 // GetLessonDescription вовзращает подробности урока.
 func (s *Session) GetLessonDescription(AID, CID, TP int, studentID, classID, serverAddr string, db *red.Database) (*dt.LessonDescription, error) {
-	s.MU.Lock()
-	defer s.MU.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if studentID == "" {
 		studentID = s.Child.SID
 	}

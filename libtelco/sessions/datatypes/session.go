@@ -1,9 +1,6 @@
 package datatypes
 
 import (
-	"sync"
-	"time"
-
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 
 	gr "github.com/levigross/grequests"
@@ -24,10 +21,8 @@ const (
 // Session struct содержит в себе описание сессии к одному из школьных серверов.
 type Session struct {
 	// Общая структура.
-	Sess        *gr.Session
-	Serv        *cp.School
-	MU          sync.Mutex
-	LastRequest time.Time
+	Sess *gr.Session
+	Serv *cp.School
 	// Тип: родитель или ученик.
 	Type Type
 	// Только для родителей с 2-мя и более детьми.

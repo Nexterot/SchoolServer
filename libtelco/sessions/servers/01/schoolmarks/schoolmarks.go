@@ -1,6 +1,6 @@
 // Copyright (C) 2018 Mikhail Masyagin & Andrey Koshelev
 
-package schoolmarks01
+package schoolmarks
 
 import (
 	"bytes"
