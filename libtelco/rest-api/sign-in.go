@@ -125,6 +125,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	if exists {
 		rest.logger.Info("REST: exists in redis", "IP", req.RemoteAddr)
 		// Если существует, проверим пароль
+		// Подразумевается, что уже был успешный вход => сессия локальная не должна быть новой
 		isCorrect, err := rest.Db.CheckPassword(rReq.Login, rReq.ID, rReq.Passkey)
 		if err != nil {
 			if err.Error() == "record not found" {
@@ -159,11 +160,6 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				respwr.WriteHeader(http.StatusInternalServerError)
 				return
 			}
-			if session.IsNew {
-				rest.logger.Info("REST: Session is new!")
-				session.Values["userName"] = rReq.Login
-				session.Values["schoolID"] = rReq.ID
-			}
 			// Получим удаленную сессию
 			newRemoteSession, ok := rest.sessionsMap[sessionName]
 			if !ok {
@@ -177,33 +173,15 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 					respwr.WriteHeader(http.StatusBadGateway)
 					return
 				}
-				rest.sessionsMap[sessionName] = newRemoteSession
-			}
-			// Получить мапу
-			err = newRemoteSession.GetChildrenMap()
-			if err != nil {
-				if strings.Contains(err.Error(), "You was logged out from server") {
-					// Если удаленная сессия есть, но не активна
-					rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
-					// Создать новую
-					newRemoteSession = rest.remoteLogin(respwr, req, session)
-					if newRemoteSession == nil {
-						return
-					}
-					// Повторно получить с сайта школы
-					err = newRemoteSession.GetChildrenMap()
-					if err != nil {
-						// Ошибка
-						rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
-						respwr.WriteHeader(http.StatusBadGateway)
-						return
-					}
-				} else {
-					// Другая ошибка
+				// Получить childrenMap
+				err = newRemoteSession.GetChildrenMap()
+				if err != nil {
+					// Ошибка
 					rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 					respwr.WriteHeader(http.StatusBadGateway)
 					return
 				}
+				rest.sessionsMap[sessionName] = newRemoteSession
 			}
 			remoteSession = newRemoteSession
 		} else {

@@ -163,7 +163,7 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 	// Получаем запись школы
 	err := db.SchoolServerDB.First(&school, schoolID).Error
 	if err != nil {
-		return errors.Wrapf(err, "Error getting school with id='%d'", schoolID)
+		return errors.Wrapf(err, "Error getting school with id='%v'", schoolID)
 	}
 	// Получаем запись пользователя
 	where := User{Login: login, SchoolID: uint(schoolID)}
@@ -222,7 +222,7 @@ func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, 
 	err := db.SchoolServerDB.First(&school, schoolID).Error
 	db.Logger.Info("1")
 	if err != nil {
-		return nil, errors.Wrapf(err, "Error query school by id='%d'", schoolID)
+		return nil, errors.Wrapf(err, "Error query school by id='%v'", schoolID)
 	}
 	db.Logger.Info("2")
 	// Получаем пользователя по школе и логину
@@ -281,7 +281,7 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 		}
 	}
 	if !studentFound {
-		return errors.Wrapf(fmt.Errorf("record not found"), "No student with id='%d' found for userName='%s'", studentID, userName)
+		return errors.Wrapf(fmt.Errorf("record not found"), "No student with id='%v' found for userName='%s'", studentID, userName)
 	}
 	// Получаем список дней у ученика
 	err = db.SchoolServerDB.Model(&student).Related(&days).Error
@@ -374,14 +374,13 @@ func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (stri
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			return "", -1, -1, -1, "", errors.Wrapf(err, "Error query day by id='%d'", t.DayID)
+			return "", -1, -1, -1, "", errors.Wrapf(err, "Error query day by id='%v'", t.DayID)
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
-			return "", -1, -1, -1, "", errors.Wrapf(err, "Error query student by day id='%d'", day.StudentID)
+			return "", -1, -1, -1, "", errors.Wrapf(err, "Error query student by day id='%v'", day.StudentID)
 		}
-
 		// Если совпал id пользователя, обновить статус и вернуть дату
 		if user.ID == student.UserID {
 			if t.Status == StatusTaskNew {
@@ -423,14 +422,13 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			return errors.Wrapf(err, "Error query day with id='%d'", t.DayID)
+			return errors.Wrapf(err, "Error query day with id='%v'", t.DayID)
 		}
 		// Получим студента по дню
-		err = db.SchoolServerDB.First(&student).Error
+		err = db.SchoolServerDB.First(&student, day.StudentID).Error
 		if err != nil {
 			return errors.Wrapf(err, "Error query student with id='%v'", day.StudentID)
 		}
-
 		// Если совпал id пользователя - поменять статус, сохранить и закончить цикл
 		if user.ID == student.UserID {
 			t.Status = StatusTaskDone

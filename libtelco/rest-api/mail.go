@@ -54,7 +54,7 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 		// Если нет удаленной сессии
 		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
 		// Создать новую
-		remoteSession = rest.remoteLogin(respwr, req, session)
+		remoteSession = rest.remoteRelogin(respwr, req, session)
 		if remoteSession == nil {
 			return
 		}
@@ -83,7 +83,7 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
-			remoteSession = rest.remoteLogin(respwr, req, session)
+			remoteSession = rest.remoteRelogin(respwr, req, session)
 			if remoteSession == nil {
 				return
 			}

@@ -10,13 +10,12 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/sessions"
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	red "github.com/masyagin1998/SchoolServer/libtelco/in-memory-db"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 	db "github.com/masyagin1998/SchoolServer/libtelco/sql-db"
-
-	"github.com/gorilla/sessions"
 	redistore "gopkg.in/boj/redistore.v1"
 )
 
@@ -170,8 +169,8 @@ func (rest *RestAPI) getLocalSession(respwr http.ResponseWriter, req *http.Reque
 	return sessionName, session
 }
 
-// remoteLogin авторизуется на сайте школы
-func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, session *sessions.Session) *ss.Session {
+// remoteRelogin повторно авторизуется на сайте школы
+func (rest *RestAPI) remoteRelogin(respwr http.ResponseWriter, req *http.Request, session *sessions.Session) *ss.Session {
 	rest.logger.Info("REST: Remote signing in", "IP", req.RemoteAddr)
 	// Полезть в базу данных за данными для авторизации
 	userName := session.Values["userName"]
@@ -195,6 +194,16 @@ func (rest *RestAPI) remoteLogin(respwr http.ResponseWriter, req *http.Request, 
 		return nil
 	}
 	rest.logger.Info("successfully created session")
+	// Получить childrenMap
+	rest.logger.Info("getting childrenMap")
+	err = remoteSession.GetChildrenMap()
+	if err != nil {
+		// Ошибка
+		rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadGateway)
+		return nil
+	}
+	rest.logger.Info("successfully got childrenMap")
 	rest.sessionsMap[session.Name()] = remoteSession
 	rest.logger.Info("REST: Successfully created new remote session", "IP", req.RemoteAddr)
 	return remoteSession

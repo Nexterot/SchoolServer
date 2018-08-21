@@ -52,7 +52,7 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 		// Если нет удаленной сессии
 		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
 		// Создать новую
-		remoteSession = rest.remoteLogin(respwr, req, session)
+		remoteSession = rest.remoteRelogin(respwr, req, session)
 		if remoteSession == nil {
 			return
 		}
@@ -64,7 +64,7 @@ func (rest *RestAPI) GetReportStudentGradesLessonListHandler(respwr http.Respons
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
-			remoteSession = rest.remoteLogin(respwr, req, session)
+			remoteSession = rest.remoteRelogin(respwr, req, session)
 			if remoteSession == nil {
 				return
 			}
@@ -146,7 +146,7 @@ func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, r
 		// Если нет удаленной сессии
 		rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
 		// Создать новую
-		remoteSession = rest.remoteLogin(respwr, req, session)
+		remoteSession = rest.remoteRelogin(respwr, req, session)
 		if remoteSession == nil {
 			return
 		}
@@ -158,7 +158,7 @@ func (rest *RestAPI) GetReportStudentGradesHandler(respwr http.ResponseWriter, r
 			// Если удаленная сессия есть, но не активна
 			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
 			// Создать новую
-			remoteSession = rest.remoteLogin(respwr, req, session)
+			remoteSession = rest.remoteRelogin(respwr, req, session)
 			if remoteSession == nil {
 				return
 			}
