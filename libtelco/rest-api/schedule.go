@@ -6,13 +6,13 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 )
 
 // scheduleRequest используется в GetScheduleHandler
 type scheduleRequest struct {
-	Days int `json:"days"`
-	ID   int `json:"id"`
+	Days int    `json:"days"`
+	Date string `json:"date"`
+	ID   int    `json:"id"`
 }
 
 // GetScheduleHandler возвращает расписание на неделю
@@ -58,9 +58,7 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 			return
 		}
 	}
-	today := time.Now().Format("02.01.2006")
-	id := strconv.Itoa(rReq.ID)
-	timeTable, err := remoteSession.GetTimeTable(today, rReq.Days, id)
+	timeTable, err := remoteSession.GetTimeTable(rReq.Date, rReq.Days, strconv.Itoa(rReq.ID))
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -71,7 +69,7 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 				return
 			}
 			// Повторно получить с сайта школы
-			timeTable, err = remoteSession.GetTimeTable(today, rReq.Days, id)
+			timeTable, err = remoteSession.GetTimeTable(rReq.Date, rReq.Days, strconv.Itoa(rReq.ID))
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
