@@ -115,7 +115,7 @@ func (rest *RestAPI) BindHandlers() {
 	// Форум
 	http.HandleFunc("/get_forum", rest.GetForumHandler)                  // in dev
 	http.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler) // in dev
-	http.HandleFunc("/create_topic", rest.Handler)
+	http.HandleFunc("/create_topic", rest.CreateTopicHandler)            // in dev
 	http.HandleFunc("/create_message_in_topic", rest.Handler)
 	// Настройки
 	http.HandleFunc("/change_password", rest.Handler)
