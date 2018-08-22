@@ -105,7 +105,7 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/get_report_parent_info_letter_data", rest.Handler)
 	http.HandleFunc("/get_report_parent_info_letter", rest.GetReportParentInfoLetterHandler) // done
 	// Школьные ресурсы
-	http.HandleFunc("/get_resources", rest.Handler)
+	http.HandleFunc("/get_resources", rest.GetResourcesHandler) // in dev
 	// Почта
 	http.HandleFunc("/get_mail", rest.GetMailHandler)                        // in dev
 	http.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // in dev
