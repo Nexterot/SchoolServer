@@ -22,7 +22,7 @@
         "dbname" : 0
     },
     "maxProcs" : 2,
-    "logFile" : "stdout",
+    "logFile" : "logs",
     "schools" : [
         {
             "name" : "Европейская гимназия",
