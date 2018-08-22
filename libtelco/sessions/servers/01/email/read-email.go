@@ -21,7 +21,13 @@ func GetEmailsList(s *dt.Session, nBoxID, startInd, pageSize, sequence string) (
 
 	// 0-ой Get-запрос (не дублирующийся).
 	r0 := func() (bool, error) {
-		ro := &gr.RequestOptions{}
+		ro := &gr.RequestOptions{
+			Headers: map[string]string{
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   "http://62.117.74.43/",
+			},
+			Data: map[string]string{},
+		}
 		_, err := s.Sess.Get(p+s.Serv.Link+fmt.Sprintf("/asp/Messages/MailBox.asp?AT=%s&VER=%s", s.AT, s.VER), ro)
 		return true, err
 	}
@@ -33,8 +39,12 @@ func GetEmailsList(s *dt.Session, nBoxID, startInd, pageSize, sequence string) (
 	// 1-ый POST-запрос.
 	r1 := func() ([]byte, bool, error) {
 		ro := &gr.RequestOptions{
-			Headers: map[string]string{},
-			Data:    map[string]string{},
+			Headers: map[string]string{
+				"Origin":           p + s.Serv.Link,
+				"X-Requested-With": "XMLHttpRequest",
+				"Referer":          p + s.Serv.Link + fmt.Sprintf("/asp/Messages/MailBox.asp?AT=%s&VER=%s", s.AT, s.VER),
+			},
+			Data: map[string]string{},
 		}
 		r, err := s.Sess.Post(p+s.Serv.Link+
 			fmt.Sprintf("/asp/ajax/GetMessagesAjax.asp?AT=%v&nBoxID=%v&jtStartIndex=%v&jtPageSize=%v&jtSorting=Sent%%20%v",
