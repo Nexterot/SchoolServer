@@ -113,10 +113,10 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/send_letter", rest.Handler)
 	http.HandleFunc("/get_address_book", rest.GetAddressBookHandler) // in dev
 	// Форум
-	http.HandleFunc("/get_forum", rest.GetForumHandler)                  // in dev
-	http.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler) // in dev
-	http.HandleFunc("/create_topic", rest.CreateTopicHandler)            // in dev
-	http.HandleFunc("/create_message_in_topic", rest.Handler)
+	http.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
+	http.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler)        // in dev
+	http.HandleFunc("/create_topic", rest.CreateTopicHandler)                   // in dev
+	http.HandleFunc("/create_message_in_topic", rest.CreateTopicMessageHandler) // in dev
 	// Настройки
 	http.HandleFunc("/change_password", rest.Handler)
 	// Файлы
