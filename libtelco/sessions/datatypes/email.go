@@ -20,6 +20,7 @@ type AddressBookGroupUser struct {
 type AddressBookGroup struct {
 	Title string                 `json:"title"`
 	Users []AddressBookGroupUser `json:"users"`
+	Value string                 `json:"value"`
 }
 
 // AddressBookClassParent struct -- родитель ученика в адресной книге
