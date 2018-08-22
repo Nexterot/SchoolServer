@@ -120,7 +120,8 @@ func (rest *RestAPI) BindHandlers() {
 	// Настройки
 	http.HandleFunc("/change_password", rest.Handler)
 	// Файлы
-	http.HandleFunc("/doc/", rest.FileHandler) // done
+	http.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir("files/classes"))))
+	//http.HandleFunc("/doc/", rest.FileHandler) // done
 
 	rest.logger.Info("REST: Successfully bound handlers")
 }
