@@ -177,6 +177,8 @@ func GetAddressBook(s *dt.Session) (*dt.AddressBook, error) {
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней список всех групп рассылки.
+	addressBook := &dt.AddressBook{}
+
 	parsedHTML, err := html.Parse(bytes.NewReader(b))
 	if err != nil {
 		return nil, err
@@ -298,9 +300,10 @@ func GetAddressBook(s *dt.Session) (*dt.AddressBook, error) {
 			return nil, errors.Wrapf(err, "from getGroupMembers: can't get members of group %V(%V)", groups[i].Title, groups[i].Value)
 		}
 	}
+	addressBook.Groups = groups
 
 	if classIndex == -1 {
-		return nil, nil
+		return addressBook, nil
 	}
 
 	// Если мы дошли до этого места, то можно начать поссылать запросы по классам.
@@ -513,11 +516,10 @@ func GetAddressBook(s *dt.Session) (*dt.AddressBook, error) {
 			return nil, errors.Wrapf(err, "from getClassMembers: can't get members of class %V(%V)", classes[i].ClassName, classes[i].ID)
 		}
 	}
-	fmt.Println(groups)
-	fmt.Println()
-	fmt.Println(classes)
 
-	return nil, nil
+	addressBook.Classes = classes
+
+	return addressBook, nil
 }
 
 func getGroupMembers(s *dt.Session, group *dt.AddressBookGroup) error {
@@ -589,7 +591,7 @@ func getClassMembers(s *dt.Session, class *dt.AddressBookClass) error {
 				"A":         "",
 				"AT":        s.AT,
 				"CLASSES":   strconv.Itoa(class.ID),
-				"FL":        "U",
+				"FL":        "C",
 				"LoginType": "0",
 				"OrgType":   "0",
 				"VER":       s.VER,
@@ -618,7 +620,6 @@ func getClassMembers(s *dt.Session, class *dt.AddressBookClass) error {
 			return fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
-	fmt.Println(string(b))
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней членов группы.
