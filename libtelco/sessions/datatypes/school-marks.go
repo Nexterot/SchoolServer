@@ -38,7 +38,7 @@ type SchoolMark struct {
 // LessonDescription struct содержит в себе подробности задания.
 type LessonDescription struct {
 	Description string `json:"description"`
-	Author      string `json:"string"`
+	Author      string `json:"author"`
 	File        string `json:"file"`
 	FileName    string `json:"fileName"`
 }

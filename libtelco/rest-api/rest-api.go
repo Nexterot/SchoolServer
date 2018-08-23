@@ -83,9 +83,8 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/check_permission", rest.CheckPermissionHandler) // done
 	http.HandleFunc("/sign_in", rest.SignInHandler)                   // done
 	http.HandleFunc("/log_out", rest.LogOutHandler)                   // done
-	// Дневник: список учеников, задания и оценки на неделю, отметить задание
+	// Дневник: задания и оценки на неделю, отметить задание
 	// как выполненное/невыполненное
-	http.HandleFunc("/get_children_map", rest.GetChildrenMapHandler)             // done
 	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler)        // done
 	http.HandleFunc("/get_lesson_description", rest.GetLessonDescriptionHandler) // done
 	http.HandleFunc("/mark_as_done", rest.MarkAsDoneHandler)                     // done

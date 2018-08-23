@@ -10,15 +10,11 @@ import (
 
 // getLessonDescriptionRequest используется в GetLessonDescriptionHandler
 type getLessonDescriptionRequest struct {
-	ID int `json:"id"`
-}
-
-// getLessonDescriptionResponse использутеся в GetLessonDescriptionHandler
-type getLessonDescriptionResponse struct {
-	Description string `json:"description"`
-	Author      string `json:"author"`
-	File        string `json:"file"`
-	FileName    string `json:"fileName"`
+	AID       int    `json:"AID"`
+	CID       int    `json:"CID"`
+	TP        int    `json:"TP"`
+	StudentID int    `json:"studentID"`
+	ClassID   string `json:"classID"`
 }
 
 // GetLessonDescriptionHandler обрабатывает запрос на получение подробностей дз
@@ -64,31 +60,8 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 			return
 		}
 	}
-	// Сходить в бд за информацией о таске
-	userName := session.Values["userName"]
-	schoolID := session.Values["schoolID"]
-	_, cid, tp, studentID, classID, err := rest.Db.GetTaskInfo(userName.(string), schoolID.(int), rReq.ID)
-	if err != nil {
-		if err.Error() == "record not found" {
-			// Такого таска нет
-			rest.logger.Info("REST: Invalid task id specified", "Error", err.Error(), "IP", req.RemoteAddr)
-			respwr.WriteHeader(http.StatusBadRequest)
-			resp := "invalid id"
-			status, err := respwr.Write([]byte(resp))
-			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
-			} else {
-				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
-			}
-		} else {
-			// Другая ошибка
-			rest.logger.Error("REST: Error occured when getting task date from db", "Error", err, "IP", req.RemoteAddr)
-			respwr.WriteHeader(http.StatusInternalServerError)
-		}
-		return
-	}
 	// Получить описание таска
-	lessonDescription, err := remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, rest.config.ServerName, rest.Redis)
+	lessonDescription, err := remoteSession.GetLessonDescription(rReq.AID, rReq.CID, rReq.TP, strconv.Itoa(rReq.StudentID), rReq.ClassID, rest.config.ServerName, rest.Redis)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -99,7 +72,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 				return
 			}
 			// Повторно получить с сайта школы
-			lessonDescription, err = remoteSession.GetLessonDescription(rReq.ID, cid, tp, strconv.Itoa(studentID), classID, rest.config.ServerName, rest.Redis)
+			lessonDescription, err = remoteSession.GetLessonDescription(rReq.AID, rReq.CID, rReq.TP, strconv.Itoa(rReq.StudentID), rReq.ClassID, rest.config.ServerName, rest.Redis)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
@@ -113,10 +86,8 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 			return
 		}
 	}
-	// Сформировать ответ по протоколу
-	resp := getLessonDescriptionResponse{Description: lessonDescription.Description, Author: lessonDescription.Author, File: lessonDescription.File, FileName: lessonDescription.FileName}
 	// Закодировать ответ в JSON
-	bytes, err := json.Marshal(resp)
+	bytes, err := json.Marshal(lessonDescription)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", lessonDescription, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
@@ -125,8 +96,8 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	// Отправить ответ клиенту
 	status, err := respwr.Write(bytes)
 	if err != nil {
-		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", lessonDescription, "Status", status, "IP", req.RemoteAddr)
 	} else {
-		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+		rest.logger.Info("REST: Successfully sent response", "Response", lessonDescription, "IP", req.RemoteAddr)
 	}
 }

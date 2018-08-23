@@ -24,6 +24,13 @@ const (
 	StatusTaskDone
 )
 
+// Типы систем устройств
+const (
+	_ = iota
+	IOS
+	Android
+)
+
 // Database struct представляет абстрактную структуру базы данных
 type Database struct {
 	SchoolServerDB *gorm.DB
@@ -34,6 +41,7 @@ type Database struct {
 type School struct {
 	gorm.Model
 	Name       string `sql:"size:255;unique"`
+	Type       int    // тип netschool'а
 	Initials   string `sql:"size:255"`
 	Address    string `sql:"size:255;unique"`
 	Permission bool   `sql:"DEFAULT:true"`
@@ -44,20 +52,43 @@ type School struct {
 type User struct {
 	gorm.Model
 	SchoolID   uint      // parent id
-	IsParent   bool      `sql:"DEFAULT:false"`
 	Login      string    `sql:"size:255;index"`
 	Password   string    `sql:"size:255"`
 	Permission bool      `sql:"DEFAULT:false"`
+	FirstName  string    `sql:"size:255"`
+	MiddleName string    `sql:"size:255"`
+	LastName   string    `sql:"size:255"`
+	TrueLogin  string    `sql:"size:255"`
+	Role       string    `sql:"size:255"`
+	Year       string    `sql:"size:255"`
+	IsParent   bool      `sql:"DEFAULT:false"`
 	Students   []Student // has-many relation
+	Devices    []Device  // has-many relation
+}
+
+// Device struct представляет структуру устройства, которое будет получать
+// push-уведомления
+type Device struct {
+	gorm.Model
+	UserID                uint   // parent id
+	SystemType            int    // android/ios
+	Token                 string // unique device token (FCM)
+	MarksNotification     int
+	TasksNotification     int
+	ReportsNotification   bool
+	ScheduleNotification  bool
+	MailNotification      bool
+	ForumNotification     bool
+	ResourcesNotification bool
 }
 
 // Student struct представляет структуру ученика
 type Student struct {
 	gorm.Model
 	UserID      uint   // parent id
+	Name        string `sql:"size:255"`
 	NetSchoolID int    // id ученика в системе NetSchool
 	ClassID     string // id класса, в котором учится ученик
-	Name        string `sql:"size:255"`
 	Days        []Day  // has-many relation
 }
 
@@ -72,11 +103,18 @@ type Day struct {
 // Task представляет структуру задания
 type Task struct {
 	gorm.Model
-	DayID      uint // parent id
-	LessonID   int  // id урока (CID)
-	HometaskID int  // id домашнего задания (AID)
-	TP         int  // TP
-	Status     int  // новое\просмотренное\выполненное
+	DayID  uint // parent id
+	CID    int
+	AID    int
+	TP     int
+	Status int // новое\просмотренное\выполненное
+	InTime bool
+	Name   string // название предмета
+	Title  string // тема
+	Type   string
+	Mark   string
+	Weight string
+	Author string
 }
 
 // NewDatabase создает Database и возвращает указатель на неё
@@ -98,6 +136,13 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 			return nil, err
 		}
 		logger.Info("DB: Successfully created 'users' table")
+		// Device
+		logger.Info("DB: Creating 'device' table")
+		err = sdb.CreateTable(&Device{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'device' table")
 		// Student
 		logger.Info("DB: Creating 'students' table")
 		err = sdb.CreateTable(&Student{}).Error
@@ -142,7 +187,7 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 		logger.Info("DB: Table 'schools' empty. Adding our schools")
 		// Добавим записи поддерживаемых школ
 		school1 := School{
-			Address: "62.117.74.43", Name: "Европейская гимназия", Initials: "ЕГ",
+			Address: "62.117.74.43", Name: "Европейская гимназия", Initials: "ЕГ", Type: 1,
 		}
 		err = sdb.Save(&school1).Error
 		if err != nil {
@@ -192,6 +237,7 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 				Login:    login,
 				Password: passkey,
 				Students: students,
+				Devices:  []Device{},
 			}
 			errInner := db.SchoolServerDB.Create(&user).Error
 			if errInner != nil {
@@ -217,23 +263,17 @@ func (db *Database) GetUserAuthData(userName string, schoolID int) (*cp.School, 
 		user   User
 		school School
 	)
-	db.Logger.Info("getting school by id")
 	// Получаем школу по id
 	err := db.SchoolServerDB.First(&school, schoolID).Error
-	db.Logger.Info("1")
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error query school by id='%v'", schoolID)
 	}
-	db.Logger.Info("2")
 	// Получаем пользователя по школе и логину
 	where := User{Login: userName, SchoolID: uint(schoolID)}
-	db.Logger.Info("3")
 	err = db.SchoolServerDB.Where(where).First(&user).Error
-	db.Logger.Info("4")
 	if err != nil {
 		return nil, errors.Wrapf(err, "Error query user='%v'", where)
 	}
-	db.Logger.Info("5")
 	return &cp.School{Link: school.Address, Login: userName, Password: user.Password, Type: 1}, nil
 }
 
@@ -319,7 +359,7 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 			// Найдем подходящее задание в БД
 			dbTaskFound := false
 			for _, dbTask := range tasks {
-				if task.AID == dbTask.HometaskID {
+				if task.AID == dbTask.AID {
 					dbTaskFound = true
 					newTask = dbTask
 					break
@@ -327,7 +367,8 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 			}
 			if !dbTaskFound {
 				// Задания не существует, надо создать
-				newTask = Task{DayID: newDay.ID, LessonID: task.CID, HometaskID: task.AID, Status: StatusTaskNew, TP: task.TP}
+				newTask = Task{DayID: newDay.ID, CID: task.CID, AID: task.AID, Status: StatusTaskNew, TP: task.TP, InTime: task.InTime, Name: task.Name,
+					Title: task.Title, Type: task.Type, Mark: task.Mark, Weight: task.Weight, Author: task.Author}
 				err = db.SchoolServerDB.Create(&newTask).Error
 				if err != nil {
 					return errors.Wrapf(err, "Error creating newTask='%v'", newTask)
@@ -349,56 +390,8 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 	return nil
 }
 
-// GetTaskInfo получает информацию о задании - дату, CID, TP, id, classID ученика
-func (db *Database) GetTaskInfo(userName string, schoolID int, taskID int) (string, int, int, int, string, error) {
-	var (
-		tasks   []Task
-		day     Day
-		student Student
-		user    User
-	)
-	// Получаем пользователя по логину и schoolID
-	where := User{Login: userName, SchoolID: uint(schoolID)}
-	err := db.SchoolServerDB.Where(where).First(&user).Error
-	if err != nil {
-		return "", -1, -1, -1, "", errors.Wrapf(err, "Error query user='%v'", where)
-	}
-	// Получаем таски с таким taskID
-	w := Task{HometaskID: taskID}
-	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
-	if err != nil {
-		return "", -1, -1, -1, "", errors.Wrapf(err, "Error query tasks='%v'", w)
-	}
-	// Найдем нужный таск
-	for _, t := range tasks {
-		// Получим день по DayID
-		err = db.SchoolServerDB.First(&day, t.DayID).Error
-		if err != nil {
-			return "", -1, -1, -1, "", errors.Wrapf(err, "Error query day by id='%v'", t.DayID)
-		}
-		// Получим студента по дню
-		err = db.SchoolServerDB.First(&student, day.StudentID).Error
-		if err != nil {
-			return "", -1, -1, -1, "", errors.Wrapf(err, "Error query student by day id='%v'", day.StudentID)
-		}
-		// Если совпал id пользователя, обновить статус и вернуть дату
-		if user.ID == student.UserID {
-			if t.Status == StatusTaskNew {
-				t.Status = StatusTaskSeen
-				err = db.SchoolServerDB.Save(&t).Error
-				if err != nil {
-					return "", -1, -1, -1, "", errors.Wrapf(err, "Error saving updated task='%v'", t)
-				}
-			}
-			return day.Date, t.LessonID, t.TP, student.NetSchoolID, student.ClassID, nil
-		}
-	}
-	// Таск не найден
-	return "", -1, -1, -1, "", fmt.Errorf("record not found")
-}
-
 // TaskMarkDone меняет статус задания на "Выполненное"
-func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) error {
+func (db *Database) TaskMarkDone(userName string, schoolID int, AID, CID, TP int) error {
 	var (
 		tasks   []Task
 		day     Day
@@ -412,10 +405,10 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 		return errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Получаем таски с таким taskID
-	w := Task{HometaskID: taskID}
+	w := Task{AID: AID, CID: CID, TP: TP}
 	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
-		return errors.Wrapf(err, "Error query tasks with id='%v'", taskID)
+		return errors.Wrapf(err, "Error query tasks: '%v'", w)
 	}
 	// Найдем нужный таск
 	for _, t := range tasks {
@@ -444,7 +437,7 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, taskID int) erro
 }
 
 // TaskMarkUndone меняет статус задания на "Просмотренное"
-func (db *Database) TaskMarkUndone(userName string, schoolID int, taskID int) error {
+func (db *Database) TaskMarkUndone(userName string, schoolID int, AID, CID, TP int) error {
 	var (
 		tasks   []Task
 		day     Day
@@ -458,10 +451,10 @@ func (db *Database) TaskMarkUndone(userName string, schoolID int, taskID int) er
 		return errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Получаем таски с таким taskID
-	w := Task{HometaskID: taskID}
+	w := Task{AID: AID, CID: CID, TP: TP}
 	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
 	if err != nil {
-		return errors.Wrapf(err, "Error query tasks with id='%v'", taskID)
+		return errors.Wrapf(err, "Error query tasks: '%v'", w)
 	}
 	// Найдем нужный таск
 	for _, t := range tasks {
@@ -505,31 +498,6 @@ func (db *Database) GetSchools() ([]School, error) {
 	var schools []School
 	err := db.SchoolServerDB.Find(&schools).Error
 	return schools, err
-}
-
-// GetStudents возвращает список учеников пользователя
-func (db *Database) GetStudents(userName string, schoolID int) (map[string]int, error) {
-	var (
-		user     User
-		students []Student
-	)
-	// Получаем пользователя по логину и schoolID
-	where := User{Login: userName, SchoolID: uint(schoolID)}
-	err := db.SchoolServerDB.Where(where).First(&user).Error
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error query user='%v'", where)
-	}
-	// Получаем ассоциированных с пользователем учеников
-	err = db.SchoolServerDB.Model(&user).Related(&students).Error
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error query user='%v' students", user)
-	}
-	// Заполним ответ
-	childrenMap := make(map[string]int)
-	for _, st := range students {
-		childrenMap[st.Name] = st.NetSchoolID
-	}
-	return childrenMap, nil
 }
 
 // CheckPassword сверяет пароль с хранящимся в БД

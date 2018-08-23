@@ -17,7 +17,9 @@ type tasksMarksRequest struct {
 
 // lesson используется в day
 type lesson struct {
-	ID     int    `json:"id"`
+	AID    int    `json:"AID"`
+	CID    int    `json:"CID"`
+	TP     int    `json:"TP"`
 	Status int    `json:"status"`
 	InTime bool   `json:"inTime"`
 	Name   string `json:"name"`
@@ -128,7 +130,7 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 	for _, d := range weekMarks.Data {
 		lessons := make([]lesson, 0)
 		for _, l := range d.Lessons {
-			newLesson := lesson{ID: l.AID, Status: l.Status, InTime: l.InTime, Name: l.Name, Title: l.Title, Type: l.Type, Mark: l.Mark, Weight: l.Weight}
+			newLesson := lesson{AID: l.AID, CID: l.CID, TP: l.TP, Status: l.Status, InTime: l.InTime, Name: l.Name, Title: l.Title, Type: l.Type, Mark: l.Mark, Weight: l.Weight}
 			lessons = append(lessons, newLesson)
 		}
 		newDay := day{Date: d.Date, Lessons: lessons}

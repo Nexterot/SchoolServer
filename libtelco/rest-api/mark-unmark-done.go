@@ -8,7 +8,9 @@ import (
 
 // markAsDoneRequest используется в MarkAsDoneHandler и UnmarkAsDoneHandler
 type markAsDoneRequest struct {
-	ID int `json:"id"`
+	AID int `json:"AID"`
+	CID int `json:"CID"`
+	TP  int `json:"TP"`
 }
 
 // MarkAsDoneHandler обрабатывает запрос на отметку задания как сделанного
@@ -46,7 +48,7 @@ func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Req
 	// Лезть в БД
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	err = rest.Db.TaskMarkDone(userName.(string), schoolID.(int), rReq.ID)
+	err = rest.Db.TaskMarkDone(userName.(string), schoolID.(int), rReq.AID, rReq.CID, rReq.TP)
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Такого таска нет в БД
@@ -106,7 +108,7 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 	// Лезть в БД
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	err = rest.Db.TaskMarkUndone(userName.(string), schoolID.(int), rReq.ID)
+	err = rest.Db.TaskMarkUndone(userName.(string), schoolID.(int), rReq.AID, rReq.CID, rReq.TP)
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Такого таска нет в БД
