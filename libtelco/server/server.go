@@ -6,8 +6,9 @@ Package server содержит основную функциональност�
 package server
 
 import (
+	"fmt"
 
-	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
@@ -41,22 +42,22 @@ func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
-	/*
-		// ТЕСТЫ.
-		kek := ss.NewSession(&serv.config.Schools[0])
-		err := kek.Login()
-		if err != nil {
-			fmt.Println(err)
-		}
+	// ТЕСТЫ.
+	kek := ss.NewSession(&serv.config.Schools[0])
+	err := kek.Login()
+	if err != nil {
+		fmt.Println(err)
+	}
 
-		if err := kek.CreateEmail("11200", "11200", "11200", "11200", "JUST ANOTHER TEST", ")0)))"); err != nil {
-			fmt.Println(err)
-		}
+	data, err := kek.GetProfile()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(data)
 
-		if err := kek.Logout(); err != nil {
-			fmt.Println(err)
-		}
-	*/
+	if err := kek.Logout(); err != nil {
+		fmt.Println(err)
+	}
 
 	serv.api.BindHandlers()
 	defer func() {
