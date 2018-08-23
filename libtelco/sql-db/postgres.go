@@ -31,6 +31,14 @@ const (
 	Android
 )
 
+// Типы оценок
+const (
+	_ = iota
+	MarksNotificationAll
+	MarksNotificationImportant
+	MarksNotificationDisabled
+)
+
 // Database struct представляет абстрактную структуру базы данных
 type Database struct {
 	SchoolServerDB *gorm.DB
@@ -73,13 +81,13 @@ type Device struct {
 	UserID                uint   // parent id
 	SystemType            int    // android/ios
 	Token                 string // unique device token (FCM)
-	MarksNotification     int
-	TasksNotification     int
-	ReportsNotification   bool
-	ScheduleNotification  bool
-	MailNotification      bool
-	ForumNotification     bool
-	ResourcesNotification bool
+	MarksNotification     int    `sql:"DEFAULT:1"`
+	TasksNotification     int    `sql:"DEFAULT:1"`
+	ReportsNotification   bool   `sql:"DEFAULT:true"`
+	ScheduleNotification  bool   `sql:"DEFAULT:true"`
+	MailNotification      bool   `sql:"DEFAULT:true"`
+	ForumNotification     bool   `sql:"DEFAULT:true"`
+	ResourcesNotification bool   `sql:"DEFAULT:true"`
 }
 
 // Student struct представляет структуру ученика
@@ -231,15 +239,24 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 				students[i] = student
 				i++
 			}
+			// Создать список девайсов
+			devices := make([]Device, 1)
+			dev := Device{SystemType: Android, Token: "token_sample"}
+			// Создать девайс
+			errInner := db.SchoolServerDB.Create(&dev).Error
+			devices[0] = dev
+			if errInner != nil {
+				return errors.Wrapf(errInner, "Error creating device='%v' for user='%v'", dev, user)
+			}
 			user := User{
 				SchoolID: uint(schoolID),
 				IsParent: isParent,
 				Login:    login,
 				Password: passkey,
 				Students: students,
-				Devices:  []Device{},
+				Devices:  devices,
 			}
-			errInner := db.SchoolServerDB.Create(&user).Error
+			errInner = db.SchoolServerDB.Create(&user).Error
 			if errInner != nil {
 				return errors.Wrapf(errInner, "Error creating user='%v'", user)
 			}

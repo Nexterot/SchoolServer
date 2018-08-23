@@ -11,7 +11,7 @@ import (
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
-
+	"github.com/masyagin1998/SchoolServer/libtelco/push"
 	api "github.com/masyagin1998/SchoolServer/libtelco/rest-api"
 
 	"net/http"
@@ -25,13 +25,16 @@ type Server struct {
 	config *cp.Config
 	api    *api.RestAPI
 	logger *log.Logger
+	push   *push.Push
 }
 
 // NewServer создает новый сервер.
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
+	rest := api.NewRestAPI(logger, config)
 	serv := &Server{
 		config: config,
-		api:    api.NewRestAPI(logger, config),
+		api:    rest,
+		push:   push.NewPush(rest, logger),
 	}
 	return serv
 }
@@ -58,11 +61,17 @@ func (serv *Server) Run() error {
 		}
 	*/
 
+	// Привязать handler'ы
 	serv.api.BindHandlers()
 	defer func() {
 		_ = serv.api.Db.Close()
 		_ = serv.api.Redis.Close()
 		_ = serv.api.Store.Close()
 	}()
+
+	// Подключить рассылку пушей
+	// go serv.push.Run()
+
+	// Запустить сервер
 	return http.ListenAndServe(serv.config.ServerAddr, context.ClearHandler(http.DefaultServeMux))
 }
