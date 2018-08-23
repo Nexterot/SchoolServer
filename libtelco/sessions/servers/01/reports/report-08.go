@@ -19,6 +19,56 @@ import (
 08 тип.
 */
 
+// GetParentInfoLetterData возвращает параметры отчета восьмого типа с сервера первого типа.
+func GetParentInfoLetterData(s *dt.Session) (*dt.ParentInfoLetterData, error) {
+	p := "http://"
+
+	// 0-ой Post-запрос.
+	r0 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"AT":        s.AT,
+				"LoginType": "0",
+				"RPTID":     "4",
+				"ThmID":     "2",
+				"VER":       s.VER,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/Reports.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportParentInfoLetter.asp", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		flag, err := check.CheckResponse(s, r)
+		return r.Bytes(), flag, err
+	}
+	b, flag, err := r0()
+	if err != nil {
+		return nil, errors.Wrap(err, "0 POST")
+	}
+	if !flag {
+		b, flag, err = r0()
+		if err != nil {
+			return nil, errors.Wrap(err, "retrying 0 POST")
+		}
+		if !flag {
+			return nil, fmt.Errorf("retry didn't work for 0 POST")
+		}
+	}
+	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
+	// находящуюся в теле ответа и найти в ней параметры отчета восьмого типа.
+	fmt.Println(string(b))
+
+	return nil, nil
+}
+
 // GetParentInfoLetterReport возвращает шаблон письма родителям с сервера первого типа.
 func GetParentInfoLetterReport(s *dt.Session, reportTypeID, periodID, studentID string) (*dt.ParentInfoLetterReport, error) {
 	p := "http://"

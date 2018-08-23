@@ -54,6 +54,16 @@ func (serv *Server) Run() error {
 		fmt.Println(err)
 	}
 	fmt.Println(data)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	data1, err := kek.GetParentInfoLetterData()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(data1)
 
 	if err := kek.Logout(); err != nil {
 		fmt.Println(err)

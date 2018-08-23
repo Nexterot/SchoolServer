@@ -136,6 +136,11 @@ type JournalAccessReportNote struct {
 08 тип.
 */
 
+// ParentInfoLetterData struct содержит в себе парметры отчета восьмого типа.
+type ParentInfoLetterData struct {
+	// MOCK, Андрей добавь все детали.
+}
+
 // ParentInfoLetterReport struct - отчет восьмого типа.
 type ParentInfoLetterReport struct {
 	Data []ParentInfoLetterReportNote `json:"table"`
