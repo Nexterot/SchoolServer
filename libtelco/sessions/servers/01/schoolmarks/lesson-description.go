@@ -75,9 +75,24 @@ func GetLessonDescription(s *dt.Session, AID, CID, TP int, studentID, classID, s
 	}
 	strs := responseMap["data"].(map[string]interface{})
 	var responseString string
+	var authorString string
 	for k, v := range strs {
 		if k == "strTable" {
 			responseString = v.(string)
+		}
+		if k == "strTitle" {
+			authorString = v.(string)
+			var start, end int
+			for i := 0; i < len(authorString); i++ {
+				if authorString[i:i+1] == "(" {
+					start = i + 1
+				} else {
+					if authorString[i:i+1] == ")" {
+						end = i
+					}
+				}
+			}
+			authorString = authorString[start:end]
 		}
 	}
 
@@ -217,6 +232,9 @@ func GetLessonDescription(s *dt.Session, AID, CID, TP int, studentID, classID, s
 	}
 
 	lessonDesc, ID, err := makeLessonDescription(parsedHTML)
+	if lessonDesc != nil && authorString != "" {
+		lessonDesc.Author = authorString
+	}
 	if err != nil {
 		return nil, err
 	}
