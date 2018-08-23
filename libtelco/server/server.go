@@ -49,11 +49,9 @@ func (serv *Server) Run() error {
 			fmt.Println(err)
 		}
 
-		data, err := kek.GetAddressBook()
-		if err != nil {
+		if err := kek.CreateEmail("11200", "11200", "11200", "11200", "JUST ANOTHER TEST", ")0)))"); err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(data)
 
 		if err := kek.Logout(); err != nil {
 			fmt.Println(err)
