@@ -101,11 +101,17 @@ func (p *Push) sendPushes() {
 			return
 		}
 		// Получим дату из текущей недели
-		today := "21.05.2018"
-		//today := time.Now().Format("02.01.2006")
+		//today := "21.05.2018"
+		today := time.Now().AddDate(0, 0, -95).Format("02.01.2006")
+		p.logger.Info(today)
+		// Получим дату из следующей недели
+		nextweek := time.Now().AddDate(0, 0, -88).Format("02.01.2006")
+		p.logger.Info(nextweek)
 		// Счетчики оценок
 		totalChanged := 0
 		totalNew := 0
+		totalImportantChanged := 0
+		totalImportantNew := 0
 		// Гоним по ученикам пользователя
 		for _, stud := range session.Children {
 			// Вызовем GetWeekSchoolMarks для текущей недели
@@ -115,20 +121,39 @@ func (p *Push) sendPushes() {
 				return
 			}
 			// Сравним с версией из БД
-			nChanged, nNew, err := p.countMarks(usr.ID, stud.SID, marks)
+			nChanged, nNew, nImportantChanged, nImportantNew, err := p.countMarks(usr.ID, stud.SID, marks)
 			if err != nil {
 				p.logger.Error("PUSH: Error when getting marks from db", "Error", err)
 				return
 			}
-			p.logger.Info("PUSH: marks", "nChanged", nChanged, "nNew", nNew)
 			totalChanged += nChanged
 			totalNew += nNew
+			totalImportantChanged += nImportantChanged
+			totalImportantNew += nImportantNew
+			// Вызовем GetWeekSchoolMarks для следующей недели
+			marks, err = session.GetWeekSchoolMarks(nextweek, stud.SID)
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting marks", "Error", err, "Date", nextweek, "StudentID", stud.SID)
+				return
+			}
+			// Сравним с версией из БД
+			nChanged, nNew, nImportantChanged, nImportantNew, err = p.countMarks(usr.ID, stud.SID, marks)
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting marks from db", "Error", err)
+				return
+			}
+			totalChanged += nChanged
+			totalNew += nNew
+			totalImportantChanged += nImportantChanged
+			totalImportantNew += nImportantNew
 		}
 		// Выйдем из системы
 		if err := session.Logout(); err != nil {
 			p.logger.Error("PUSH: Error when logging out", "Error", err)
 			return
 		}
+		// debug
+		p.logger.Info("PUSH: marks", "totalChanged", totalChanged, "totalNew", totalNew, "totalImportantChanged", totalImportantChanged, "totalImportantNew", totalImportantNew)
 		// Достанем все девайсы пользователя
 		err = pg.Model(&usr).Related(&devices).Error
 		if err != nil {
@@ -179,6 +204,39 @@ func (p *Push) sendPushes() {
 				} else if dev.MarksNotification == db.MarksNotificationImportant {
 					// Если включены оповещения только о важных оценках
 					p.logger.Info("PUSH: MarksNotificationImportant")
+					msg := "У Вас "
+					if totalImportantChanged > 0 {
+						msg += strconv.Itoa(totalImportantChanged)
+						// Посклоняем слова, делать же больше нечего
+						if (totalImportantChanged % 10) == 1 {
+							msg += " изменённая оценка"
+						} else if (totalImportantChanged % 10) > 4 {
+							msg += " изменённых оценок"
+						} else {
+							msg += " изменённых оценки"
+						}
+						if totalImportantNew > 0 {
+							msg += ", "
+						}
+					}
+					if totalImportantNew > 0 {
+						msg += strconv.Itoa(totalImportantNew)
+						// Посклоняем слова, делать же больше нечего
+						if (totalImportantNew % 10) == 1 {
+							msg += " новая оценка"
+						} else if (totalImportantNew % 10) > 4 {
+							msg += " новых оценок"
+						} else {
+							msg += " новых оценки"
+						}
+					}
+					if totalImportantChanged+totalImportantNew > 0 {
+						err = p.sendPush(msg, db.Android, dev.Token)
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", db.Android, "Token", dev.Token)
+							return
+						}
+					}
 				} else {
 					// Если оповещения об оценках отключены
 					p.logger.Info("PUSH: MarksNotificationDisabled")
@@ -189,19 +247,21 @@ func (p *Push) sendPushes() {
 }
 
 // countMarks считает количество новых и измененных оценок.
-func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMarks) (int, int, error) {
+func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMarks) (int, int, int, int, error) {
 	var (
-		student  db.Student
-		days     []db.Day
-		tasks    []db.Task
-		newDay   db.Day
-		newTask  db.Task
-		nChanged int
-		nNew     int
+		student           db.Student
+		days              []db.Day
+		tasks             []db.Task
+		newDay            db.Day
+		newTask           db.Task
+		nChanged          int
+		nNew              int
+		nImportantChanged int
+		nImportantNew     int
 	)
 	id, err := strconv.Atoi(studentID)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "PUSH: Error when converting studentID")
+		return 0, 0, 0, 0, errors.Wrap(err, "PUSH: Error when converting studentID")
 	}
 	// shortcut
 	pg := p.db.SchoolServerDB
@@ -209,12 +269,12 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 	where := db.Student{NetSchoolID: id, UserID: userID}
 	err = pg.Where(where).First(&student).Error
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "PUSH: Error when getting student")
+		return 0, 0, 0, 0, errors.Wrap(err, "PUSH: Error when getting student")
 	}
 	// Получаем список дней у ученика
 	err = pg.Model(&student).Related(&days).Error
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "Error getting student='%v' days", student)
+		return 0, 0, 0, 0, errors.Wrapf(err, "Error getting student='%v' days", student)
 	}
 	// Гоняем по дням из пакета
 	for dayNum, day := range week.Data {
@@ -233,14 +293,14 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 			newDay = db.Day{StudentID: student.ID, Date: date, Tasks: []db.Task{}}
 			err = pg.Create(&newDay).Error
 			if err != nil {
-				return 0, 0, errors.Wrapf(err, "Error creating newDay='%v'", newDay)
+				return 0, 0, 0, 0, errors.Wrapf(err, "Error creating newDay='%v'", newDay)
 			}
 			days = append(days, newDay)
 		}
 		// Получаем список заданий для дня
 		err = pg.Model(&newDay).Related(&tasks).Error
 		if err != nil {
-			return 0, 0, errors.Wrapf(err, "Error getting newDay='%v' tasks", newDay)
+			return 0, 0, 0, 0, errors.Wrapf(err, "Error getting newDay='%v' tasks", newDay)
 		}
 		// Гоняем по заданиям
 		for taskNum, task := range day.Lessons {
@@ -255,15 +315,23 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 						// Если оценки не совпали
 						if dbTask.Mark == "-" {
 							// Если в БД лежит пустая оценка, значит оценка новая
+							if task.Type == "В" || task.Type == "К" {
+								// Если срезовая оценка или контрольная, она важна
+								nImportantNew++
+							}
 							nNew++
 						} else {
+							if task.Type == "В" || task.Type == "К" {
+								// Если срезовая оценка или контрольная, она важна
+								nImportantChanged++
+							}
 							// Иначе оценка была изменена
 							nChanged++
 						}
 						dbTask.Mark = task.Mark
 						err = pg.Save(&dbTask).Error
 						if err != nil {
-							return 0, 0, errors.Wrapf(err, "Error saving newTask='%v'", newTask)
+							return 0, 0, 0, 0, errors.Wrapf(err, "Error saving newTask='%v'", newTask)
 						}
 					}
 					break
@@ -275,7 +343,7 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 					Title: task.Title, Type: task.Type, Mark: task.Mark, Weight: task.Weight, Author: task.Author}
 				err = pg.Create(&newTask).Error
 				if err != nil {
-					return 0, 0, errors.Wrapf(err, "Error creating newTask='%v'", newTask)
+					return 0, 0, 0, 0, errors.Wrapf(err, "Error creating newTask='%v'", newTask)
 				}
 				tasks = append(tasks, newTask)
 			}
@@ -284,14 +352,14 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 		}
 		err = pg.Save(&newDay).Error
 		if err != nil {
-			return 0, 0, errors.Wrapf(err, "Error saving newDay='%v'", newDay)
+			return 0, 0, 0, 0, errors.Wrapf(err, "Error saving newDay='%v'", newDay)
 		}
 	}
 	err = pg.Save(&student).Error
 	if err != nil {
-		return 0, 0, errors.Wrapf(err, "Error saving student='%v'", student)
+		return 0, 0, 0, 0, errors.Wrapf(err, "Error saving student='%v'", student)
 	}
-	return nChanged, nNew, nil
+	return nChanged, nNew, nImportantChanged, nImportantNew, nil
 }
 
 type gorushRequest struct {
@@ -319,10 +387,10 @@ func (p *Push) sendPush(msg string, platformType int, token string) error {
 		return errors.Wrap(err, "PUSH: Error marshalling")
 	}
 	resp, err := http.Post(url, "application/json", bytes.NewBuffer(byt))
-	defer resp.Body.Close()
 	if err != nil {
 		return errors.Wrap(err, "PUSH: Error sending web api gorush request")
 	}
+	defer resp.Body.Close()
 	p.logger.Info("PUSH: Got response from gorush", "Response", resp)
 	return nil
 }
