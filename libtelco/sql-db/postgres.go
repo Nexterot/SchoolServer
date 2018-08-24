@@ -31,12 +31,20 @@ const (
 	Android
 )
 
-// Типы оценок
+// Типы оповещений об оценках
 const (
 	_ = iota
 	MarksNotificationAll
 	MarksNotificationImportant
 	MarksNotificationDisabled
+)
+
+// Типы оповещений о заданиях
+const (
+	_ = iota
+	TasksNotificationAll
+	TasksNotificationHome
+	TasksNotificationDisabled
 )
 
 // Database struct представляет абстрактную структуру базы данных

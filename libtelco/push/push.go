@@ -108,10 +108,12 @@ func (p *Push) sendPushes() {
 		nextweek := time.Now().AddDate(0, 0, -88).Format("02.01.2006")
 		p.logger.Info(nextweek)
 		// Счетчики оценок
-		totalChanged := 0
-		totalNew := 0
-		totalImportantChanged := 0
-		totalImportantNew := 0
+		totalChangedMarks := 0
+		totalNewMarks := 0
+		totalImportantChangedMarks := 0
+		totalImportantNewMarks := 0
+		totalNewTasks := 0
+		totalNewHomeTasks := 0
 		// Гоним по ученикам пользователя
 		for _, stud := range session.Children {
 			// Вызовем GetWeekSchoolMarks для текущей недели
@@ -121,15 +123,17 @@ func (p *Push) sendPushes() {
 				return
 			}
 			// Сравним с версией из БД
-			nChanged, nNew, nImportantChanged, nImportantNew, err := p.countMarks(usr.ID, stud.SID, marks)
+			chs, err := p.countChanges(usr.ID, stud.SID, marks)
 			if err != nil {
 				p.logger.Error("PUSH: Error when getting marks from db", "Error", err)
 				return
 			}
-			totalChanged += nChanged
-			totalNew += nNew
-			totalImportantChanged += nImportantChanged
-			totalImportantNew += nImportantNew
+			totalChangedMarks += chs.nChangedMarks
+			totalNewMarks += chs.nNewMarks
+			totalImportantChangedMarks += chs.nImportantChangedMarks
+			totalImportantNewMarks += chs.nImportantNewMarks
+			totalNewTasks += chs.nNewTasks
+			totalNewHomeTasks += chs.nNewHomeTasks
 			// Вызовем GetWeekSchoolMarks для следующей недели
 			marks, err = session.GetWeekSchoolMarks(nextweek, stud.SID)
 			if err != nil {
@@ -137,15 +141,17 @@ func (p *Push) sendPushes() {
 				return
 			}
 			// Сравним с версией из БД
-			nChanged, nNew, nImportantChanged, nImportantNew, err = p.countMarks(usr.ID, stud.SID, marks)
+			chs, err = p.countChanges(usr.ID, stud.SID, marks)
 			if err != nil {
 				p.logger.Error("PUSH: Error when getting marks from db", "Error", err)
 				return
 			}
-			totalChanged += nChanged
-			totalNew += nNew
-			totalImportantChanged += nImportantChanged
-			totalImportantNew += nImportantNew
+			totalChangedMarks += chs.nChangedMarks
+			totalNewMarks += chs.nNewMarks
+			totalImportantChangedMarks += chs.nImportantChangedMarks
+			totalImportantNewMarks += chs.nImportantNewMarks
+			totalNewTasks += chs.nNewTasks
+			totalNewHomeTasks += chs.nNewHomeTasks
 		}
 		// Выйдем из системы
 		if err := session.Logout(); err != nil {
@@ -153,7 +159,8 @@ func (p *Push) sendPushes() {
 			return
 		}
 		// debug
-		p.logger.Info("PUSH: marks", "totalChanged", totalChanged, "totalNew", totalNew, "totalImportantChanged", totalImportantChanged, "totalImportantNew", totalImportantNew)
+		p.logger.Info("PUSH: marks", "totalChanged", totalChangedMarks, "totalNew", totalNewMarks, "totalImportantChanged", totalImportantChangedMarks, "totalImportantNew", totalImportantNewMarks)
+		p.logger.Info("PUSH: tasks", "totalNewTasks", totalNewTasks, "totalNewHomeTasks", totalNewHomeTasks)
 		// Достанем все девайсы пользователя
 		err = pg.Model(&usr).Related(&devices).Error
 		if err != nil {
@@ -165,103 +172,181 @@ func (p *Push) sendPushes() {
 			p.logger.Info("PUSH: device", "System", dev.SystemType, "Token", dev.Token, "MarksNotification", dev.MarksNotification)
 			// Если андроид
 			if dev.SystemType == db.Android {
-				if dev.MarksNotification == db.MarksNotificationAll {
-					// Если включены оповещения о всех оценках, послать пуш
-					p.logger.Info("PUSH: MarksNotificationAll")
-					msg := "У Вас "
-					if totalChanged > 0 {
-						msg += strconv.Itoa(totalChanged)
-						// Посклоняем слова, делать же больше нечего
-						if (totalChanged % 10) == 1 {
-							msg += " изменённая оценка"
-						} else if (totalChanged % 10) > 4 {
-							msg += " изменённых оценок"
-						} else {
-							msg += " изменённых оценки"
-						}
-						if totalNew > 0 {
-							msg += ", "
-						}
-					}
-					if totalNew > 0 {
-						msg += strconv.Itoa(totalNew)
-						// Посклоняем слова, делать же больше нечего
-						if (totalNew % 10) == 1 {
-							msg += " новая оценка"
-						} else if (totalNew % 10) > 4 {
-							msg += " новых оценок"
-						} else {
-							msg += " новых оценки"
-						}
-					}
-					if totalChanged+totalNew > 0 {
-						err = p.sendPush(msg, db.Android, dev.Token)
-						if err != nil {
-							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", db.Android, "Token", dev.Token)
-							return
-						}
-					}
-				} else if dev.MarksNotification == db.MarksNotificationImportant {
-					// Если включены оповещения только о важных оценках
-					p.logger.Info("PUSH: MarksNotificationImportant")
-					msg := "У Вас "
-					if totalImportantChanged > 0 {
-						msg += strconv.Itoa(totalImportantChanged)
-						// Посклоняем слова, делать же больше нечего
-						if (totalImportantChanged % 10) == 1 {
-							msg += " изменённая оценка"
-						} else if (totalImportantChanged % 10) > 4 {
-							msg += " изменённых оценок"
-						} else {
-							msg += " изменённых оценки"
-						}
-						if totalImportantNew > 0 {
-							msg += ", "
-						}
-					}
-					if totalImportantNew > 0 {
-						msg += strconv.Itoa(totalImportantNew)
-						// Посклоняем слова, делать же больше нечего
-						if (totalImportantNew % 10) == 1 {
-							msg += " новая оценка"
-						} else if (totalImportantNew % 10) > 4 {
-							msg += " новых оценок"
-						} else {
-							msg += " новых оценки"
-						}
-					}
-					if totalImportantChanged+totalImportantNew > 0 {
-						err = p.sendPush(msg, db.Android, dev.Token)
-						if err != nil {
-							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", db.Android, "Token", dev.Token)
-							return
-						}
-					}
+				// Посмотрим, каким образом надо выводить уведомления
+				var n, k, d int
+				if dev.TasksNotification == db.TasksNotificationAll {
+					n = totalNewTasks
+				} else if dev.TasksNotification == db.TasksNotificationHome {
+					n = totalNewHomeTasks
 				} else {
-					// Если оповещения об оценках отключены
-					p.logger.Info("PUSH: MarksNotificationDisabled")
+					n = 0
+				}
+				if dev.MarksNotification == db.MarksNotificationAll {
+					k = totalNewMarks
+					d = totalChangedMarks
+				} else if dev.MarksNotification == db.MarksNotificationImportant {
+					k = totalImportantNewMarks
+					d = totalImportantChangedMarks
+				} else {
+					k = 0
+					d = 0
+				}
+				if n+k+d > 3 {
+					// У вас n новых заданий, k новых оценок, d измененных оценок
+					msg := "У Вас "
+					if n > 0 {
+						msg += strconv.Itoa(n)
+						// Посклоняем слова
+						if (n % 10) == 0 {
+							msg += " новых заданий"
+						} else if (n % 10) == 1 {
+							msg += " новое задание"
+						} else if (n % 10) > 4 {
+							msg += " новых заданий"
+						} else {
+							msg += " новых задания"
+						}
+					}
+					if k > 0 {
+						if n > 0 {
+							msg += ", "
+						}
+						msg += strconv.Itoa(k)
+						// Посклоняем слова
+						if (k % 10) == 0 {
+							msg += " новых оценок"
+						} else if (k % 10) == 1 {
+							msg += " новая оценка"
+						} else if (k % 10) > 4 {
+							msg += " новых оценок"
+						} else {
+							msg += " новых оценки"
+						}
+					}
+					if d > 0 {
+						if n+k > 0 {
+							msg += ", "
+						}
+						msg += strconv.Itoa(d)
+						// Посклоняем слова
+						if (d % 10) == 0 {
+							msg += " изменённых оценок"
+						} else if (d % 10) == 1 {
+							msg += " изменённая оценка"
+						} else if (d % 10) > 4 {
+							msg += " изменённых оценок"
+						} else {
+							msg += " изменённых оценки"
+						}
+					}
+					// Отправить пуш
+					err = p.sendPush(msg, dev.SystemType, dev.Token)
+					if err != nil {
+						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
+						return
+					}
+					// Появилось s новых объявлений
+					// У вас w новых писем на почте
+				} else {
+					// У вас новая оценка (2 новые оценки)
+					if k > 0 {
+						msg := "У Вас "
+						if k == 1 {
+							msg += "новая оценка"
+						} else {
+							msg += strconv.Itoa(k)
+							msg += " новые оценки"
+						}
+						// Отправить пуш
+						err = p.sendPush(msg, dev.SystemType, dev.Token)
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					}
+					// У вас изменена оценка (изменены 2 оценки)
+					if d > 0 {
+						msg := "У Вас "
+						if d == 1 {
+							msg += "изменена оценка"
+						} else {
+							msg += " изменены "
+							msg += strconv.Itoa(d)
+							msg += " оценки"
+						}
+						// Отправить пуш
+						err = p.sendPush(msg, dev.SystemType, dev.Token)
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					}
+					// У вас новое домашнее задание (2 новых домашних задания)
+					if n > 0 {
+						msg := "У Вас "
+						if totalNewHomeTasks == 1 {
+							msg += "новое домашнее задание"
+						} else {
+							msg += strconv.Itoa(totalNewHomeTasks)
+							msg += " новых домашних задания"
+						}
+						// Отправить пуш
+						err = p.sendPush(msg, dev.SystemType, dev.Token)
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					}
+					// У вас новая работа (2 новые работы)
+					if n > 0 && dev.TasksNotification == db.TasksNotificationAll {
+						msg := "У Вас "
+						n -= totalNewHomeTasks
+						if n == 1 {
+							msg += "новая работа"
+						} else {
+							msg += strconv.Itoa(n)
+							msg += " новые работы"
+						}
+						// Отправить пуш
+						err = p.sendPush(msg, dev.SystemType, dev.Token)
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					}
+					// Появилось новое объявление (2 новых объявления)
+					// У вас новое сообщение на почте (2 новых сообщения)
 				}
 			}
 		}
 	}
 }
 
-// countMarks считает количество новых и измененных оценок.
-func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMarks) (int, int, int, int, error) {
+// changes struct содержит количество изменений для отправления с помощью push.
+type changes struct {
+	// Оценки
+	nChangedMarks          int
+	nNewMarks              int
+	nImportantChangedMarks int
+	nImportantNewMarks     int
+	// Задания
+	nNewTasks     int
+	nNewHomeTasks int
+}
+
+// countChanges считает количество изменений.
+func (p *Push) countChanges(userID uint, studentID string, week *dt.WeekSchoolMarks) (*changes, error) {
 	var (
-		student           db.Student
-		days              []db.Day
-		tasks             []db.Task
-		newDay            db.Day
-		newTask           db.Task
-		nChanged          int
-		nNew              int
-		nImportantChanged int
-		nImportantNew     int
+		student db.Student
+		days    []db.Day
+		tasks   []db.Task
+		newDay  db.Day
+		newTask db.Task
+		chs     changes
 	)
 	id, err := strconv.Atoi(studentID)
 	if err != nil {
-		return 0, 0, 0, 0, errors.Wrap(err, "PUSH: Error when converting studentID")
+		return nil, errors.Wrap(err, "PUSH: Error when converting studentID")
 	}
 	// shortcut
 	pg := p.db.SchoolServerDB
@@ -269,12 +354,12 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 	where := db.Student{NetSchoolID: id, UserID: userID}
 	err = pg.Where(where).First(&student).Error
 	if err != nil {
-		return 0, 0, 0, 0, errors.Wrap(err, "PUSH: Error when getting student")
+		return nil, errors.Wrap(err, "PUSH: Error when getting student")
 	}
 	// Получаем список дней у ученика
 	err = pg.Model(&student).Related(&days).Error
 	if err != nil {
-		return 0, 0, 0, 0, errors.Wrapf(err, "Error getting student='%v' days", student)
+		return nil, errors.Wrapf(err, "Error getting student='%v' days", student)
 	}
 	// Гоняем по дням из пакета
 	for dayNum, day := range week.Data {
@@ -293,14 +378,14 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 			newDay = db.Day{StudentID: student.ID, Date: date, Tasks: []db.Task{}}
 			err = pg.Create(&newDay).Error
 			if err != nil {
-				return 0, 0, 0, 0, errors.Wrapf(err, "Error creating newDay='%v'", newDay)
+				return nil, errors.Wrapf(err, "Error creating newDay='%v'", newDay)
 			}
 			days = append(days, newDay)
 		}
 		// Получаем список заданий для дня
 		err = pg.Model(&newDay).Related(&tasks).Error
 		if err != nil {
-			return 0, 0, 0, 0, errors.Wrapf(err, "Error getting newDay='%v' tasks", newDay)
+			return nil, errors.Wrapf(err, "Error getting newDay='%v' tasks", newDay)
 		}
 		// Гоняем по заданиям
 		for taskNum, task := range day.Lessons {
@@ -317,21 +402,21 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 							// Если в БД лежит пустая оценка, значит оценка новая
 							if task.Type == "В" || task.Type == "К" {
 								// Если срезовая оценка или контрольная, она важна
-								nImportantNew++
+								chs.nImportantNewMarks++
 							}
-							nNew++
+							chs.nNewMarks++
 						} else {
 							if task.Type == "В" || task.Type == "К" {
 								// Если срезовая оценка или контрольная, она важна
-								nImportantChanged++
+								chs.nImportantChangedMarks++
 							}
 							// Иначе оценка была изменена
-							nChanged++
+							chs.nChangedMarks++
 						}
 						dbTask.Mark = task.Mark
 						err = pg.Save(&dbTask).Error
 						if err != nil {
-							return 0, 0, 0, 0, errors.Wrapf(err, "Error saving newTask='%v'", newTask)
+							return nil, errors.Wrapf(err, "Error saving newTask='%v'", newTask)
 						}
 					}
 					break
@@ -343,23 +428,29 @@ func (p *Push) countMarks(userID uint, studentID string, week *dt.WeekSchoolMark
 					Title: task.Title, Type: task.Type, Mark: task.Mark, Weight: task.Weight, Author: task.Author}
 				err = pg.Create(&newTask).Error
 				if err != nil {
-					return 0, 0, 0, 0, errors.Wrapf(err, "Error creating newTask='%v'", newTask)
+					return nil, errors.Wrapf(err, "Error creating newTask='%v'", newTask)
 				}
 				tasks = append(tasks, newTask)
+				// Новое задание, запишем в счетчик
+				if newTask.Type == "Д" {
+					// Если домашняя работа, так же обновим счетчик
+					chs.nNewHomeTasks++
+				}
+				chs.nNewTasks++
 			}
 			// Присвоить статусу таска из пакета статус таска из БД
 			week.Data[dayNum].Lessons[taskNum].Status = newTask.Status
 		}
 		err = pg.Save(&newDay).Error
 		if err != nil {
-			return 0, 0, 0, 0, errors.Wrapf(err, "Error saving newDay='%v'", newDay)
+			return nil, errors.Wrapf(err, "Error saving newDay='%v'", newDay)
 		}
 	}
 	err = pg.Save(&student).Error
 	if err != nil {
-		return 0, 0, 0, 0, errors.Wrapf(err, "Error saving student='%v'", student)
+		return nil, errors.Wrapf(err, "Error saving student='%v'", student)
 	}
-	return nChanged, nNew, nImportantChanged, nImportantNew, nil
+	return &chs, nil
 }
 
 type gorushRequest struct {
