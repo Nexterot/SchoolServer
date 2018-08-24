@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// GetResourcesHandler обрабатывает запросы на школьных ресурсов
+// GetResourcesHandler обрабатывает запросы на получение школьных ресурсов
 func (rest *RestAPI) GetResourcesHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("REST: GetResourcesHandler called", "IP", req.RemoteAddr)
 	// Проверка метода запроса

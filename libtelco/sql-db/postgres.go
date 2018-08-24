@@ -116,7 +116,7 @@ type Day struct {
 	Tasks     []Task // has-many relation
 }
 
-// Task представляет структуру задания
+// Task struct представляет структуру задания
 type Task struct {
 	gorm.Model
 	DayID  uint // parent id
@@ -131,6 +131,32 @@ type Task struct {
 	Mark   string
 	Weight string
 	Author string
+}
+
+// Resource struct представляет структуру школьного ресурса
+type Resource struct {
+	gorm.Model
+	OwnerID   uint   // parent id
+	OwnerType string // parent polymorhic type
+	Name      string
+	Link      string
+}
+
+// ResourceGroup struct представляет структуру группы ресурсов
+type ResourceGroup struct {
+	gorm.Model
+	SchoolID          uint // belongs-to relation
+	Title             string
+	Resources         []Resource         `gorm:"polymorphic:Owner;"`
+	ResourceSubgroups []ResourceSubgroup // has-many relation
+}
+
+// ResourceSubgroup struct представляет структуру подгруппы ресурсов
+type ResourceSubgroup struct {
+	gorm.Model
+	ResourceGroupID uint
+	Title           string
+	Resources       []Resource `gorm:"polymorphic:Owner;"`
 }
 
 // NewDatabase создает Database и возвращает указатель на неё
@@ -180,6 +206,27 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 			return nil, err
 		}
 		logger.Info("DB: Successfully created 'task' table")
+		// Resource
+		logger.Info("DB: Creating 'resource' table")
+		err = sdb.CreateTable(&Resource{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'resource' table")
+		// ResourceGroup
+		logger.Info("DB: Creating 'resourcegroup' table")
+		err = sdb.CreateTable(&ResourceGroup{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'resourcegroup' table")
+		// ResourceSubgroup
+		logger.Info("DB: Creating 'resourcesubgroup' table")
+		err = sdb.CreateTable(&ResourceSubgroup{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'resourcesubgroup' table")
 	} else {
 		logger.Info("DB: Table 'users' exists")
 	}

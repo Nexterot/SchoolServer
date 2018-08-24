@@ -76,6 +76,8 @@ func (p *Push) sendPushes() {
 		p.logger.Error("PUSH: Error when getting users list", "Error", err)
 		return
 	}
+	// Отображение schoolID в число новых ресурсов для этой школы
+	nResources := make(map[uint]int)
 	// Гоним по пользователям
 	for _, usr := range users {
 		p.logger.Info("PUSH: user", "Login", usr.Login)
@@ -99,6 +101,21 @@ func (p *Push) sendPushes() {
 		if err != nil {
 			p.logger.Error("PUSH: Error when getting children map", "Error", err)
 			return
+		}
+		// С помощью первого пользователя из каждой школы скачаем ресурсы
+		_, ok := nResources[usr.SchoolID]
+		if !ok {
+			resources, err := session.GetResourcesList()
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting resource list", "Error", err)
+				return
+			}
+			n, err := p.checkResources(usr.SchoolID, resources)
+			if err != nil {
+				p.logger.Error("PUSH: Error when checking for new resources", "Error", err)
+				return
+			}
+			nResources[usr.SchoolID] = n
 		}
 		// Получим дату из текущей недели
 		//today := "21.05.2018"
@@ -161,6 +178,7 @@ func (p *Push) sendPushes() {
 		// debug
 		p.logger.Info("PUSH: marks", "totalChanged", totalChangedMarks, "totalNew", totalNewMarks, "totalImportantChanged", totalImportantChangedMarks, "totalImportantNew", totalImportantNewMarks)
 		p.logger.Info("PUSH: tasks", "totalNewTasks", totalNewTasks, "totalNewHomeTasks", totalNewHomeTasks)
+		p.logger.Info("PUSH: resources", "schoolID", usr.SchoolID, "resources changed", nResources[usr.SchoolID])
 		// Достанем все девайсы пользователя
 		err = pg.Model(&usr).Related(&devices).Error
 		if err != nil {
@@ -173,7 +191,7 @@ func (p *Push) sendPushes() {
 			// Если андроид
 			if dev.SystemType == db.Android {
 				// Посмотрим, каким образом надо выводить уведомления
-				var n, k, d int
+				var n, k, d, r int
 				if dev.TasksNotification == db.TasksNotificationAll {
 					n = totalNewTasks
 				} else if dev.TasksNotification == db.TasksNotificationHome {
@@ -191,62 +209,98 @@ func (p *Push) sendPushes() {
 					k = 0
 					d = 0
 				}
-				if n+k+d > 3 {
-					// У вас n новых заданий, k новых оценок, d измененных оценок
-					msg := "У Вас "
-					if n > 0 {
-						msg += strconv.Itoa(n)
-						// Посклоняем слова
-						if (n % 10) == 0 {
-							msg += " новых заданий"
-						} else if (n % 10) == 1 {
-							msg += " новое задание"
-						} else if (n % 10) > 4 {
-							msg += " новых заданий"
-						} else {
-							msg += " новых задания"
-						}
-					}
-					if k > 0 {
+				if dev.ResourcesNotification {
+					r = nResources[usr.SchoolID]
+				} else {
+					r = 0
+				}
+				if n+k+d+r > 3 {
+					// Чтобы не спамить, пришлем сокращенные
+					if n+k+d > 0 {
+						// У вас n новых заданий, k новых оценок, d измененных оценок
+						msg := "У Вас "
 						if n > 0 {
-							msg += ", "
+							msg += strconv.Itoa(n)
+							// Посклоняем слова
+							if (n % 10) == 0 {
+								msg += " новых заданий"
+							} else if (n % 10) == 1 {
+								msg += " новое задание"
+							} else if (n % 10) > 4 {
+								msg += " новых заданий"
+							} else {
+								msg += " новых задания"
+							}
 						}
-						msg += strconv.Itoa(k)
-						// Посклоняем слова
-						if (k % 10) == 0 {
-							msg += " новых оценок"
-						} else if (k % 10) == 1 {
-							msg += " новая оценка"
-						} else if (k % 10) > 4 {
-							msg += " новых оценок"
-						} else {
-							msg += " новых оценки"
+						if k > 0 {
+							if n > 0 {
+								msg += ", "
+							}
+							msg += strconv.Itoa(k)
+							// Посклоняем слова
+							if (k % 10) == 0 {
+								msg += " новых оценок"
+							} else if (k % 10) == 1 {
+								msg += " новая оценка"
+							} else if (k % 10) > 4 {
+								msg += " новых оценок"
+							} else {
+								msg += " новых оценки"
+							}
+						}
+						if d > 0 {
+							if n+k > 0 {
+								msg += ", "
+							}
+							msg += strconv.Itoa(d)
+							// Посклоняем слова
+							if (d % 10) == 0 {
+								msg += " изменённых оценок"
+							} else if (d % 10) == 1 {
+								msg += " изменённая оценка"
+							} else if (d % 10) > 4 {
+								msg += " изменённых оценок"
+							} else {
+								msg += " изменённых оценки"
+							}
+						}
+						// Отправить пуш
+						err = p.sendPush(msg, dev.SystemType, dev.Token)
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
 						}
 					}
-					if d > 0 {
-						if n+k > 0 {
-							msg += ", "
-						}
-						msg += strconv.Itoa(d)
-						// Посклоняем слова
-						if (d % 10) == 0 {
-							msg += " изменённых оценок"
-						} else if (d % 10) == 1 {
-							msg += " изменённая оценка"
-						} else if (d % 10) > 4 {
-							msg += " изменённых оценок"
+					// Появилось r учебных материалов
+					if r > 0 {
+						msg := ""
+						if (r % 10) == 0 {
+							msg = "Появилось "
+							msg += strconv.Itoa(r)
+							msg += " учебных материалов"
+						} else if (r % 10) == 1 {
+							msg = "Появился "
+							msg += strconv.Itoa(r)
+							msg += " учебный материал"
+						} else if (r % 10) > 4 {
+							msg = "Появилось "
+							msg += strconv.Itoa(r)
+							msg += " учебных материалов"
 						} else {
-							msg += " изменённых оценки"
+							msg = "Появилось "
+							msg += strconv.Itoa(r)
+							msg += " учебных материала"
 						}
-					}
-					// Отправить пуш
-					err = p.sendPush(msg, dev.SystemType, dev.Token)
-					if err != nil {
-						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
-						return
+						// Отправить пуш
+						err = p.sendPush(msg, dev.SystemType, dev.Token)
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
 					}
 					// Появилось s новых объявлений
 					// У вас w новых писем на почте
+
 				} else {
 					// У вас новая оценка (2 новые оценки)
 					if k > 0 {
@@ -306,6 +360,21 @@ func (p *Push) sendPushes() {
 						} else {
 							msg += strconv.Itoa(n)
 							msg += " новые работы"
+						}
+						// Отправить пуш
+						err = p.sendPush(msg, dev.SystemType, dev.Token)
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "msg", msg, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					}
+					// Появился новый учебный материал (2 новых учебных материала)
+					if r > 0 {
+						msg := ""
+						if r == 1 {
+							msg = "Появился новый учебный материал"
+						} else {
+							msg = "Появилось " + strconv.Itoa(r) + " новых учебных материала"
 						}
 						// Отправить пуш
 						err = p.sendPush(msg, dev.SystemType, dev.Token)
@@ -451,6 +520,152 @@ func (p *Push) countChanges(userID uint, studentID string, week *dt.WeekSchoolMa
 		return nil, errors.Wrapf(err, "Error saving student='%v'", student)
 	}
 	return &chs, nil
+}
+
+// checkResources считает число новых ресурсов у школы
+func (p *Push) checkResources(schoolID uint, resources *dt.Resources) (int, error) {
+	var (
+		school      db.School
+		subs        []db.ResourceSubgroup
+		groups      []db.ResourceGroup
+		reses       []db.Resource
+		newGroup    db.ResourceGroup
+		newSubgroup db.ResourceSubgroup
+		newRes      db.Resource
+		count       int
+	)
+	// shortcut
+	pg := p.db.SchoolServerDB
+	// Получим школу по primary key
+	err := pg.First(&school, schoolID).Error
+	if err != nil {
+		return 0, errors.Wrapf(err, "PUSH: Error when getting school by primary key='%v'", schoolID)
+	}
+	// Получим все ресурсы школы
+	where := db.ResourceGroup{SchoolID: schoolID}
+	err = pg.Where(where).Find(&groups).Error
+	if err != nil {
+		return 0, errors.Wrapf(err, "PUSH: Error when getting resource for school with primary key='%v'", schoolID)
+	}
+	// Гоним по группам ресурсов
+	for _, rGroup := range resources.Data {
+		// Найдем подходящую группу в БД
+		groupFound := false
+		for _, g := range groups {
+			if g.Title == rGroup.GroupTitle {
+				groupFound = true
+				newGroup = g
+				break
+			}
+		}
+		if !groupFound {
+			// Группы не существует, надо создать
+			newGroup = db.ResourceGroup{SchoolID: schoolID, Title: rGroup.GroupTitle, Resources: []db.Resource{}, ResourceSubgroups: []db.ResourceSubgroup{}}
+			err = pg.Create(&newGroup).Error
+			if err != nil {
+				return 0, errors.Wrapf(err, "Error creating newGroup='%v'", newGroup)
+			}
+		}
+		// Получаем список ресурсов для группы
+		err = pg.Model(&newGroup).Related(&reses, "Resources").Error
+		if err != nil {
+			return 0, errors.Wrapf(err, "Error getting newGroup='%v' resources", newGroup)
+		}
+		// Гоняем по ресурсам
+		for _, res := range rGroup.Files {
+			// Найдем подходящий ресурс в БД
+			resFound := false
+			for _, r := range reses {
+				if res.Name == r.Name {
+					resFound = true
+					newRes = r
+					break
+				}
+			}
+			if !resFound {
+				// Ресурса не существует, надо создать
+				newRes = db.Resource{Name: res.Name, Link: res.Link}
+				err = pg.Create(&newRes).Error
+				if err != nil {
+					return 0, errors.Wrapf(err, "Error creating newRes='%v'", newRes)
+				}
+				reses = append(reses, newRes)
+				// Новый ресурс, обновим счетчик
+				count++
+			}
+		}
+		// Сохраним группу и ее ресурсы и подгруппы
+		newGroup.Resources = reses
+		err = pg.Save(&newGroup).Error
+		if err != nil {
+			return 0, errors.Wrapf(err, "Error saving newGroup='%v'", newGroup)
+		}
+		// Получаем список подгрупп этой группы
+		err = pg.Model(&newGroup).Related(&subs, "ResourceSubgroups").Error
+		if err != nil {
+			return 0, errors.Wrapf(err, "Error getting newGroup='%v' subgroups", newGroup)
+		}
+		// Гоняем по подгруппам
+		for _, sub := range rGroup.Subgroups {
+			// Найдем подходящую подгруппу в БД
+			groupFound := false
+			for _, g := range subs {
+				if g.Title == sub.SubgroupTitle {
+					groupFound = true
+					newSubgroup = g
+					break
+				}
+			}
+			if !groupFound {
+				// Подгруппы не существует, надо создать
+				newSubgroup = db.ResourceSubgroup{ResourceGroupID: newGroup.ID, Title: sub.SubgroupTitle, Resources: []db.Resource{}}
+				err = pg.Create(&newSubgroup).Error
+				if err != nil {
+					return 0, errors.Wrapf(err, "Error creating newSubgroup='%v'", newSubgroup)
+				}
+			}
+			// Получаем список ресурсов для подгруппы
+			err = pg.Model(&newSubgroup).Related(&reses, "Resources").Error
+			if err != nil {
+				return 0, errors.Wrapf(err, "Error getting newSubgroup='%v' resources", newGroup)
+			}
+			// Гоняем по ресурсам
+			for _, res := range sub.Files {
+				// Найдем подходящий ресурс в БД
+				resFound := false
+				for _, r := range reses {
+					if res.Name == r.Name {
+						resFound = true
+						newRes = r
+						break
+					}
+				}
+				if !resFound {
+					// Ресурса не существует, надо создать
+					newRes = db.Resource{Name: res.Name, Link: res.Link}
+					err = pg.Create(&newRes).Error
+					if err != nil {
+						return 0, errors.Wrapf(err, "Error creating newRes='%v'", newRes)
+					}
+					reses = append(reses, newRes)
+					// Новый ресурс, обновим счетчик
+					count++
+				}
+			}
+			// Сохраним подгруппу и ее ресурсы
+			newSubgroup.Resources = reses
+			err = pg.Save(&newSubgroup).Error
+			if err != nil {
+				return 0, errors.Wrapf(err, "Error saving newSubgroup='%v'", newSubgroup)
+			}
+		}
+		// Сохраним группу и ее ресурсы и подгруппы
+		err = pg.Save(&newGroup).Error
+		if err != nil {
+			return 0, errors.Wrapf(err, "Error saving newGroup='%v'", newGroup)
+		}
+	}
+	return count, nil
 }
 
 type gorushRequest struct {
