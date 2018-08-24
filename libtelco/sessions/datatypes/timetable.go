@@ -14,7 +14,7 @@ type TimeTable struct {
 // DayTimeTable struct содержит в себе расписание на день.
 type DayTimeTable struct {
 	Date    string   `json:"date"`
-	Lessons []Lesson `json:"lesson"`
+	Lessons []Lesson `json:"lessons"`
 }
 
 // Lesson struct содержит в себе один урок.

@@ -156,12 +156,39 @@ func GetDayTimeTable(s *dt.Session, date, studentID string) (*dt.DayTimeTable, e
 		}
 	}
 
+	var checkWeekend func(*html.Node) *html.Node
+	checkWeekend = func(node *html.Node) *html.Node {
+		if node != nil {
+			if strings.Contains(node.Data, "Нет занятий на этот день для выбранных условий") {
+				return node
+			}
+			for c := node.FirstChild; c != nil; c = c.NextSibling {
+				n := checkWeekend(c)
+				if n != nil {
+					return n
+				}
+			}
+		}
+
+		return nil
+	}
+
 	// Получает уроки.
 	getLessons := func(node *html.Node) []dt.Lesson {
 		// Максимальное количество уроков.
 		n := 10
 
 		lessonsNode := searchForLessonsNode(node)
+		if lessonsNode == nil {
+			// Проверяем, является ли день выходным
+			if checkWeekend(node) != nil {
+				lessons := make([]dt.Lesson, 1)
+				lessons[0].Begin = "00:00"
+				lessons[0].End = "23:59"
+				lessons[0].Name = "Выходной день"
+				return lessons
+			}
+		}
 
 		starts := make([]string, 0, n)
 		ends := make([]string, 0, n)
@@ -176,22 +203,23 @@ func GetDayTimeTable(s *dt.Session, date, studentID string) (*dt.DayTimeTable, e
 		}
 
 		if len(starts) != 0 && len(names) == 0 && len(classrooms) == 0 {
-			// Случай, когда в расписании указаны каникулы
-			infoNode := lessonsNode.FirstChild.NextSibling.FirstChild.NextSibling.FirstChild
-			var date string
-			if infoNode.FirstChild != nil {
-				date = infoNode.FirstChild.Data
-				s := strings.Split(date, "-")
-				lessons[0].Begin = s[0][:len(s[0])-2]
-				lessons[0].End = s[1][2:]
-			}
-			infoNode = infoNode.NextSibling.FirstChild
-			var event string
-			if infoNode != nil && infoNode.NextSibling.FirstChild != nil {
-				event = infoNode.Data + infoNode.NextSibling.FirstChild.Data
+			// Случай, когда в расписании указаны каникулы или праздник
+			eventNode := lessonsNode.FirstChild.NextSibling.FirstChild.NextSibling
+			for i := 0; i < len(starts) && eventNode != nil && eventNode.FirstChild != nil; i++ {
+				infoNode := eventNode.FirstChild
+				lessons[i].Begin = "00:00"
+				lessons[i].End = "23:59"
+				infoNode = infoNode.NextSibling.FirstChild
+				var event string
+				if infoNode != nil && infoNode.NextSibling.FirstChild != nil {
+					event = infoNode.NextSibling.FirstChild.Data
+				}
+
+				lessons[i].Name = event
+
+				eventNode = eventNode.NextSibling
 			}
 
-			lessons[0].Name = event
 		} else {
 			for i := 0; i < len(starts); i++ {
 				lessons[i].Begin = starts[i]
