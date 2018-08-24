@@ -156,6 +156,7 @@ func GetDayTimeTable(s *dt.Session, date, studentID string) (*dt.DayTimeTable, e
 		}
 	}
 
+	// Проверяет, является ли день выходным
 	var checkWeekend func(*html.Node) *html.Node
 	checkWeekend = func(node *html.Node) *html.Node {
 		if node != nil {

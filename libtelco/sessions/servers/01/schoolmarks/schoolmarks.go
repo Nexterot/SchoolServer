@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 	"unicode"
 
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
@@ -223,11 +224,36 @@ func GetWeekSchoolMarks(s *dt.Session, date, studentID string) (*dt.WeekSchoolMa
 		return days, errors.New("Node is nil in func getAllSchoolMarksInfo")
 	}
 
+	// Проверяет, является ли день выходным
+	var checkWeekend func(*html.Node) *html.Node
+	checkWeekend = func(node *html.Node) *html.Node {
+		if node != nil {
+			if strings.Contains(node.Data, "Нет заданий на этой неделе") {
+				return node
+			}
+			for c := node.FirstChild; c != nil; c = c.NextSibling {
+				n := checkWeekend(c)
+				if n != nil {
+					return n
+				}
+			}
+		}
+
+		return nil
+	}
+
 	// Составляет таблицу с днями и их уроками
 	makeWeekSchoolMarks := func(node *html.Node, requestDate string) (*dt.WeekSchoolMarks, error) {
 		var days dt.WeekSchoolMarks
 		var err error
 		lessonsNode := searchForSchoolMarksNode(node)
+		if lessonsNode == nil {
+			// Проверяем, является ли день выходным
+			if checkWeekend(node) != nil {
+				days.Data = make([]dt.DaySchoolMarks, 0)
+				return &days, nil
+			}
+		}
 		days.Data, err = getAllSchoolMarksInfo(lessonsNode, requestDate)
 		return &days, err
 	}
