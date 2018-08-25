@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"strconv"
+	"strings"
 
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 	"github.com/masyagin1998/SchoolServer/libtelco/sessions/reportsparser"
@@ -157,93 +158,88 @@ func GetParentInfoLetterData(s *dt.Session, classID, studentID string) (*dt.Pare
 		if node.FirstChild == nil {
 			return nil, errors.New("Couldn't find parent info letter data")
 		}
-		infoNode := node.FirstChild
-		for infoNode != nil && infoNode.Data != "div" {
-			infoNode = infoNode.NextSibling
-		}
-		if infoNode == nil {
-			return nil, errors.New("Couldn't find parent info letter data")
-		}
-		infoNode = infoNode.NextSibling
-		for infoNode != nil && infoNode.Data != "div" {
-			infoNode = infoNode.NextSibling
-		}
-		if infoNode == nil {
-			return nil, errors.New("Couldn't find parent info letter data")
-		}
-		infoNode = infoNode.NextSibling
-		for infoNode != nil && infoNode.Data != "div" {
-			infoNode = infoNode.NextSibling
-		}
-		if infoNode == nil {
-			return nil, errors.New("Couldn't find parent info letter data")
-		}
-		if infoNode.FirstChild != nil {
-			// Ищем виды отчётов
-			dataNode := infoNode.FirstChild
-			for dataNode != nil && dataNode.Data != "div" {
-				dataNode = dataNode.NextSibling
+		for infoNode := node.FirstChild; infoNode != nil; infoNode = infoNode.NextSibling {
+			if infoNode.Data != "div" || infoNode.FirstChild == nil {
+				continue
 			}
-			if dataNode != nil && dataNode.FirstChild != nil {
-				dataNode = dataNode.FirstChild
-				for dataNode != nil && dataNode.Data != "select" {
-					dataNode = dataNode.NextSibling
-				}
-				if dataNode != nil && dataNode.FirstChild != nil {
-					data.ReportTypes = make([]dt.ReportType, 0, 2)
-					for dataNode = dataNode.FirstChild; dataNode != nil; dataNode = dataNode.NextSibling {
-						if dataNode.FirstChild != nil {
-							reportType := dt.ReportType{}
-							reportType.ReportTypeName = dataNode.FirstChild.Data
-							for _, a := range dataNode.Attr {
-								if a.Key == "value" {
-									reportType.ReportTypeID, err = strconv.Atoi(a.Val)
-									if err != nil {
-										return nil, err
-									}
-									break
-								}
-							}
-							data.ReportTypes = append(data.ReportTypes, reportType)
-						}
-					}
-				}
+			typeNode := infoNode.FirstChild
+			for typeNode != nil && typeNode.Data != "label" {
+				typeNode = typeNode.NextSibling
 			}
-		}
-		infoNode = infoNode.NextSibling
-		if infoNode != nil && infoNode.FirstChild != nil {
-			// Ищем периоды
-			dataNode := infoNode.FirstChild
-			for dataNode != nil && dataNode.Data != "div" {
-				dataNode = dataNode.NextSibling
+			if typeNode == nil || typeNode.FirstChild == nil {
+				continue
 			}
-			if dataNode != nil && dataNode.FirstChild != nil {
-				dataNode = dataNode.FirstChild
-				for dataNode != nil && dataNode.Data != "select" {
-					dataNode = dataNode.NextSibling
+			if strings.Contains(typeNode.FirstChild.Data, "Вид отчёта") {
+				for typeNode != nil && typeNode.Data != "div" {
+					typeNode = typeNode.NextSibling
 				}
-				if dataNode != nil && dataNode.FirstChild != nil {
-					data.Periods = make([]dt.Period, 0, 4)
-					for dataNode = dataNode.FirstChild; dataNode != nil; dataNode = dataNode.NextSibling {
-						if dataNode.FirstChild != nil {
-							period := dt.Period{}
-							period.PeriodName = dataNode.FirstChild.Data
-							for _, a := range dataNode.Attr {
-								if a.Key == "value" {
-									period.PeriodID, err = strconv.Atoi(a.Val)
-									if err != nil {
-										return nil, err
-									}
-									break
-								}
-							}
-							data.Periods = append(data.Periods, period)
-						}
-					}
+				if typeNode == nil {
+					continue
 				}
-			}
-		}
 
+				// Ищем виды отчётов
+				if typeNode.FirstChild != nil {
+					dataNode := typeNode.FirstChild
+					for dataNode != nil && dataNode.Data != "select" {
+						dataNode = dataNode.NextSibling
+					}
+					if dataNode != nil && dataNode.FirstChild != nil {
+						data.ReportTypes = make([]dt.ReportType, 0, 2)
+						for dataNode = dataNode.FirstChild; dataNode != nil; dataNode = dataNode.NextSibling {
+							if dataNode.FirstChild != nil {
+								reportType := dt.ReportType{}
+								reportType.ReportTypeName = dataNode.FirstChild.Data
+								for _, a := range dataNode.Attr {
+									if a.Key == "value" {
+										reportType.ReportTypeID, err = strconv.Atoi(a.Val)
+										if err != nil {
+											return nil, err
+										}
+										break
+									}
+								}
+								data.ReportTypes = append(data.ReportTypes, reportType)
+							}
+						}
+					}
+				}
+			}
+			if strings.Contains(typeNode.FirstChild.Data, "Период") {
+				for typeNode != nil && typeNode.Data != "div" {
+					typeNode = typeNode.NextSibling
+				}
+				if typeNode == nil {
+					continue
+				}
+
+				// Ищем периоды
+				if typeNode.FirstChild != nil {
+					dataNode := typeNode.FirstChild
+					for dataNode != nil && dataNode.Data != "select" {
+						dataNode = dataNode.NextSibling
+					}
+					if dataNode != nil && dataNode.FirstChild != nil {
+						data.Periods = make([]dt.Period, 0, 4)
+						for dataNode = dataNode.FirstChild; dataNode != nil; dataNode = dataNode.NextSibling {
+							if dataNode.FirstChild != nil {
+								period := dt.Period{}
+								period.PeriodName = dataNode.FirstChild.Data
+								for _, a := range dataNode.Attr {
+									if a.Key == "value" {
+										period.PeriodID, err = strconv.Atoi(a.Val)
+										if err != nil {
+											return nil, err
+										}
+										break
+									}
+								}
+								data.Periods = append(data.Periods, period)
+							}
+						}
+					}
+				}
+			}
+		}
 		return data, nil
 	}
 
