@@ -72,3 +72,17 @@ func (s *Session) CreateEmail(userID, LBC, LCC, LTO, name, message string) error
 	}
 	return errors.Wrap(err, "from CreateEmail")
 }
+
+// DeleteEmails удаяет заданные сообщения.
+func (s *Session) DeleteEmails(boxID string, emailIDs []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var err error
+	switch s.Serv.Type {
+	case cp.FirstType:
+		err = t01.DeleteEmails(&s.Session, boxID, emailIDs)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return errors.Wrap(err, "from DeleteMessages")
+}
