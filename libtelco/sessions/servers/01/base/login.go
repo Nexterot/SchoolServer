@@ -2,12 +2,12 @@
 
 package base
 
-// Login логинится к серверу первого типа и создает очередную сессию.
 import (
 	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
+	"net/http"
 
 	gr "github.com/levigross/grequests"
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
@@ -15,6 +15,7 @@ import (
 	"golang.org/x/net/html"
 )
 
+// Login логинится к серверу первого типа и создает очередную сессию.
 func Login(s *dt.Session) error {
 	// Создание сессии.
 	p := "http://"
@@ -76,7 +77,11 @@ func Login(s *dt.Session) error {
 	}
 	defer func() {
 		_ = response2.Close()
-	}() //
+	}()
+
+	if response2.StatusCode == http.StatusBadRequest {
+		return errors.New("invalid login or password")
+	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней "AT" и "VER".
