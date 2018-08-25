@@ -5,10 +5,12 @@ package reports
 import (
 	"bytes"
 	"fmt"
+	"strconv"
 
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 	"github.com/masyagin1998/SchoolServer/libtelco/sessions/reportsparser"
 	"github.com/masyagin1998/SchoolServer/libtelco/sessions/servers/01/check"
+	"golang.org/x/net/html"
 
 	"github.com/pkg/errors"
 
@@ -64,9 +66,139 @@ func GetParentInfoLetterData(s *dt.Session) (*dt.ParentInfoLetterData, error) {
 	}
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней параметры отчета восьмого типа.
-	fmt.Println(string(b))
+	parsedHTML, err := html.Parse(bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
 
-	return nil, nil
+	// Находит node с табличкой
+	var findParentInfoLetterDataTableNode func(*html.Node) *html.Node
+	findParentInfoLetterDataTableNode = func(node *html.Node) *html.Node {
+		if node.Type == html.ElementNode {
+			if node.Data == "div" {
+				for _, a := range node.Attr {
+					if a.Key == "class" && a.Val == "filters-panel col-md-12" {
+						return node
+					}
+				}
+			}
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			n := findParentInfoLetterDataTableNode(c)
+			if n != nil {
+				return n
+			}
+		}
+
+		return nil
+	}
+
+	// Формирует данные
+	formParentInfoLetterData := func(node *html.Node) (*dt.ParentInfoLetterData, error) {
+		data := &dt.ParentInfoLetterData{}
+		if node == nil {
+			return nil, errors.New("Node is nil")
+		}
+		if node.FirstChild == nil {
+			return nil, errors.New("Couldn't find parent info letter data")
+		}
+		infoNode := node.FirstChild
+		for infoNode != nil && infoNode.Data != "div" {
+			infoNode = infoNode.NextSibling
+		}
+		if infoNode == nil {
+			return nil, errors.New("Couldn't find parent info letter data")
+		}
+		infoNode = infoNode.NextSibling
+		for infoNode != nil && infoNode.Data != "div" {
+			infoNode = infoNode.NextSibling
+		}
+		if infoNode == nil {
+			return nil, errors.New("Couldn't find parent info letter data")
+		}
+		infoNode = infoNode.NextSibling
+		for infoNode != nil && infoNode.Data != "div" {
+			infoNode = infoNode.NextSibling
+		}
+		if infoNode == nil {
+			return nil, errors.New("Couldn't find parent info letter data")
+		}
+		if infoNode.FirstChild != nil {
+			// Ищем виды отчётов
+			dataNode := infoNode.FirstChild
+			for dataNode != nil && dataNode.Data != "div" {
+				dataNode = dataNode.NextSibling
+			}
+			if dataNode != nil && dataNode.FirstChild != nil {
+				dataNode = dataNode.FirstChild
+				for dataNode != nil && dataNode.Data != "select" {
+					dataNode = dataNode.NextSibling
+				}
+				if dataNode != nil && dataNode.FirstChild != nil {
+					data.ReportTypes = make([]dt.ReportType, 0, 2)
+					for dataNode = dataNode.FirstChild; dataNode != nil; dataNode = dataNode.NextSibling {
+						if dataNode.FirstChild != nil {
+							reportType := dt.ReportType{}
+							reportType.ReportTypeName = dataNode.FirstChild.Data
+							for _, a := range dataNode.Attr {
+								if a.Key == "value" {
+									reportType.ReportTypeID, err = strconv.Atoi(a.Val)
+									if err != nil {
+										return nil, err
+									}
+									break
+								}
+							}
+							data.ReportTypes = append(data.ReportTypes, reportType)
+						}
+					}
+				}
+			}
+		}
+		infoNode = infoNode.NextSibling
+		if infoNode != nil && infoNode.FirstChild != nil {
+			// Ищем периоды
+			dataNode := infoNode.FirstChild
+			for dataNode != nil && dataNode.Data != "div" {
+				dataNode = dataNode.NextSibling
+			}
+			if dataNode != nil && dataNode.FirstChild != nil {
+				dataNode = dataNode.FirstChild
+				for dataNode != nil && dataNode.Data != "select" {
+					dataNode = dataNode.NextSibling
+				}
+				if dataNode != nil && dataNode.FirstChild != nil {
+					data.Periods = make([]dt.Period, 0, 4)
+					for dataNode = dataNode.FirstChild; dataNode != nil; dataNode = dataNode.NextSibling {
+						if dataNode.FirstChild != nil {
+							period := dt.Period{}
+							period.PeriodName = dataNode.FirstChild.Data
+							for _, a := range dataNode.Attr {
+								if a.Key == "value" {
+									period.PeriodID, err = strconv.Atoi(a.Val)
+									if err != nil {
+										return nil, err
+									}
+									break
+								}
+							}
+							data.Periods = append(data.Periods, period)
+						}
+					}
+				}
+			}
+		}
+
+		return data, nil
+	}
+
+	// Создаёт данные для восьмого отчёта
+	makeParentInfoLetterData := func(node *html.Node) (*dt.ParentInfoLetterData, error) {
+		tableNode := findParentInfoLetterDataTableNode(node)
+		return formParentInfoLetterData(tableNode)
+	}
+
+	return makeParentInfoLetterData(parsedHTML)
 }
 
 // GetParentInfoLetterReport возвращает шаблон письма родителям с сервера первого типа.
