@@ -1,2 +1,2 @@
 #!/bin/bash
-go build -o SchoolServer
+go build -o SchoolServer.exe
