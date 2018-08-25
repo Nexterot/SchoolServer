@@ -2,6 +2,12 @@
 
 package datatypes
 
-// MOCK. Андрей, переделай под свои нужды.
+// Profile struct - профиль пользователя.
 type Profile struct {
+	Role       string `json:"role"`
+	Surname    string `json:"surname"`
+	Name       string `json:"name"`
+	Username   string `json:"username"`
+	Schoolyear string `json:"schoolyear"`
+	UID        string `json:"uid"`
 }

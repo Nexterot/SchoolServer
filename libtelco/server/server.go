@@ -6,6 +6,8 @@ Package server содержит основную функциональност�
 package server
 
 import (
+	"fmt"
+
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	"github.com/masyagin1998/SchoolServer/libtelco/push"
@@ -14,7 +16,7 @@ import (
 	"net/http"
 	"runtime"
 
-	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 
 	"github.com/gorilla/context"
 )
@@ -43,23 +45,21 @@ func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
-	/*
-		// ТЕСТЫ.
-		kek := ss.NewSession(&serv.config.Schools[0])
-		if err := kek.Login(); err != nil {
-			fmt.Println(err)
-		}
+	// ТЕСТЫ.
+	kek := ss.NewSession(&serv.config.Schools[0])
+	if err := kek.Login(); err != nil {
+		fmt.Println(err)
+	}
 
-		data, err := kek.GetParentInfoLetterData("11198")
-		fmt.Println(data)
-		if err != nil {
-			fmt.Println(err)
-		}
+	data, err := kek.GetParentInfoLetterData("11198")
+	fmt.Println(data)
+	if err != nil {
+		fmt.Println(err)
+	}
 
-		if err := kek.Logout(); err != nil {
-			fmt.Println(err)
-		}
-	*/
+	if err := kek.Logout(); err != nil {
+		fmt.Println(err)
+	}
 
 	// Привязать handler'ы
 	serv.api.BindHandlers()
