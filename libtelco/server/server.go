@@ -6,9 +6,6 @@ Package server содержит основную функциональност�
 package server
 
 import (
-
-	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
-
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	"github.com/masyagin1998/SchoolServer/libtelco/push"
@@ -16,6 +13,8 @@ import (
 
 	"net/http"
 	"runtime"
+
+	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 
 	"github.com/gorilla/context"
 )
@@ -47,7 +46,12 @@ func (serv *Server) Run() error {
 	/*
 		// ТЕСТЫ.
 		kek := ss.NewSession(&serv.config.Schools[0])
-		err := kek.Login()
+		if err := kek.Login(); err != nil {
+			fmt.Println(err)
+		}
+
+		data, err := kek.GetParentInfoLetterData("11198")
+		fmt.Println(data)
 		if err != nil {
 			fmt.Println(err)
 		}

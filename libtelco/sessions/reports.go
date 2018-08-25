@@ -167,14 +167,24 @@ func (s *Session) GetJournalAccessReport(studentID string) (*dt.JournalAccessRep
 */
 
 // GetParentInfoLetterData возвращает параметры отчета восьмого типа.
-func (s *Session) GetParentInfoLetterData() (*dt.ParentInfoLetterData, error) {
+func (s *Session) GetParentInfoLetterData(studentID string) (*dt.ParentInfoLetterData, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if studentID == "" {
+		studentID = s.Child.SID
+	}
+	classID := ""
+	for _, v := range s.Children {
+		if v.SID == studentID {
+			classID = v.CLID[:len(v.CLID)-2]
+			break
+		}
+	}
 	var err error
 	var parentInfoLetterData *dt.ParentInfoLetterData
 	switch s.Serv.Type {
 	case cp.FirstType:
-		parentInfoLetterData, err = t01.GetParentInfoLetterData(&s.Session)
+		parentInfoLetterData, err = t01.GetParentInfoLetterData(&s.Session, classID, studentID)
 		err = errors.Wrap(err, "type-01")
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)

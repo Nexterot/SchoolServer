@@ -22,11 +22,11 @@ import (
 */
 
 // GetParentInfoLetterData возвращает параметры отчета восьмого типа с сервера первого типа.
-func GetParentInfoLetterData(s *dt.Session) (*dt.ParentInfoLetterData, error) {
+func GetParentInfoLetterData(s *dt.Session, classID, studentID string) (*dt.ParentInfoLetterData, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
-	r0 := func() ([]byte, bool, error) {
+	r0 := func() (bool, error) {
 		ro := &gr.RequestOptions{
 			Data: map[string]string{
 				"AT":        s.AT,
@@ -43,20 +43,19 @@ func GetParentInfoLetterData(s *dt.Session) (*dt.ParentInfoLetterData, error) {
 		}
 		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportParentInfoLetter.asp", ro)
 		if err != nil {
-			return nil, false, err
+			return false, err
 		}
 		defer func() {
 			_ = r.Close()
 		}()
-		flag, err := check.CheckResponse(s, r)
-		return r.Bytes(), flag, err
+		return check.CheckResponse(s, r)
 	}
-	b, flag, err := r0()
+	flag, err := r0()
 	if err != nil {
 		return nil, errors.Wrap(err, "0 POST")
 	}
 	if !flag {
-		b, flag, err = r0()
+		flag, err = r0()
 		if err != nil {
 			return nil, errors.Wrap(err, "retrying 0 POST")
 		}
@@ -64,6 +63,62 @@ func GetParentInfoLetterData(s *dt.Session) (*dt.ParentInfoLetterData, error) {
 			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
+
+	// 1-ый Post-запрос.
+	r1 := func() ([]byte, bool, error) {
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"A":          "",
+				"AT":         s.AT,
+				"BACK":       "/asp/Reports/ReportParentInfoLetter.asp",
+				"LoginType":  "0",
+				"NA":         "",
+				"PCLID":      classID,
+				"PP":         "/asp/Reports/ReportParentInfoLetter.asp",
+				"RP":         "",
+				"RPTID":      "4",
+				"RT":         "",
+				"ReportType": "",
+				"SID":        studentID,
+				"TA":         "",
+				"TERMID":     "",
+				"ThmID":      "2",
+				"VER":        s.VER,
+				"drWeek":     "",
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Reports/ReportParentInfoLetter.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Reports/ReportParentInfoLetter.asp", ro)
+		if err != nil {
+			return nil, false, err
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+
+		flag, err := check.CheckResponse(s, r)
+		return r.Bytes(), flag, err
+	}
+	b, flag, err := r1()
+	if err != nil {
+		return nil, errors.Wrap(err, "1 POST")
+	}
+	if !flag {
+		b, flag, err = r1()
+		if err != nil {
+			return nil, errors.Wrap(err, "retrying 1 POST")
+		}
+		if !flag {
+			return nil, fmt.Errorf("retry didn't work for 1 POST")
+		}
+	}
+
+	fmt.Println(string(b))
+
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа и найти в ней параметры отчета восьмого типа.
 	parsedHTML, err := html.Parse(bytes.NewReader(b))
