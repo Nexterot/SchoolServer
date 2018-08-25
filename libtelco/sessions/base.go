@@ -93,3 +93,21 @@ func (s *Session) GetLessonsMap(studentID string) (*dt.LessonsMap, error) {
 	}
 	return lessonsMap, errors.Wrap(err, "from GetLessonsMap")
 }
+
+/*
+Смена пароля.
+*/
+
+// ChangePassword меняет пароль.
+func (s *Session) ChangePassword(oldMD5, newMD5 string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	var err error
+	switch s.Serv.Type {
+	case cp.FirstType:
+		err = t01.ChangePassword(&s.Session, oldMD5, newMD5)
+	default:
+		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
+	}
+	return errors.Wrap(err, "from ChangePassword")
+}

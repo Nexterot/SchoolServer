@@ -6,7 +6,6 @@ Package server содержит основную функциональност�
 package server
 
 import (
-
 	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
@@ -52,11 +51,9 @@ func (serv *Server) Run() error {
 			fmt.Println(err)
 		}
 
-		data, err := kek.GetParentInfoLetterData()
-		if err != nil {
+		if err := kek.Logout(); err != nil {
 			fmt.Println(err)
 		}
-		fmt.Println(data)
 	*/
 
 	// Привязать handler'ы

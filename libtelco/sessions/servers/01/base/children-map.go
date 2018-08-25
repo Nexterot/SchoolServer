@@ -2,7 +2,6 @@
 
 package base
 
-// GetChildrenMap получает мапу детей в их UID с сервера первого типа.
 import (
 	"bytes"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"golang.org/x/net/html"
 )
 
+// GetChildrenMap получает мапу детей в их UID с сервера первого типа.
 func GetChildrenMap(s *dt.Session) error {
 	p := "http://"
 

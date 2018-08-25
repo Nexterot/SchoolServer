@@ -55,6 +55,7 @@ func GetProfile(s *dt.Session) (*dt.Profile, error) {
 			return nil, fmt.Errorf("retry didn't work for 0 POST")
 		}
 	}
+
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней мапу детей в их ID.
 	/*
