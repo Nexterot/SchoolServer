@@ -109,11 +109,11 @@ func (rest *RestAPI) BindHandlers() http.Handler {
 	// Школьные ресурсы
 	mux.HandleFunc("/get_resources", rest.GetResourcesHandler) // done
 	// Почта
-	mux.HandleFunc("/get_mail", rest.GetMailHandler)                        // in dev
-	mux.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // in dev
-	mux.HandleFunc("/delete_mail", rest.Handler)
-	mux.HandleFunc("/send_letter", rest.SendLetterHandler)          // in dev
-	mux.HandleFunc("/get_address_book", rest.GetAddressBookHandler) // in dev
+	mux.HandleFunc("/get_mail", rest.GetMailHandler)                        // done
+	mux.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // done
+	mux.HandleFunc("/delete_mail", rest.DeleteMailHandler)                  // done
+	mux.HandleFunc("/send_letter", rest.SendLetterHandler)                  // done
+	mux.HandleFunc("/get_address_book", rest.GetAddressBookHandler)         // done
 	// Форум
 	mux.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
 	mux.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler)        // in dev
