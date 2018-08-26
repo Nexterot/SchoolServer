@@ -58,6 +58,7 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 			return
 		}
 	}
+	// Получить расписание
 	timeTable, err := remoteSession.GetTimeTable(rReq.Date, rReq.Days, strconv.Itoa(rReq.ID))
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
@@ -76,6 +77,16 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 				respwr.WriteHeader(http.StatusBadGateway)
 				return
 			}
+		} else if strings.Contains(err.Error(), "Invalid days number") {
+			respwr.WriteHeader(http.StatusBadRequest)
+			resp := "invalid days"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
+			return
 		} else {
 			// Другая ошибка
 			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
