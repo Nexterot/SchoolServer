@@ -108,9 +108,9 @@ func (rest *RestAPI) BindHandlers() {
 	// Почта
 	http.HandleFunc("/get_mail", rest.GetMailHandler)                        // done
 	http.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // done
-	http.HandleFunc("/delete_mail", rest.Handler)
-	http.HandleFunc("/send_letter", rest.SendLetterHandler)          // done
-	http.HandleFunc("/get_address_book", rest.GetAddressBookHandler) // in dev
+	http.HandleFunc("/delete_mail", rest.DeleteMailHandler)                  // in dev
+	http.HandleFunc("/send_letter", rest.SendLetterHandler)                  // done
+	http.HandleFunc("/get_address_book", rest.GetAddressBookHandler)         // in dev
 	// Форум
 	http.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
 	http.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler)        // in dev
