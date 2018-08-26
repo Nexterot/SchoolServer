@@ -19,14 +19,29 @@ func GetForumThemesList(s *dt.Session, page string) (*dt.ForumThemesList, error)
 	p := "http://"
 
 	// 0-ой Get-запрос (не дублирующийся).
-	r0 := func() (bool, error) {
+	r0 := func() ([]byte, bool, error) {
 		ro := &gr.RequestOptions{}
-		_, err := s.Sess.Get(p+s.Serv.Link+fmt.Sprintf("/asp/Forum/Forum.asp?AT=%s&VER=%s", s.AT, s.VER), ro)
-		return true, err
+		r, err := s.Sess.Get(p+s.Serv.Link+fmt.Sprintf("/asp/Forum/Forum.asp?AT=%s&VER=%s", s.AT, s.VER), ro)
+		defer func() {
+			_ = r.Close()
+		}()
+		return r.Bytes(), true, err
 	}
-	_, err := r0()
+	b, _, err := r0()
 	if err != nil {
 		return nil, errors.Wrap(err, "0 GET")
+	}
+
+	maxPageNumber, err := getNumberOfForumPages(b)
+	if err != nil {
+		return nil, err
+	}
+	currPageNumber, err := strconv.Atoi(page)
+	if err != nil {
+		return nil, err
+	}
+	if currPageNumber > maxPageNumber {
+		return nil, errors.New("current page number is more than max page number")
 	}
 
 	// 1-ый POST-запрос.

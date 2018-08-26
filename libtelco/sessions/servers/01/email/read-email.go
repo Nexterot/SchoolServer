@@ -6,7 +6,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	gr "github.com/levigross/grequests"
@@ -80,62 +79,6 @@ func GetEmailsList(s *dt.Session, nBoxID, startInd, pageSize, sequence string) (
 		return nil, err
 	}
 	return emailsList, nil
-}
-
-func getNumberOfEmailPages(b []byte) (int, error) {
-	parsedHTML, err := html.Parse(bytes.NewReader(b))
-	if err != nil {
-		return 0, err
-	}
-
-	// Находит node с данными профиля пользователя
-	var findPagesNumberTableNode func(*html.Node) *html.Node
-	findPagesNumberTableNode = func(node *html.Node) *html.Node {
-		if node.Type == html.ElementNode {
-			if node.Data == "span" {
-				for _, a := range node.Attr {
-					if a.Key == "class" && a.Val == "jtable-page-list" {
-						return node
-					}
-				}
-			}
-		}
-		for c := node.FirstChild; c != nil; c = c.NextSibling {
-			n := findPagesNumberTableNode(c)
-			if n != nil {
-				return n
-			}
-		}
-
-		return nil
-	}
-
-	findNumberOfPages := func(node *html.Node) (int, error) {
-		if node == nil {
-			return -1, errors.New("Node is nil")
-		}
-		if node.FirstChild == nil {
-			return -1, errors.New("Couldn't find number of pages")
-		}
-		var maxNumber int
-		for infoNode := node.FirstChild; infoNode != nil; infoNode = infoNode.NextSibling {
-			if infoNode.Data == "span" && infoNode.FirstChild != nil {
-				numberNode := infoNode
-				for numberNode != nil && numberNode.Data != "span" {
-					numberNode = numberNode.NextSibling
-				}
-				if numberNode != nil && numberNode.FirstChild != nil {
-					number, err := strconv.Atoi(numberNode.FirstChild.Data)
-					if err == nil && number > maxNumber {
-						maxNumber = number
-					}
-				}
-			}
-		}
-		return maxNumber, nil
-	}
-
-	return findNumberOfPages(findPagesNumberTableNode(parsedHTML))
 }
 
 // GetEmailDescription возвращает подробности заданного электронного письма с сервера первого типа.

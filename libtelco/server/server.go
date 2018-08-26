@@ -19,7 +19,6 @@ import (
 
 	"net/http"
 	"runtime"
-	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 )
 
 // Server struct содержит конфигурацию сервера.
@@ -53,12 +52,6 @@ func (serv *Server) Run() {
 		// ТЕСТЫ.
 		kek := ss.NewSession(&serv.config.Schools[0])
 		if err := kek.Login(); err != nil {
-			fmt.Println(err)
-		}
-
-		data, err := kek.GetParentInfoLetterData("11198")
-		fmt.Println(data)
-		if err != nil {
 			fmt.Println(err)
 		}
 
