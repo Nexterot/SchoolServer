@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
@@ -192,6 +193,19 @@ func (rest *RestAPI) remoteRelogin(respwr http.ResponseWriter, req *http.Request
 	rest.logger.Info("create session")
 	err = remoteSession.Login()
 	if err != nil {
+		if strings.Contains(err.Error(), "invalid login or password") {
+			// Пароль неверный
+			rest.logger.Info("REST: Error occured when remote signing in", "Error", "invalid login or password", "Config", school, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			resp := "invalid login or password"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
+			return nil
+		}
 		rest.logger.Error("REST: Error occured when remote signing in", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadGateway)
 		return nil

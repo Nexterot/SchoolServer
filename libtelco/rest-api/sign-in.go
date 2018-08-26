@@ -126,7 +126,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	if exists {
 		rest.logger.Info("REST: exists in redis", "IP", req.RemoteAddr)
 		// Если существует, проверим пароль
-		// Подразумевается, что уже был успешный вход => сессия локальная не должна быть новой
+		// Подразумевается, что уже был успешный вход
 		isCorrect, err := rest.Db.CheckPassword(rReq.Login, rReq.ID, rReq.Passkey)
 		if err != nil {
 			if err.Error() == "record not found" {
@@ -206,6 +206,19 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		newRemoteSession := ss.NewSession(&school)
 		err = newRemoteSession.Login()
 		if err != nil {
+			if strings.Contains(err.Error(), "invalid login or password") {
+				// Пароль неверный
+				rest.logger.Info("REST: Error occured when remote signing in", "Error", "invalid login or password", "Config", school, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusBadRequest)
+				resp := "invalid login or password"
+				status, err := respwr.Write([]byte(resp))
+				if err != nil {
+					rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				} else {
+					rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				}
+				return
+			}
 			rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadGateway)
 			return
