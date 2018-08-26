@@ -70,16 +70,23 @@ func (serv *Server) Run() {
 	// Подключить рассылку пушей
 	// go serv.push.Run()
 
+	defer func() {
+		_ = serv.api.Db.Close()
+		_ = serv.api.Redis.Close()
+		_ = serv.api.Store.Close()
+	}()
+
 	go func() {
 		if err := serv.serv.ListenAndServe(); err != http.ErrServerClosed {
 			serv.logger.Error("Fatal error occured, while running server", "error", err)
 		}
 	}()
 
-	serv.gracefullShutdown()
+	serv.gracefulShutdown()
 }
 
-func (serv *Server) gracefullShutdown() {
+// gracefulShutdown безопасно выключает сервер.
+func (serv *Server) gracefulShutdown() {
 	stop := make(chan os.Signal, 1)
 
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
