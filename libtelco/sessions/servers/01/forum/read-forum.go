@@ -213,6 +213,62 @@ func GetForumThemesList(s *dt.Session, page string) (*dt.ForumThemesList, error)
 	return makeForumThemesList(parsedHTML)
 }
 
+func getNumberOfForumPages(b []byte) (int, error) {
+	parsedHTML, err := html.Parse(bytes.NewReader(b))
+	if err != nil {
+		return 0, err
+	}
+
+	// Находит node с данными профиля пользователя
+	var findPagesNumberTableNode func(*html.Node) *html.Node
+	findPagesNumberTableNode = func(node *html.Node) *html.Node {
+		if node.Type == html.ElementNode {
+			if node.Data == "ul" {
+				for _, a := range node.Attr {
+					if a.Key == "class" && a.Val == "pagination" {
+						return node
+					}
+				}
+			}
+		}
+		for c := node.FirstChild; c != nil; c = c.NextSibling {
+			n := findPagesNumberTableNode(c)
+			if n != nil {
+				return n
+			}
+		}
+
+		return nil
+	}
+
+	findNumberOfPages := func(node *html.Node) (int, error) {
+		if node == nil {
+			return -1, errors.New("Node is nil")
+		}
+		if node.FirstChild == nil {
+			return -1, errors.New("Couldn't find number of pages")
+		}
+		var maxNumber int
+		for infoNode := node.FirstChild; infoNode != nil; infoNode = infoNode.NextSibling {
+			if infoNode.Data == "li" && infoNode.FirstChild != nil {
+				numberNode := infoNode.FirstChild
+				for numberNode != nil && numberNode.Data != "a" {
+					numberNode = numberNode.NextSibling
+				}
+				if numberNode != nil && numberNode.FirstChild != nil {
+					number, err := strconv.Atoi(numberNode.FirstChild.Data)
+					if err == nil && number > maxNumber {
+						maxNumber = number
+					}
+				}
+			}
+		}
+		return maxNumber, nil
+	}
+
+	return findNumberOfPages(findPagesNumberTableNode(parsedHTML))
+}
+
 // GetForumThemeMessages возвращает список всех сообщений одной темы форума с сервера первого типа.
 func GetForumThemeMessages(s *dt.Session, TID, page, pageSize string) (*dt.ForumThemeMessages, error) {
 	p := "http://"
