@@ -4,7 +4,6 @@ package main
 
 import (
 	"fmt"
-	"net/http"
 	"os"
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
@@ -57,9 +56,5 @@ func main() {
 
 	// Запуск сервера.
 	server := server.NewServer(config, logger)
-	if err := server.Run(); err != http.ErrServerClosed {
-		logger.Error("Fatal error occured, while running server", "error", err)
-	} else {
-		logger.Info("Server was successfully shutdowned")
-	}
+	server.Run()
 }

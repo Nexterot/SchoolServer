@@ -37,6 +37,7 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 	serv := &Server{
 		config: config,
 		api:    rest,
+		logger: logger,
 		push:   push.NewPush(rest, logger),
 		serv:   &http.Server{Addr: config.ServerAddr, Handler: rest.BindHandlers()},
 	}
@@ -44,7 +45,7 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 }
 
 // Run запускает сервер.
-func (serv *Server) Run() error {
+func (serv *Server) Run() {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
@@ -66,23 +67,16 @@ func (serv *Server) Run() error {
 		}
 	*/
 
-	defer func() {
-		_ = serv.api.Db.Close()
-		_ = serv.api.Redis.Close()
-		_ = serv.api.Store.Close()
-	}()
-
 	// Подключить рассылку пушей
 	// go serv.push.Run()
 
-	var err error
 	go func() {
-		err = serv.serv.ListenAndServe()
+		if err := serv.serv.ListenAndServe(); err != http.ErrServerClosed {
+			serv.logger.Error("Fatal error occured, while running server", "error", err)
+		}
 	}()
 
 	serv.gracefullShutdown()
-
-	return err
 }
 
 func (serv *Server) gracefullShutdown() {
@@ -90,8 +84,8 @@ func (serv *Server) gracefullShutdown() {
 
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
-	sgn := <-stop
-	serv.logger.Info("Got signal", "signal", sgn)
+	<-stop
+	serv.logger.Info("Got signal", "signal", "SIGTERM")
 	serv.logger.Info("Gracefull shutdown was successfully started")
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(5))
@@ -99,5 +93,7 @@ func (serv *Server) gracefullShutdown() {
 
 	if err := serv.serv.Shutdown(ctx); err != nil {
 		serv.logger.Error("Error occured, while closing server", "error", err)
+	} else {
+		serv.logger.Info("Server was successfully shutdowned")
 	}
 }
