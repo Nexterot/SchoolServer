@@ -93,7 +93,7 @@ func GetProfile(s *dt.Session) (*dt.Profile, error) {
 		if node.Type == html.ElementNode {
 			if node.Data == "form" {
 				for _, a := range node.Attr {
-					if a.Key == "action" && a.Val == "SaveParentSettings.asp" {
+					if a.Key == "action" && (a.Val == "SaveParentSettings.asp" || a.Val == "SaveMySettings.asp") {
 						return node
 					}
 				}
@@ -178,6 +178,31 @@ func GetProfile(s *dt.Session) (*dt.Profile, error) {
 						}
 					}
 					continue
+				} else {
+					if key == "Роль в системе" {
+						for dataNode != nil && dataNode.Data != "div" {
+							dataNode = dataNode.NextSibling
+						}
+						if dataNode == nil || dataNode.FirstChild == nil {
+							continue
+						}
+						roleNode := dataNode.FirstChild
+						for roleNode != nil && roleNode.Data != "input" {
+							roleNode = roleNode.NextSibling
+						}
+						if roleNode == nil {
+							profile.Role = dataNode.FirstChild.Data
+							continue
+						} else {
+							for _, a := range roleNode.Attr {
+								if a.Key == "value" {
+									profile.Role = a.Val
+									continue
+								}
+							}
+							continue
+						}
+					}
 				}
 				for dataNode != nil && dataNode.Data != "div" {
 					dataNode = dataNode.NextSibling
@@ -204,8 +229,6 @@ func GetProfile(s *dt.Session) (*dt.Profile, error) {
 					profile.Name = val
 				case "Имя пользователя":
 					profile.Username = val
-				case "Роль в системе":
-					profile.Role = val
 				}
 			}
 		}
