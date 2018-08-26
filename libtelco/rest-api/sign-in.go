@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/sessions"
 	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
+	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 )
 
 // signInRequest используется в SignInHandler
@@ -30,7 +31,13 @@ type student struct {
 
 // signInResponse используется в SignInHandler
 type signInResponse struct {
-	Students []student `json:"students"`
+	Students   []student `json:"students"`
+	Role       string    `json:"role"`
+	Surname    string    `json:"surname"`
+	Name       string    `json:"name"`
+	Username   string    `json:"username"`
+	Schoolyear string    `json:"schoolyear"`
+	UID        string    `json:"uid"`
 }
 
 // SignInHandler обрабатывает вход в учетную запись на сайте школы
@@ -123,6 +130,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	var sessionName string
 	var session *sessions.Session
 	var remoteSession *ss.Session
+	var profile *dt.Profile
 	if exists {
 		rest.logger.Info("REST: exists in redis", "IP", req.RemoteAddr)
 		// Если существует, проверим пароль
@@ -185,6 +193,13 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				rest.sessionsMap[sessionName] = newRemoteSession
 			}
 			remoteSession = newRemoteSession
+			// Получим из БД данные о профиле
+			profile, err = rest.Db.GetUserProfile(rReq.Login, rReq.ID)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when getting user profile from db", "Error", err, "IP", req.RemoteAddr)
+				respwr.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		} else {
 			// Если неверный, пошлем BadRequest
 			rest.logger.Info("REST: incorrect pass", "IP", req.RemoteAddr)
@@ -210,7 +225,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				// Пароль неверный
 				rest.logger.Info("REST: Error occured when remote signing in", "Error", "invalid login or password", "Config", school, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusBadRequest)
-				resp := "invalid login or password"
+				resp := "invalid login or passkey"
 				status, err := respwr.Write([]byte(resp))
 				if err != nil {
 					rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
@@ -236,6 +251,14 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			respwr.WriteHeader(http.StatusBadGateway)
 			return
 		}
+		// Получим профиль пользователя
+		profile, err = newRemoteSession.GetProfile()
+		if err != nil {
+			rest.logger.Error("REST: Error occured when getting user profile", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadGateway)
+			return
+		}
+
 		// Если логин и пароль правильные, создадим локальную сессию
 		// Сгенерировать имя локальной сессии
 		timeString := time.Now().String()
@@ -268,7 +291,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		session = newLocalSession
 		// Обновляем базу данных
 		isParent := true
-		err = rest.Db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Children)
+		err = rest.Db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Children, profile)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
@@ -303,8 +326,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		stud = student{Name: k, ID: vs, ClassID: v.CLID}
 		studs = append(studs, stud)
 	}
-	// Замаршалить
-	resp := signInResponse{Students: studs}
+	resp := signInResponse{Students: studs, Role: profile.Role, Surname: profile.Surname, Name: profile.Name, Username: profile.Username, Schoolyear: profile.Schoolyear, UID: profile.UID}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(resp)
 	if err != nil {

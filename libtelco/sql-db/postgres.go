@@ -67,12 +67,12 @@ type School struct {
 // User struct представляет структуру записи пользователя
 type User struct {
 	gorm.Model
-	SchoolID   uint      // parent id
+	SchoolID   uint // parent id
+	UID        int
 	Login      string    `sql:"size:255;index"`
 	Password   string    `sql:"size:255"`
 	Permission bool      `sql:"DEFAULT:false"`
 	FirstName  string    `sql:"size:255"`
-	MiddleName string    `sql:"size:255"`
 	LastName   string    `sql:"size:255"`
 	TrueLogin  string    `sql:"size:255"`
 	Role       string    `sql:"size:255"`
@@ -262,7 +262,7 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 }
 
 // UpdateUser обновляет данные о пользователе
-func (db *Database) UpdateUser(login string, passkey string, isParent bool, schoolID int, childrenMap map[string]dt.Student) error {
+func (db *Database) UpdateUser(login string, passkey string, isParent bool, schoolID int, childrenMap map[string]dt.Student, profile *dt.Profile) error {
 	var (
 		school  School
 		student Student
@@ -311,6 +311,16 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 				Students: students,
 				Devices:  devices,
 			}
+			// Записываем профиль
+			user.Role = profile.Role
+			user.LastName = profile.Surname
+			user.FirstName = profile.Name
+			user.Year = profile.Schoolyear
+			user.TrueLogin = profile.Username
+			user.UID, err = strconv.Atoi(profile.UID)
+			if err != nil {
+				return errors.Wrapf(err, "Error converting string to int: %v'", profile.UID)
+			}
 			errInner = db.SchoolServerDB.Create(&user).Error
 			if errInner != nil {
 				return errors.Wrapf(errInner, "Error creating user='%v'", user)
@@ -327,6 +337,28 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 		return errors.Wrapf(err, "Error saving updated user='%v'", user)
 	}
 	return nil
+}
+
+// GetUserProfile возвращает профиль пользователя
+func (db *Database) GetUserProfile(userName string, schoolID int) (*dt.Profile, error) {
+	var (
+		user   User
+		school School
+	)
+	// Получаем школу по id
+	err := db.SchoolServerDB.First(&school, schoolID).Error
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error query school by id='%v'", schoolID)
+	}
+	// Получаем пользователя по школе и логину
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err = db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Формируем структуру
+	profile := dt.Profile{Role: user.Role, Surname: user.LastName, Name: user.FirstName, Schoolyear: user.Year, UID: strconv.Itoa(user.UID), Username: user.TrueLogin}
+	return &profile, nil
 }
 
 // GetUserAuthData возвращает данные для повторной удаленной авторизации пользователя

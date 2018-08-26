@@ -193,7 +193,7 @@ func (rest *RestAPI) remoteRelogin(respwr http.ResponseWriter, req *http.Request
 	rest.logger.Info("create session")
 	err = remoteSession.Login()
 	if err != nil {
-		if strings.Contains(err.Error(), "invalid login or password") {
+		if strings.Contains(err.Error(), "invalid login or passkey") {
 			// Пароль неверный
 			rest.logger.Info("REST: Error occured when remote signing in", "Error", "invalid login or password", "Config", school, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)

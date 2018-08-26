@@ -85,7 +85,7 @@ func (rest *RestAPI) ChangePasswordHandler(respwr http.ResponseWriter, req *http
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
 	// Обновить пароль в БД
-	err = rest.Db.UpdateUser(userName.(string), rReq.NewPasskey, false, schoolID.(int), nil)
+	err = rest.Db.UpdateUser(userName.(string), rReq.NewPasskey, false, schoolID.(int), nil, nil)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when saving updated password to DB", "Error", err, "userName", userName, "schoolID", schoolID, "newPasskey", rReq.NewPasskey, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
