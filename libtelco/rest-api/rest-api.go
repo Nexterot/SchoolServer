@@ -112,7 +112,7 @@ func (rest *RestAPI) BindHandlers() http.Handler {
 	mux.HandleFunc("/get_mail", rest.GetMailHandler)                        // in dev
 	mux.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // in dev
 	mux.HandleFunc("/delete_mail", rest.Handler)
-	mux.HandleFunc("/send_letter", rest.Handler)                    // in dev
+	mux.HandleFunc("/send_letter", rest.SendLetterHandler)          // in dev
 	mux.HandleFunc("/get_address_book", rest.GetAddressBookHandler) // in dev
 	// Форум
 	mux.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
