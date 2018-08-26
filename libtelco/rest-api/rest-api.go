@@ -115,12 +115,12 @@ func (rest *RestAPI) BindHandlers() http.Handler {
 	mux.HandleFunc("/send_letter", rest.SendLetterHandler)                  // done
 	mux.HandleFunc("/get_address_book", rest.GetAddressBookHandler)         // done
 	// Форум
-	mux.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
-	mux.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler)        // in dev
-	mux.HandleFunc("/create_topic", rest.CreateTopicHandler)                   // in dev
-	mux.HandleFunc("/create_message_in_topic", rest.CreateTopicMessageHandler) // in dev
+	mux.HandleFunc("/get_forum", rest.GetForumHandler)                         // done
+	mux.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler)        // done
+	mux.HandleFunc("/create_topic", rest.CreateTopicHandler)                   // done
+	mux.HandleFunc("/create_message_in_topic", rest.CreateTopicMessageHandler) // done
 	// Настройки
-	mux.HandleFunc("/change_password", rest.Handler)
+	mux.HandleFunc("/change_password", rest.ChangePasswordHandler) // done
 	// Файлы
 	mux.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir(".")))) // done
 
