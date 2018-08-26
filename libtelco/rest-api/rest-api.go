@@ -48,7 +48,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		key,
 	)
 	if err != nil {
-		logger.Error("REST: Error occured when creating redistore", "Error", err)
+		logger.Fatal("REST: Error occured when creating redistore", "Error", err)
 	} else {
 		logger.Info("REST: Successfully initialized redistore")
 	}
@@ -56,14 +56,14 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 	// gorm
 	database, err := db.NewDatabase(logger, config)
 	if err != nil {
-		logger.Error("REST: Error occured when initializing database", "Error", err)
+		logger.Fatal("REST: Error occured when initializing database", "Error", err)
 	} else {
 		logger.Info("REST: Successfully initialized database")
 	}
 	// redis
 	redis, err := red.NewDatabase(config)
 	if err != nil {
-		logger.Error("REST: Error occured when initializing redis", "Error", err)
+		logger.Fatal("REST: Error occured when initializing redis", "Error", err)
 	} else {
 		logger.Info("REST: Successfully initialized redis")
 	}
