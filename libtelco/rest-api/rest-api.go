@@ -106,10 +106,10 @@ func (rest *RestAPI) BindHandlers() {
 	// Школьные ресурсы
 	http.HandleFunc("/get_resources", rest.GetResourcesHandler) // done
 	// Почта
-	http.HandleFunc("/get_mail", rest.GetMailHandler)                        // in dev
-	http.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // in dev
+	http.HandleFunc("/get_mail", rest.GetMailHandler)                        // done
+	http.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // done
 	http.HandleFunc("/delete_mail", rest.Handler)
-	http.HandleFunc("/send_letter", rest.Handler)                    // in dev
+	http.HandleFunc("/send_letter", rest.SendLetterHandler)          // done
 	http.HandleFunc("/get_address_book", rest.GetAddressBookHandler) // in dev
 	// Форум
 	http.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
