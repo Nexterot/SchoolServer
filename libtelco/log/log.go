@@ -71,3 +71,10 @@ func (logger *Logger) Error(msg string, arg ...interface{}) {
 		_ = logger.logger.Error(msg, arg...)
 	}
 }
+
+// Fatal логгирует ошибки и завершает выполнение программы.
+func (logger *Logger) Fatal(msg string, arg ...interface{}) {
+	if logger.useLog {
+		logger.logger.Fatal(msg, arg...)
+	}
+}

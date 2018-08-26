@@ -6,6 +6,12 @@ Package server содержит основную функциональност�
 package server
 
 import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	"github.com/masyagin1998/SchoolServer/libtelco/push"
@@ -69,5 +75,29 @@ func (serv *Server) Run() error {
 	// Подключить рассылку пушей
 	// go serv.push.Run()
 
-	return serv.serv.ListenAndServe()
+	var err error
+	go func() {
+		err = serv.serv.ListenAndServe()
+	}()
+
+	serv.gracefullShutdown()
+
+	return err
+}
+
+func (serv *Server) gracefullShutdown() {
+	stop := make(chan os.Signal, 1)
+
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	sgn := <-stop
+	serv.logger.Info("Got signal", "signal", sgn)
+	serv.logger.Info("Gracefull shutdown was successfully started")
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*time.Duration(5))
+	defer cancel()
+
+	if err := serv.serv.Shutdown(ctx); err != nil {
+		serv.logger.Error("Error occured, while closing server", "error", err)
+	}
 }
