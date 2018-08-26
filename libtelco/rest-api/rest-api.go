@@ -104,12 +104,12 @@ func (rest *RestAPI) BindHandlers() {
 	http.HandleFunc("/get_report_parent_info_letter_data", rest.GetReportParentInfoLetterDataHandler)       // done
 	http.HandleFunc("/get_report_parent_info_letter", rest.GetReportParentInfoLetterHandler)                // done
 	// Школьные ресурсы
-	http.HandleFunc("/get_resources", rest.GetResourcesHandler) // in dev
+	http.HandleFunc("/get_resources", rest.GetResourcesHandler) // done
 	// Почта
 	http.HandleFunc("/get_mail", rest.GetMailHandler)                        // in dev
 	http.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // in dev
 	http.HandleFunc("/delete_mail", rest.Handler)
-	http.HandleFunc("/send_letter", rest.Handler)
+	http.HandleFunc("/send_letter", rest.Handler)                    // in dev
 	http.HandleFunc("/get_address_book", rest.GetAddressBookHandler) // in dev
 	// Форум
 	http.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
@@ -119,8 +119,7 @@ func (rest *RestAPI) BindHandlers() {
 	// Настройки
 	http.HandleFunc("/change_password", rest.Handler)
 	// Файлы
-	http.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir("."))))
-	//http.HandleFunc("/doc/", rest.FileHandler) // done
+	http.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir(".")))) // done
 
 	rest.logger.Info("REST: Successfully bound handlers")
 }
