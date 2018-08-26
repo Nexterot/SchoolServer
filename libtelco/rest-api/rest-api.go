@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/gorilla/context"
 	"github.com/gorilla/sessions"
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	red "github.com/masyagin1998/SchoolServer/libtelco/in-memory-db"
@@ -76,52 +77,55 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 }
 
 // BindHandlers привязывает все handler'ы Rest API
-func (rest *RestAPI) BindHandlers() {
-	http.HandleFunc("/", rest.ErrorHandler)
+func (rest *RestAPI) BindHandlers() http.Handler {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", rest.ErrorHandler)
 	// Общее: Запрос списка школ, запрос доступа, авторизация, выход
-	http.HandleFunc("/get_school_list", rest.GetSchoolListHandler)    // done
-	http.HandleFunc("/check_permission", rest.CheckPermissionHandler) // done
-	http.HandleFunc("/sign_in", rest.SignInHandler)                   // done
-	http.HandleFunc("/log_out", rest.LogOutHandler)                   // done
+	mux.HandleFunc("/get_school_list", rest.GetSchoolListHandler)    // done
+	mux.HandleFunc("/check_permission", rest.CheckPermissionHandler) // done
+	mux.HandleFunc("/sign_in", rest.SignInHandler)                   // done
+	mux.HandleFunc("/log_out", rest.LogOutHandler)                   // done
 	// Дневник: задания и оценки на неделю, отметить задание
 	// как выполненное/невыполненное
-	http.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler)        // done
-	http.HandleFunc("/get_lesson_description", rest.GetLessonDescriptionHandler) // done
-	http.HandleFunc("/mark_as_done", rest.MarkAsDoneHandler)                     // done
-	http.HandleFunc("/unmark_as_done", rest.UnmarkAsDoneHandler)                 // done
+	mux.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler)        // done
+	mux.HandleFunc("/get_lesson_description", rest.GetLessonDescriptionHandler) // done
+	mux.HandleFunc("/mark_as_done", rest.MarkAsDoneHandler)                     // done
+	mux.HandleFunc("/unmark_as_done", rest.UnmarkAsDoneHandler)                 // done
 	// Объявления: получение списка объявлений
-	http.HandleFunc("/get_posts", rest.Handler)
+	mux.HandleFunc("/get_posts", rest.Handler)
 	// Расписание: получение расписания на N дней
-	http.HandleFunc("/get_schedule", rest.GetScheduleHandler) // done
+	mux.HandleFunc("/get_schedule", rest.GetScheduleHandler) // done
 	// Отчеты
-	http.HandleFunc("/get_report_student_total_marks", rest.GetReportStudentTotalMarksHandler)              // done
-	http.HandleFunc("/get_report_student_average_mark", rest.GetReportStudentAverageMarkHandler)            // done
-	http.HandleFunc("/get_report_student_average_mark_dyn", rest.GetReportStudentAverageMarkDynHandler)     // done
-	http.HandleFunc("/get_report_student_grades_lesson_list", rest.GetReportStudentGradesLessonListHandler) // done
-	http.HandleFunc("/get_report_student_grades", rest.GetReportStudentGradesHandler)                       // done
-	http.HandleFunc("/get_report_student_total", rest.GetReportStudentTotalHandler)                         // done
-	http.HandleFunc("/get_report_journal_access", rest.GetReportJournalAccessHandler)                       // done
-	http.HandleFunc("/get_report_parent_info_letter_data", rest.GetReportParentInfoLetterDataHandler)       // done
-	http.HandleFunc("/get_report_parent_info_letter", rest.GetReportParentInfoLetterHandler)                // done
+	mux.HandleFunc("/get_report_student_total_marks", rest.GetReportStudentTotalMarksHandler)              // done
+	mux.HandleFunc("/get_report_student_average_mark", rest.GetReportStudentAverageMarkHandler)            // done
+	mux.HandleFunc("/get_report_student_average_mark_dyn", rest.GetReportStudentAverageMarkDynHandler)     // done
+	mux.HandleFunc("/get_report_student_grades_lesson_list", rest.GetReportStudentGradesLessonListHandler) // done
+	mux.HandleFunc("/get_report_student_grades", rest.GetReportStudentGradesHandler)                       // done
+	mux.HandleFunc("/get_report_student_total", rest.GetReportStudentTotalHandler)                         // done
+	mux.HandleFunc("/get_report_journal_access", rest.GetReportJournalAccessHandler)                       // done
+	mux.HandleFunc("/get_report_parent_info_letter_data", rest.GetReportParentInfoLetterDataHandler)       // done
+	mux.HandleFunc("/get_report_parent_info_letter", rest.GetReportParentInfoLetterHandler)                // done
 	// Школьные ресурсы
-	http.HandleFunc("/get_resources", rest.GetResourcesHandler) // done
+	mux.HandleFunc("/get_resources", rest.GetResourcesHandler) // done
 	// Почта
-	http.HandleFunc("/get_mail", rest.GetMailHandler)                        // done
-	http.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // done
-	http.HandleFunc("/delete_mail", rest.DeleteMailHandler)                  // in dev
-	http.HandleFunc("/send_letter", rest.SendLetterHandler)                  // done
-	http.HandleFunc("/get_address_book", rest.GetAddressBookHandler)         // in dev
+	mux.HandleFunc("/get_mail", rest.GetMailHandler)                        // done
+	mux.HandleFunc("/get_mail_description", rest.GetMailDescriptionHandler) // done
+	mux.HandleFunc("/delete_mail", rest.DeleteMailHandler)                  // done
+	mux.HandleFunc("/send_letter", rest.SendLetterHandler)                  // done
+	mux.HandleFunc("/get_address_book", rest.GetAddressBookHandler)         // done
 	// Форум
-	http.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
-	http.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler)        // in dev
-	http.HandleFunc("/create_topic", rest.CreateTopicHandler)                   // in dev
-	http.HandleFunc("/create_message_in_topic", rest.CreateTopicMessageHandler) // in dev
+	mux.HandleFunc("/get_forum", rest.GetForumHandler)                         // in dev
+	mux.HandleFunc("/get_forum_messages", rest.GetForumMessagesHandler)        // in dev
+	mux.HandleFunc("/create_topic", rest.CreateTopicHandler)                   // in dev
+	mux.HandleFunc("/create_message_in_topic", rest.CreateTopicMessageHandler) // in dev
 	// Настройки
-	http.HandleFunc("/change_password", rest.Handler)
+	mux.HandleFunc("/change_password", rest.Handler)
 	// Файлы
-	http.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir(".")))) // done
+	mux.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir(".")))) // done
 
 	rest.logger.Info("REST: Successfully bound handlers")
+	return context.ClearHandler(mux)
 }
 
 // Handler временный абстрактный handler для некоторых еще не реализованных

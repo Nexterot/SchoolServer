@@ -6,8 +6,6 @@ Package server содержит основную функциональност�
 package server
 
 import (
-	"fmt"
-
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	"github.com/masyagin1998/SchoolServer/libtelco/push"
@@ -15,10 +13,7 @@ import (
 
 	"net/http"
 	"runtime"
-
-	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
-
-	"github.com/gorilla/context"
+	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 )
 
 // Server struct содержит конфигурацию сервера.
@@ -27,6 +22,7 @@ type Server struct {
 	api    *api.RestAPI
 	logger *log.Logger
 	push   *push.Push
+	serv   *http.Server
 }
 
 // NewServer создает новый сервер.
@@ -36,6 +32,7 @@ func NewServer(config *cp.Config, logger *log.Logger) *Server {
 		config: config,
 		api:    rest,
 		push:   push.NewPush(rest, logger),
+		serv:   &http.Server{Addr: config.ServerAddr, Handler: rest.BindHandlers()},
 	}
 	return serv
 }
@@ -45,24 +42,24 @@ func (serv *Server) Run() error {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
-	// ТЕСТЫ.
-	kek := ss.NewSession(&serv.config.Schools[0])
-	if err := kek.Login(); err != nil {
-		fmt.Println(err)
-	}
+	/*
+		// ТЕСТЫ.
+		kek := ss.NewSession(&serv.config.Schools[0])
+		if err := kek.Login(); err != nil {
+			fmt.Println(err)
+		}
 
-	data, err := kek.GetParentInfoLetterData("11198")
-	fmt.Println(data)
-	if err != nil {
-		fmt.Println(err)
-	}
+		data, err := kek.GetParentInfoLetterData("11198")
+		fmt.Println(data)
+		if err != nil {
+			fmt.Println(err)
+		}
 
-	if err := kek.Logout(); err != nil {
-		fmt.Println(err)
-	}
+		if err := kek.Logout(); err != nil {
+			fmt.Println(err)
+		}
+	*/
 
-	// Привязать handler'ы
-	serv.api.BindHandlers()
 	defer func() {
 		_ = serv.api.Db.Close()
 		_ = serv.api.Redis.Close()
@@ -72,6 +69,5 @@ func (serv *Server) Run() error {
 	// Подключить рассылку пушей
 	// go serv.push.Run()
 
-	// Запустить сервер
-	return http.ListenAndServe(serv.config.ServerAddr, context.ClearHandler(http.DefaultServeMux))
+	return serv.serv.ListenAndServe()
 }
