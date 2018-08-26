@@ -79,6 +79,18 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 				respwr.WriteHeader(http.StatusBadGateway)
 				return
 			}
+		} else if strings.Contains(err.Error(), "current page number is more than max page number") {
+			// Запрашиваемая страница не существует
+			rest.logger.Info("REST: Invalid page number", "Error", err.Error(), "Page", rReq.Page, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			resp := "invalid page"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
+			return
 		} else {
 			// Другая ошибка
 			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
