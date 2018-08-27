@@ -586,6 +586,28 @@ func (db *Database) TaskMarkUndone(userName string, schoolID int, AID, CID, TP i
 	return fmt.Errorf("record not found")
 }
 
+// GetStudentClassID получает classID ученика
+func (db *Database) GetStudentClassID(userName string, schoolID int, studentID int) (string, error) {
+	var (
+		student Student
+		user    User
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return "", errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем ученика
+	wh := Student{NetSchoolID: studentID, UserID: user.ID}
+	err = db.SchoolServerDB.Where(wh).First(&student).Error
+	if err != nil {
+		return "", errors.Wrapf(err, "Error query student='%v'", wh)
+	}
+	// Вернуть classID
+	return student.ClassID, nil
+}
+
 // GetSchoolPermission проверяет разрешение школы на работу с сервисом
 func (db *Database) GetSchoolPermission(id int) (bool, error) {
 	var school School

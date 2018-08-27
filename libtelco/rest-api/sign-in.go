@@ -24,9 +24,8 @@ type signInRequest struct {
 
 // student используется в signInResponse
 type student struct {
-	Name    string `json:"name"`
-	ID      int    `json:"id"`
-	ClassID string `json:"classID"`
+	Name string `json:"name"`
+	ID   int    `json:"id"`
 }
 
 // signInResponse используется в SignInHandler
@@ -323,7 +322,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		stud = student{Name: k, ID: vs, ClassID: v.CLID}
+		stud = student{Name: k, ID: vs}
 		studs = append(studs, stud)
 	}
 	resp := signInResponse{Students: studs, Role: profile.Role, Surname: profile.Surname, Name: profile.Name, Username: profile.Username, Schoolyear: profile.Schoolyear, UID: profile.UID}

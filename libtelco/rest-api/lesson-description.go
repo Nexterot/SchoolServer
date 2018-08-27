@@ -10,11 +10,10 @@ import (
 
 // getLessonDescriptionRequest используется в GetLessonDescriptionHandler
 type getLessonDescriptionRequest struct {
-	AID       int    `json:"AID"`
-	CID       int    `json:"CID"`
-	TP        int    `json:"TP"`
-	StudentID int    `json:"studentID"`
-	ClassID   string `json:"classID"`
+	AID       int `json:"AID"`
+	CID       int `json:"CID"`
+	TP        int `json:"TP"`
+	StudentID int `json:"studentID"`
 }
 
 // GetLessonDescriptionHandler обрабатывает запрос на получение подробностей дз
@@ -60,8 +59,31 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 			return
 		}
 	}
+	// Сходить в бд за class id ученика
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	classID, err := rest.Db.GetStudentClassID(userName.(string), schoolID.(int), rReq.StudentID)
+	if err != nil {
+		if err.Error() == "record not found" {
+			// Такого таска нет
+			rest.logger.Info("REST: Invalid student id specified", "Error", err.Error(), "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			resp := "invalid studentID"
+			status, err := respwr.Write([]byte(resp))
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			}
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting class id from db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
 	// Получить описание таска
-	lessonDescription, err := remoteSession.GetLessonDescription(rReq.AID, rReq.CID, rReq.TP, strconv.Itoa(rReq.StudentID), rReq.ClassID, rest.config.ServerName, rest.Redis)
+	lessonDescription, err := remoteSession.GetLessonDescription(rReq.AID, rReq.CID, rReq.TP, strconv.Itoa(rReq.StudentID), classID, rest.config.ServerName, rest.Redis)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -72,7 +94,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 				return
 			}
 			// Повторно получить с сайта школы
-			lessonDescription, err = remoteSession.GetLessonDescription(rReq.AID, rReq.CID, rReq.TP, strconv.Itoa(rReq.StudentID), rReq.ClassID, rest.config.ServerName, rest.Redis)
+			lessonDescription, err = remoteSession.GetLessonDescription(rReq.AID, rReq.CID, rReq.TP, strconv.Itoa(rReq.StudentID), classID, rest.config.ServerName, rest.Redis)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
