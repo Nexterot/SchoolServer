@@ -63,6 +63,18 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		}
 		return
 	}
+	// Проверим длину хеша пароля
+	if len(rReq.Passkey) != 32 {
+		rest.logger.Info("REST: Invalid passkey len", "Passkey", rReq.Passkey, "Len", len(rReq.Passkey), "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		status, err := respwr.Write(rest.Errors.InvalidLoginData)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+		}
+		return
+	}
 	// Приведем логин к uppercase
 	rReq.Login = strings.ToUpper(rReq.Login)
 	// Распечатаем запрос от клиента
