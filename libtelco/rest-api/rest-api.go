@@ -31,6 +31,7 @@ type RestAPI struct {
 	sessionsMap map[string]*ss.Session
 	Db          *db.Database
 	Redis       *red.Database
+	Errors      *marshalledErrors
 }
 
 // NewRestAPI создает структуру для работы с Rest API.
@@ -74,6 +75,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		sessionsMap: make(map[string]*ss.Session),
 		Db:          database,
 		Redis:       redis,
+		Errors:      NewMarshalledErrors(logger),
 	}
 }
 
@@ -187,22 +189,19 @@ func (rest *RestAPI) remoteRelogin(respwr http.ResponseWriter, req *http.Request
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return nil
 	}
-	rest.logger.Info("successfully gone to database")
 	// Создать удаленную сессию и залогиниться
 	remoteSession := ss.NewSession(school)
-	rest.logger.Info("create session")
 	err = remoteSession.Login()
 	if err != nil {
 		if strings.Contains(err.Error(), "invalid login or passkey") {
 			// Пароль неверный
 			rest.logger.Info("REST: Error occured when remote signing in", "Error", "invalid login or password", "Config", school, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			resp := "invalid login or password"
-			status, err := respwr.Write([]byte(resp))
+			status, err := respwr.Write(rest.Errors.InvalidLoginData)
 			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 			} else {
-				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 			}
 			return nil
 		}
@@ -210,9 +209,7 @@ func (rest *RestAPI) remoteRelogin(respwr http.ResponseWriter, req *http.Request
 		respwr.WriteHeader(http.StatusBadGateway)
 		return nil
 	}
-	rest.logger.Info("successfully created session")
 	// Получить childrenMap
-	rest.logger.Info("getting childrenMap")
 	err = remoteSession.GetChildrenMap()
 	if err != nil {
 		// Ошибка
@@ -220,7 +217,6 @@ func (rest *RestAPI) remoteRelogin(respwr http.ResponseWriter, req *http.Request
 		respwr.WriteHeader(http.StatusBadGateway)
 		return nil
 	}
-	rest.logger.Info("successfully got childrenMap")
 	rest.sessionsMap[session.Name()] = remoteSession
 	rest.logger.Info("REST: Successfully created new remote session", "IP", req.RemoteAddr)
 	return remoteSession

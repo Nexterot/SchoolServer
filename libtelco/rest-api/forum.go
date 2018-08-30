@@ -34,12 +34,11 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		resp := "malformed data"
-		status, err := respwr.Write([]byte(resp))
+		status, err := respwr.Write(rest.Errors.MalformedData)
 		if err != nil {
-			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 		} else {
-			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 		}
 		return
 	}
@@ -83,12 +82,11 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 			// Запрашиваемая страница не существует
 			rest.logger.Info("REST: Invalid page number", "Error", err.Error(), "Page", rReq.Page, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			resp := "invalid page"
-			status, err := respwr.Write([]byte(resp))
+			status, err := respwr.Write(rest.Errors.InvalidData)
 			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 			} else {
-				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 			}
 			return
 		} else {

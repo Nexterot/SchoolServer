@@ -55,12 +55,11 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		resp := "malformed data"
-		status, err := respwr.Write([]byte(resp))
+		status, err := respwr.Write(rest.Errors.MalformedData)
 		if err != nil {
-			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 		} else {
-			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 		}
 		return
 	}
@@ -71,16 +70,15 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	// Проверим разрешение у школы
 	perm, err := rest.Db.GetSchoolPermission(rReq.ID)
 	if err != nil {
-		if err.Error() == "record not found" {
+		if strings.Contains(err.Error(), "record not found") {
 			// Школа не найдена
 			rest.logger.Info("REST: Invalid school id specified", "Id", rReq.ID, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			resp := "invalid data"
-			status, err := respwr.Write([]byte(resp))
+			status, err := respwr.Write(rest.Errors.InvalidLoginData)
 			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 			} else {
-				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 			}
 		} else {
 			// Другая ошибка
@@ -93,7 +91,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		// Если у школы нет разрешения, проверить разрешение пользователя
 		userPerm, err := rest.Db.GetUserPermission(rReq.Login, rReq.ID)
 		if err != nil {
-			if err.Error() == "record not found" {
+			if strings.Contains(err.Error(), "record not found") {
 				// Пользователь новый: вернем true, чтобы он мог залогиниться и
 				// купить подписку
 				perm = true
@@ -136,15 +134,14 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		// Подразумевается, что уже был успешный вход
 		isCorrect, err := rest.Db.CheckPassword(rReq.Login, rReq.ID, rReq.Passkey)
 		if err != nil {
-			if err.Error() == "record not found" {
+			if strings.Contains(err.Error(), "record not found") {
 				rest.logger.Info("REST: Invalid id or login specified", "Error", err.Error(), "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusBadRequest)
-				resp := "invalid login or id"
-				status, err := respwr.Write([]byte(resp))
+				status, err := respwr.Write(rest.Errors.InvalidLoginData)
 				if err != nil {
-					rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+					rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 				} else {
-					rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+					rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 				}
 				return
 			}
@@ -204,12 +201,11 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			rest.logger.Info("REST: incorrect pass", "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
 			// Отправить ответ клиенту
-			resp := "invalid login or passkey"
-			status, err := respwr.Write([]byte(resp))
+			status, err := respwr.Write(rest.Errors.InvalidLoginData)
 			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 			} else {
-				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 			}
 			return
 		}
@@ -224,12 +220,11 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				// Пароль неверный
 				rest.logger.Info("REST: Error occured when remote signing in", "Error", "invalid login or password", "Config", school, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusBadRequest)
-				resp := "invalid login or passkey"
-				status, err := respwr.Write([]byte(resp))
+				status, err := respwr.Write(rest.Errors.InvalidLoginData)
 				if err != nil {
-					rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+					rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 				} else {
-					rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+					rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 				}
 				return
 			}

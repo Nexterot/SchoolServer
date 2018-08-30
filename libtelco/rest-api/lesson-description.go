@@ -37,12 +37,11 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		resp := "malformed data"
-		status, err := respwr.Write([]byte(resp))
+		status, err := respwr.Write(rest.Errors.MalformedData)
 		if err != nil {
-			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 		} else {
-			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 		}
 		return
 	}
@@ -68,12 +67,11 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 			// Такого таска нет
 			rest.logger.Info("REST: Invalid student id specified", "Error", err.Error(), "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			resp := "invalid studentID"
-			status, err := respwr.Write([]byte(resp))
+			status, err := respwr.Write(rest.Errors.InvalidData)
 			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 			} else {
-				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 			}
 		} else {
 			// Другая ошибка

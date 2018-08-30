@@ -4,6 +4,7 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 // markAsDoneRequest используется в MarkAsDoneHandler и UnmarkAsDoneHandler
@@ -34,12 +35,11 @@ func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Req
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		resp := "malformed data"
-		status, err := respwr.Write([]byte(resp))
+		status, err := respwr.Write(rest.Errors.MalformedData)
 		if err != nil {
-			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 		} else {
-			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 		}
 		return
 	}
@@ -50,16 +50,15 @@ func (rest *RestAPI) MarkAsDoneHandler(respwr http.ResponseWriter, req *http.Req
 	schoolID := session.Values["schoolID"]
 	err = rest.Db.TaskMarkDone(userName.(string), schoolID.(int), rReq.AID, rReq.CID, rReq.TP)
 	if err != nil {
-		if err.Error() == "record not found" {
+		if strings.Contains(err.Error(), "record not found") {
 			// Такого таска нет в БД
 			rest.logger.Info("REST: Task with specified id not found in db", "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			resp := "invalid id"
-			status, err := respwr.Write([]byte(resp))
+			status, err := respwr.Write(rest.Errors.InvalidData)
 			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 			} else {
-				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 			}
 		} else {
 			// Другая ошибка
@@ -94,12 +93,11 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 	if err != nil {
 		rest.logger.Info("REST: Malformed request data", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
-		resp := "malformed data"
-		status, err := respwr.Write([]byte(resp))
+		status, err := respwr.Write(rest.Errors.MalformedData)
 		if err != nil {
-			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 		} else {
-			rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 		}
 		return
 	}
@@ -110,16 +108,15 @@ func (rest *RestAPI) UnmarkAsDoneHandler(respwr http.ResponseWriter, req *http.R
 	schoolID := session.Values["schoolID"]
 	err = rest.Db.TaskMarkUndone(userName.(string), schoolID.(int), rReq.AID, rReq.CID, rReq.TP)
 	if err != nil {
-		if err.Error() == "record not found" {
+		if strings.Contains(err.Error(), "record not found") {
 			// Такого таска нет в БД
 			rest.logger.Info("REST: Task with specified id not found in db", "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			resp := "invalid id"
-			status, err := respwr.Write([]byte(resp))
+			status, err := respwr.Write(rest.Errors.InvalidData)
 			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 			} else {
-				rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
 			}
 		} else {
 			// Другая ошибка
