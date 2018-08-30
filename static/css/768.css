@@ -1,0 +1,219 @@
+/* Author: Luke Greenaway */
+/* Stylesheet for project configuration */
+/* Grid & Layout
+=================================================== */
+/* Colours
+=================================================== */
+/* White */
+/* Base */
+/* Medium */
+/* Light */
+/* Brand Colour */
+/* Social */
+/* Author: Luke Greenaway */
+/* Stylesheet for Enhancements */
+/* Generic Styles
+=================================================== */
+/* Inline Block */
+/* Typography
+=================================================== */
+/* Font-face */
+/* Font Size */
+/* Line Height */
+/* Anti Aliasing */
+/* Wrap Words */
+/* Hide Text */
+/* CSS3
+=================================================== *//* Opacity */
+/* Border Radius */
+/* Background Cover */
+/* Rotate */
+/* Box Shadow */
+/* Transform */
+/* Horizontal Gradient */
+/* Flex Box */
+/* CSS3 Transitions
+=================================================== *//* Animate Background Colour */
+/* Author: Luke Greenaway */
+/* Stylesheet for screen widths >= 786px */
+/* Generic Styles
+=================================================== */
+.desktop {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+.mobile {
+    display: none;
+}
+iframe {
+    height: 432px;
+}
+/* Main Layout
+=================================================== */
+.wrapper-inner section {
+    padding-top: 5em;
+}
+.wrapper-inner.blogs section {
+    padding-top: 5em;
+    padding-bottom: 5em;
+}
+/* Header
+=================================================== */
+header {
+    padding: 2em 0;
+}
+header .logo {
+    margin-top: 0;
+}
+header .logo a img {
+    max-width: 230px;
+    margin-top: 20px;
+}
+header nav.half {
+    display: inline;
+}
+header nav ul {
+    margin-top: 3px;
+}
+header .social {
+    display: block;
+}
+header .social ul li a {
+    margin-left: 8px;
+    margin-right: 0;
+}
+/* Generic Content
+=================================================== */
+/* Share Buttons */
+.share-buttons {
+    margin-top: 2em;
+}
+.share-buttons li {
+    margin: 0 5px;
+}
+.share-buttons li a {
+    padding: 11px 20px 9px 40px;
+    overflow: auto;
+    text-indent: 0;
+    font-size: 16px;
+    font-size: 1.6rem;
+    /* Overwrite ".hide-text" */
+
+}
+.share-buttons li a.facebook {
+    background-position: 10px 12px;
+}
+.share-buttons li a.twitter {
+    background-position: 10px -46px;
+}
+.share-buttons li a.googleplus {
+    background-position: 12px -105px;
+}
+/* Hero Panel
+=================================================== */.hero section {
+                                                          padding-top: 1em;
+                                                      }
+.hero section article.desktop {
+    display: none;
+}
+.hero section article h1 {
+    width: 80%;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 20px;
+}
+.hero section article h2 {
+    margin-bottom: 30px;
+    width: 90%;
+    margin-left: auto;
+    margin-right: auto;
+}
+.hero section article .button {
+    margin-top: 0;
+}
+.hero section article p:last-child {
+    margin-bottom: 15px;
+}
+
+/* Testimonal Panel
+=================================================== */.testimonal {
+                                                          padding-bottom: 6em;
+                                                      }
+.testimonal .flexslider {
+    margin-top: 4em;
+}
+.testimonal .flexslider .flex-control-paging {
+    bottom: -30px;
+}
+/* Sign Up Panel
+=================================================== */.sign-up {
+                                                          padding-bottom: 5em;
+                                                      }
+/* Press Kit Panel
+=================================================== */.press-kit {
+                                                          padding-bottom: 5em;
+                                                      }
+.press-kit .button {
+    margin-top: 25px;
+}
+/* Sign Up Panel
+=================================================== */.sign-up {
+                                                          padding-bottom: 5em;
+                                                      }
+.sign-up form {
+    margin: 5em 0;
+}
+.sign-up form input {
+    width: 300px;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    margin: 0 2px;
+    height: auto;
+}
+.sign-up form input.submit {
+    width: 58px;
+}
+.sign-up form .response {
+    margin-top: 10px;
+}
+.sign-up .share-buttons {
+    margin-top: 3em;
+}
+/* Footer
+=================================================== */
+footer {
+    padding: 5em 0;
+}
+footer ul {
+    list-style: none;
+}
+footer ul li {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+footer ul li.divider {
+    background: url(../images/interface/footer-nav-divider.png) center center no-repeat;
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    margin: 0 12px;
+    height: 12px;
+    width: 4px;
+}
+
+.watches img{
+    width: 60% !important;
+}
+.reviews{
+    margin-top: 3em;
+}
+.review-item{
+    width: 46% !important;
+}

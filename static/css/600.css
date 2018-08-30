@@ -1,0 +1,74 @@
+/* Author: Luke Greenaway */
+/* Stylesheet for project configuration */
+/* Grid & Layout
+=================================================== */
+/* Colours
+=================================================== */
+/* White */
+/* Base */
+/* Medium */
+/* Light */
+/* Brand Colour */
+/* Social */
+/* Author: Luke Greenaway */
+/* Stylesheet for Enhancements */
+/* Generic Styles
+=================================================== */
+/* Inline Block */
+/* Typography
+=================================================== */
+/* Font-face */
+/* Font Size */
+/* Line Height */
+/* Anti Aliasing */
+/* Wrap Words */
+/* Hide Text */
+/* CSS3
+=================================================== *//* Opacity */
+/* Border Radius */
+/* Background Cover */
+/* Rotate */
+/* Box Shadow */
+/* Transform */
+/* Horizontal Gradient */
+/* Flex Box */
+/* CSS3 Transitions
+=================================================== *//* Animate Background Colour */
+/* Author: Luke Greenaway */
+/* Stylesheet for screen widths >= 600px */
+/* Generic Styles
+=================================================== */
+iframe {
+    height: 338px;
+}
+/* Column Framework
+=================================================== */
+.wrapper-outer .half {
+    width: 96%;
+}
+/* Header
+=================================================== */
+header .half,
+header .quarter {
+    width: 96%;
+}
+header .logo a img {
+    margin-top: 5px;
+}
+header nav {
+    margin-bottom: 1.6em;
+}
+/* USP's Panel
+=================================================== */.usp .third {
+                                                          width: 46%;
+                                                      }
+/* Testimonal Panel
+=================================================== */.testimonal p {
+                                                          max-width: 600px;
+                                                      }
+.testimonal p .orphin {
+    display: block;
+}
+.testimonal .flexslider p {
+    max-width: 100%;
+}

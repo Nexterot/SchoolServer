@@ -1,0 +1,122 @@
+.flex-container a:active, .flexslider a:active, .flex-container a:focus, .flexslider a:focus {
+    outline: 0
+}
+
+.slides, .flex-control-nav, .flex-direction-nav {
+    list-style: none;
+    margin: 0;
+    padding: 0
+}
+
+.no-js .slides > li:first-child {
+    display: block
+}
+
+.flexslider {
+    padding: 0
+}
+
+.flexslider .slides > li {
+    display: none;
+    -webkit-backface-visibility: hidden
+}
+
+.flexslider .slides img {
+    display: block;
+    width: 100%
+}
+
+.slides:after {
+    clear: both;
+    content: ".";
+    display: block;
+    line-height: 0;
+    height: 0;
+    visibility: hidden
+}
+
+html[xmlns] .slides {
+    display: block
+}
+
+* html .slides {
+    height: 1%
+}
+
+.flexslider {
+    position: relative
+}
+
+.flex-viewport {
+    max-height: 2000px;
+    -moz-transition: all 1s ease;
+    transition: all 1s ease;
+    -webkit-transition: all 1s ease
+}
+
+.loading .flex-viewport {
+    max-height: 300px
+}
+
+.flexslider .slides {
+    zoom: 1
+}
+
+.carousel li {
+    font-size: 0
+}
+
+.flex-direction-nav {
+    display: block;
+    *height: 0;
+    z-index: 10
+}
+
+.flex-direction-nav a {
+    background: url(../../images/interface/bg-carousel-navigation-sprite.png) 0 0 no-repeat;
+    cursor: pointer;
+    display: block;
+    height: 42px;
+    margin: -21px 0 0;
+    position: absolute;
+    text-indent: -9999px;
+    top: 50%;
+    width: 42px;
+    z-index: 10
+}
+
+.flex-direction-nav .flex-next {
+    background-position: 100% 0;
+    right: 20px
+}
+
+.flex-direction-nav .flex-prev {
+    left: 20px
+}
+
+.flex-control-nav {
+    bottom: 20px;
+    width: 100%;
+    position: absolute;
+    text-align: center;
+    z-index: 10
+}
+
+.flex-control-nav li {
+    display: inline-block;
+    *display: inline;
+    margin: 0 2px;
+    zoom: 1
+}
+
+.flex-control-paging li a {
+    background: url(../../images/interface/bg-carousel-indicators-sprite.png) 0 0 no-repeat;
+    display: block;
+    height: 13px;
+    text-indent: -9999px;
+    width: 12px
+}
+
+.flex-control-paging li a.flex-active {
+    background-position: -16px 0
+}

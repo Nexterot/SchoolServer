@@ -1,0 +1,62 @@
+/* Author: Luke Greenaway */
+/* Stylesheet for project configuration */
+/* Grid & Layout
+=================================================== */
+/* Colours
+=================================================== */
+/* White */
+/* Base */
+/* Medium */
+/* Light */
+/* Brand Colour */
+/* Social */
+/* Author: Luke Greenaway */
+/* Stylesheet for IE 8 and below */
+/* Generic Styles
+=================================================== */
+/* Column Framework
+=================================================== */
+/* 3 Column Grid */
+.third {
+    width: 29.33%;
+}
+.two-thirds {
+    width: 62.66%;
+}
+/* 4 Column Grid */
+.quarter {
+    width: 21%;
+}
+.half {
+    width: 46%;
+}
+.three-quarters {
+    width: 71%;
+}
+/* 5 Column Grid */
+.fifth {
+    width: 16%;
+}
+.two-fifths {
+    width: 36%;
+}
+.three-fifths {
+    width: 56%;
+}
+.four-fifths {
+    width: 76%;
+}
+/* 6 Column Grid */
+.sixth {
+    width: 12.666599999999999%;
+}
+/* Main Layout
+=================================================== */
+/* Fix width of layout */
+section {
+    width: 1000px;
+}
+/* Header
+=================================================== */
+/* Footer
+=================================================== */

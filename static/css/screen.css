@@ -1,0 +1,320 @@
+util.print: Use console.log instead
+/* Author: Luke Greenaway */
+/* Stylesheet for project configuration */
+/* Grid & Layout
+=================================================== */
+/* Colours
+=================================================== */
+/* White */
+/* Base */
+/* Medium */
+/* Light */
+/* Brand Colour */
+/* Social */
+/* Author: Luke Greenaway */
+/* Stylesheet for Enhancements */
+/* Generic Styles
+=================================================== */
+/* Inline Block */
+/* Typography
+=================================================== */
+/* Font-face */
+/* Font Size */
+/* Line Height */
+/* Anti Aliasing */
+/* Wrap Words */
+/* Hide Text */
+/* CSS3
+=================================================== *//* Opacity */
+/* Border Radius */
+/* Background Cover */
+/* Rotate */
+/* Box Shadow */
+/* Transform */
+/* Horizontal Gradient */
+/* Flex Box */
+/* CSS3 Transitions
+=================================================== *//* Animate Background Colour */
+/* Author: Luke Greenaway */
+/* Stylesheet for screen */
+/* Font Families
+=================================================== *//* Gotham Rounded Book */
+/* Elements Using This Typeface */
+/* Elements Using This Typeface */
+
+@font-face {
+    font-family: "CaviarDreams";
+    src: url('../fonts/CaviarDreams.eot');
+    src: url('../fonts/CaviarDreams.eot?#iefix') format('embedded-opentype'), url('../fonts/CaviarDreams.woff') format('woff'), url('../fonts/CaviarDreams.ttf') format('truetype'), url('../fonts/CaviarDreams.svg#CaviarDreams') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+@font-face {
+    font-family: "Blogger_Sans-Light";
+    src: url('../fonts/Blogger_Sans-Light.eot');
+    src: url('../fonts/Blogger_Sans-Light.eot?#iefix') format('embedded-opentype'), url('../fonts/Blogger_Sans-Light.woff') format('woff'), url('../fonts/Blogger_Sans-Light.ttf') format('truetype'), url('../fonts/Blogger_Sans-Light.svg#Blogger_Sans-Light') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+
+/* Elements Using This Typeface */
+h1,
+.hero h2,
+h3,
+h4,
+h5,
+h6,
+input,
+span.bold,
+.share-buttons a {
+    font-family: 'Blogger_Sans-Light';
+}
+/* Gotham Rounded Bold */
+@font-face {
+    font-family: "Blogger_Sans-Bold";
+    src: url('../fonts/Blogger_Sans-Bold.eot');
+    src: url('../fonts/Blogger_Sans-Bold.eot?#iefix') format('embedded-opentype'), url('../fonts/Blogger_Sans-Bold.woff') format('woff'), url('../fonts/Blogger_Sans-Bold.ttf') format('truetype'), url('../fonts/Blogger_Sans-Bold.svg#Blogger_Sans-Bold') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+/* Elements Using This Typeface */
+h2,
+.usp h3,
+.button,
+footer li,
+.panel p.quote {
+    font-family: 'Blogger_Sans-Bold';
+}
+/* Promixa Nova Regular */
+@font-face {
+    font-family: "Blogger_Sans";
+    src: url('../fonts/Blogger_Sans.eot');
+    src: url('../fonts/Blogger_Sans.eot?#iefix') format('embedded-opentype'), url('../fonts/Blogger_Sans.woff') format('woff'), url('../fonts/Blogger_Sans.ttf') format('truetype'), url('../fonts/Blogger_Sans.svg#Blogger_Sans') format('svg');
+    font-weight: normal;
+    font-style: normal;
+}
+/* Elements Using This Typeface */
+nav li,
+p,
+.hero h2,
+span.bold {
+    font-family: 'Blogger_Sans';
+    -webkit-font-smoothing: antialiased;
+}
+/* Typographic Styles
+=================================================== */
+footer p.sub {
+    font-size: 13px;
+    font-size: 1.3rem;
+    line-height: 18px;
+    line-height: 1.8rem;
+}
+p,
+.hero h2,
+.usp-wrapper p,
+.hero p.sub,
+input,
+.share-buttons a {
+    font-size: 16px;
+    font-size: 1.6rem;
+    line-height: 23px;
+    line-height: 2.3rem;
+}
+nav li,
+footer li {
+    font-size: 16px;
+    font-size: 1.6rem;
+    line-height: 18px;
+    line-height: 1.8rem;
+}
+h3,
+footer h4 {
+    font-size: 18px;
+    font-size: 1.8rem;
+    line-height: 25px;
+    line-height: 2.5rem;
+}
+h2 {
+    font-size: 22px;
+    font-size: 2.2rem;
+    line-height: 27px;
+    line-height: 2.7rem;
+}
+h1 {
+    font-size: 24px;
+    font-size: 2.4rem;
+    line-height: 29px;
+    line-height: 2.9rem;
+}
+/* Screen Widths >= 768px */
+@media only screen and (min-width: 768px) {
+    footer p {
+        font-size: 20px;
+        font-size: 2rem;
+        line-height: 28px;
+        line-height: 2.8rem;
+    }
+    nav li,
+    .panel p.credit {
+        font-size: 18px;
+        font-size: 1.8rem;
+        line-height: 18px;
+        line-height: 1.8rem;
+    }
+    .usp-wrapper p,
+    footer li,
+    .hero p.sub {
+        font-size: 18px;
+        font-size: 1.8rem;
+        line-height: 24px;
+        line-height: 2.4rem;
+    }
+    p,
+    .hero h2,
+    h3 {
+        font-size: 23px;
+        font-size: 2.3rem;
+        line-height: 31px;
+        line-height: 3.1rem;
+    }
+    .hero h2 {
+        font-size: 22px;
+        font-size: 2.2rem;
+        line-height: 32px;
+        line-height: 3.2rem;
+    }
+    h2 {
+        font-size: 32px;
+        font-size: 3.2rem;
+        line-height: 40px;
+        line-height: 4rem;
+    }
+    h1 {
+        font-size: 38px;
+        font-size: 3.8rem;
+        line-height: 42px;
+        line-height: 4.2rem;
+    }
+}
+/* Screen Widths >= 1024px */
+@media only screen and (min-width: 1024px) {
+    h1 {
+        font-size: 48px;
+        font-size: 4.8rem;
+        line-height: 64px;
+        line-height: 6.4rem;
+    }
+}
+/* Colours
+=================================================== */
+/* Base */
+article,
+a,
+a:visited,
+.panel.primary,
+.panel.primary p,
+.panel.secondary p,
+.hero .button,
+.hero input,
+.panel p.quote {
+    color: #333;
+}
+/* Medium */
+.panel p {
+    color: #777777;
+}
+/* White */
+a.button,
+a.button:visited,
+.share-buttons a,
+.share-buttons a:visited {
+    color: #ffffff;
+}
+/* Links & Buttons
+=================================================== */
+a {
+    text-decoration: none;
+}
+a:hover {
+    text-decoration: none;
+}
+/* Buttons & Inputs */
+.button,
+input {
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    border: 3px solid;
+    padding: 9px 16px 7px;
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+.button.apple,
+input.apple {
+    padding-left: 45px;
+    background: url(../images/interface/icon-apple-black.png) 13px 4px no-repeat;
+}
+.button.primary,
+input.primary {
+    border-color: #1a1a1a;
+}
+.button.secondary,
+input.secondary,
+.button.tertiary,
+input.tertiary {
+    background-color: #e76851;
+    border-color: #e76851;
+}
+.button.secondary.apple,
+input.secondary.apple,
+.button.tertiary.apple,
+input.tertiary.apple {
+    background-image: url(../images/interface/icon-apple-white.png);
+}
+.button.tertiary,
+input.tertiary {
+    padding-left: 30px;
+    padding-right: 30px;
+}
+/* Custom Input */
+input {
+    height: 40px;
+    line-height: 40px;
+    padding-top: 0;
+    padding-bottom: 0;
+    background: none;
+    -webkit-appearance: none;
+}
+input.submit {
+    overflow: hidden;
+    text-indent: -99999px;
+    width: 46px;
+    padding: 0;
+    cursor: pointer;
+    background: url(../images/interface/icon-arrow-next.png) center center no-repeat;
+}
+/* Screen Widths >= 768px */
+@media only screen and (min-width: 768px) {
+    /* Buttons & Inputs */
+    .button {
+        padding: 12px 16px 10px;
+    }
+    .button.apple {
+        background-position: 15px 10px;
+    }
+    /* Custom Input */
+    input {
+        height: 50px;
+        line-height: 50px;
+        -webkit-appearance: none;
+    }
+    input.submit {
+        width: 56px;
+        height: 56px;
+    }
+}
+/* Custom CSS3
+=================================================== */

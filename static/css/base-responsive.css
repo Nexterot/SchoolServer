@@ -1,0 +1,130 @@
+/* Author: Luke Greenaway */
+/* Stylesheet for project configuration */
+/* Grid & Layout
+=================================================== */
+/* Colours
+=================================================== */
+/* White */
+/* Base */
+/* Medium */
+/* Light */
+/* Brand Colour */
+/* Social */
+/* Author: Luke Greenaway */
+/* Stylesheet for base responsive */
+/* Generic Styles
+=================================================== */
+html {
+    font-size: 62.5%;
+}
+img,
+iframe {
+    width: 100%;
+}
+/* Column Framework
+=================================================== */
+.full,
+.third,
+.two-thirds,
+.quarter,
+.half,
+.three-quarters,
+.fifth,
+.two-fifths,
+.three-fifths,
+.four-fifths,
+.sixth {
+    display: inline;
+    float: left;
+    position: relative;
+    margin-left: 2%;
+    margin-right: 2%;
+    width: 96%;
+    /* Columns within columns */
+
+}
+.full article:first-child,
+.third article:first-child,
+.two-thirds article:first-child,
+.quarter article:first-child,
+.half article:first-child,
+.three-quarters article:first-child,
+.fifth article:first-child,
+.two-fifths article:first-child,
+.three-fifths article:first-child,
+.four-fifths article:first-child,
+.sixth article:first-child {
+    margin-left: 0;
+    margin-right: 4%;
+}
+.full article:last-child,
+.third article:last-child,
+.two-thirds article:last-child,
+.quarter article:last-child,
+.half article:last-child,
+.three-quarters article:last-child,
+.fifth article:last-child,
+.two-fifths article:last-child,
+.three-fifths article:last-child,
+.four-fifths article:last-child,
+.sixth article:last-child {
+    margin-right: 0;
+    float: right;
+}
+/* Main Layout
+=================================================== */
+.wrapper-outer,
+main,
+header,
+footer {
+    width: 100%;
+}
+section {
+    margin: 0 auto;
+    min-width: 300px;
+    max-width: 1000px;
+    width: 96%;
+}
+/* Screen Widths >= 480px
+=================================================== */
+@media only screen and (min-width: 480px) {
+
+}
+/* Screen Widths >= 600px
+=================================================== */
+@media only screen and (min-width: 600px) {
+    /* 3 Column Grid */
+    .third {
+        width: 29.33%;
+    }
+    .two-thirds {
+        width: 62.66%;
+    }
+    /* 4 Column Grid */
+    .quarter {
+        width: 21%;
+    }
+    .half {
+        width: 46%;
+    }
+    .three-quarters {
+        width: 71%;
+    }
+    /* 5 Column Grid */
+    .fifth {
+        width: 16%;
+    }
+    .two-fifths {
+        width: 36%;
+    }
+    .three-fifths {
+        width: 56%;
+    }
+    .four-fifths {
+        width: 76%;
+    }
+    /* 6 Column Grid */
+    .sixth {
+        width: 12.666599999999999%;
+    }
+}

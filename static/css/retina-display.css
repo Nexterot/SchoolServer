@@ -1,0 +1,56 @@
+/* Author: Luke Greenaway */
+/* Stylesheet for retina display devices */
+/* General Overrides
+=================================================== */
+header .mobile-menu {
+    background-image: url(../images/interface/retina-display/icon-mobile-menu.png);
+    background-size: 21px 15px;
+}
+a {
+    /* Buttons */
+
+}
+a.button.apple {
+    background-image: url(../images/interface/retina-display/icon-apple-black.png);
+    background-size: 21px 27px;
+}
+a.button.secondary.apple,
+a.button.tertiary.apple {
+    background-image: url(../images/interface/retina-display/icon-apple-white.png);
+    background-size: 21px 27px;
+}
+.usp img {
+    display: none;
+}
+
+img {
+    display: none;
+}
+
+img.retina{
+    display: block;
+}
+.usp img.retina {
+    display: block;
+}
+.social ul li a {
+    background-image: url(../images/interface/retina-display/sprite-social.png);
+    background-size: 160px 20px;
+}
+footer ul li.divider {
+    background-image: url(../images/interface/retina-display/footer-nav-divider.png);
+    background-size: 4px 4px;
+}
+input.submit {
+    background-image: url(../images/interface/retina-display/icon-arrow-next.png);
+    background-size: 11px 18px;
+}
+.share-buttons li a {
+    background-image: url(../images/interface/retina-display/sprite-share.png);
+    background-size: 21px 137px;
+}
+/* Screen Widths >= 1024px
+=================================================== */
+@media only screen and (min-width: 1024px) {
+
+}

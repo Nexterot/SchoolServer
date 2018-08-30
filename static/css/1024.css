@@ -1,0 +1,287 @@
+/* Author: Luke Greenaway */
+/* Stylesheet for project configuration */
+/* Grid & Layout
+=================================================== */
+/* Colours
+=================================================== */
+/* White */
+/* Base */
+/* Medium */
+/* Light */
+/* Brand Colour */
+/* Social */
+/* Author: Luke Greenaway */
+/* Stylesheet for Enhancements */
+/* Generic Styles
+=================================================== */
+/* Inline Block */
+/* Typography
+=================================================== */
+/* Font-face */
+/* Font Size */
+/* Line Height */
+/* Anti Aliasing */
+/* Wrap Words */
+/* Hide Text */
+/* CSS3
+=================================================== *//* Opacity */
+/* Border Radius */
+/* Background Cover */
+/* Rotate */
+/* Box Shadow */
+/* Transform */
+/* Horizontal Gradient */
+/* Flex Box */
+/* CSS3 Transitions
+=================================================== *//* Animate Background Colour */
+/* Author: Luke Greenaway */
+/* Stylesheet for screen widths >= 1024px */
+/* Generic Styles
+=================================================== */
+iframe {
+    height: 563px;
+}
+/* Main Layout
+=================================================== */
+.wrapper-inner section {
+    padding-top: 9em;
+}
+.wrapper-inner.blogs section {
+    padding-top: 7em;
+    padding-bottom: 7em;
+}
+.wrapper-inner section .half {
+    width: 46%;
+    float: left;
+}
+.wrapper-inner section.media-then-text .media-content {
+    float: left;
+}
+.wrapper-inner section.media-then-text .text-content {
+    float: right;
+}
+/* Header
+=================================================== */
+header {
+    height: 11em;
+    line-height: 11.6em;
+    padding: 0;
+}
+header .half {
+    width: 46%;
+}
+header .quarter {
+    width: 21%;
+}
+header .logo {
+    text-align: left;
+}
+header .logo a {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    margin: 0;
+}
+header .logo a img {
+    margin-top: 0;
+    padding-top: 5.8em;
+    max-width: 201px;
+}
+header nav {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+header nav ul {
+    margin-top: 0;
+}
+header nav ul li.middle {
+    margin: 0 30px;
+}
+header .social ul {
+    float: right;
+    padding-top: 4px;
+}
+header .social ul li {
+    float: left;
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+/* Panels Generic
+=================================================== */
+.panel img {
+    margin-top: 8em;
+}
+.panel.not-centered {
+    text-align: left;
+}
+.panel.not-centered p {
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+}
+.panel h2 {
+    margin-bottom: 15px;
+}
+/* Hero Panel
+=================================================== */.hero {
+                                                          padding-bottom: 0;
+                                                      }
+.hero section {
+    padding-top: 1em;
+}
+.hero section img {
+    margin-top: 0 !important;
+    float: right;
+}
+.hero section article {
+    /* Pre-launch */
+
+    /* Post-launch */
+
+}
+.hero section article.desktop {
+    display: inline;
+    text-align: center;
+}
+.hero section article h1 {
+    margin-bottom: 32px;
+    width: 100%;
+    color: #424242;
+}
+.hero section article h2 {
+    margin-bottom: 4em;
+    max-width: 420px;
+    float: left;
+    width: 100%;
+}
+.hero section article p:last-child {
+    margin-bottom: 30px;
+}
+.hero section article img {
+
+}
+.hero section article .button {
+    margin-top: 20px;
+}
+
+.hero .title-text{
+    margin-top: 11em;
+}
+.hero section article {
+    margin-top: 6em;
+}
+.hero section article h1 {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+
+.hero section article .sub {
+    margin-bottom: 25px;
+}
+.hero section article input.email {
+    width: 300px;
+    margin-right: 5px;
+}
+.hero section article .post-launch {
+    margin-top: 6em;
+}
+/* Video Panel
+=================================================== */.teaser section {
+                                                          padding-bottom: 9em;
+                                                      }
+.teaser section iframe {
+    margin: 2em auto 5em;
+}
+/* USP's Panel
+=================================================== */
+.usp {
+    padding-bottom: 11em;
+    background: #ffffff;
+}
+.usp .third {
+    width: 29.33%;
+}
+.usp br.row-three {
+    display: block;
+}
+.usp br.row-two {
+    display: none;
+}
+/* Simple Simple Panel
+=================================================== */.super-simple section {
+                                                          padding-top: 0;
+                                                      }
+.super-simple section article.text-content {
+    margin-top: 28em;
+}
+/* Your History Panel
+=================================================== */.your-history section {
+                                                          padding-top: 0;
+                                                      }
+.your-history section article.text-content {
+    margin-top: 28em;
+}
+/* Testimonal Panel
+=================================================== */.testimonal {
+                                                          padding-bottom: 9em;
+                                                      }
+.testimonal .flexslider .flex-control-paging {
+    bottom: -50px;
+}
+/* Sign Up Panel
+=================================================== */.sign-up {
+                                                          padding-bottom: 9em;
+                                                      }
+.sign-up form {
+    margin: 6em 0;
+}
+.sign-up form input {
+    width: 350px;
+}
+/* Press Kit Panel
+=================================================== */.press-kit {
+                                                          padding-bottom: 9em;
+                                                      }
+.press-kit .button {
+    margin-top: 35px;
+}
+
+.watches img{
+    width: 80% !important;
+}
+
+.app-store-badge{
+    margin: 0;
+}
+
+img.logo{
+    text-align: left !important;
+    float: left !important;
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+.review-item{
+    margin-top: 4em;
+    margin-bottom: 4em;
+}
+
+.review-item .stars{
+    font-size: 3em;
+    margin-bottom: 0.5em;
+}
+
+.review-item h6{
+    margin-top: 1em;
+    font-size: 1.2em;
+}
+
+.review-item p{
+    font-size: 2em;
+    margin: 0.5em 0;
+}

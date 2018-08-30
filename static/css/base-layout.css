@@ -1,0 +1,491 @@
+/* Author: Luke Greenaway */
+/* Stylesheet for project configuration */
+/* Grid & Layout
+=================================================== */
+/* Colours
+=================================================== */
+/* White */
+/* Base */
+/* Medium */
+/* Light */
+/* Brand Colour */
+/* Social */
+/* Author: Luke Greenaway */
+/* Stylesheet for Enhancements */
+/* Generic Styles
+=================================================== */
+/* Inline Block */
+/* Typography
+=================================================== */
+/* Font-face */
+/* Font Size */
+/* Line Height */
+/* Anti Aliasing */
+/* Wrap Words */
+/* Hide Text */
+/* CSS3
+=================================================== *//* Opacity */
+/* Border Radius */
+/* Background Cover */
+/* Rotate */
+/* Box Shadow */
+/* Transform */
+/* Horizontal Gradient */
+/* Flex Box */
+/* CSS3 Transitions
+=================================================== *//* Animate Background Colour */
+/* Author: Luke Greenaway */
+/* Stylesheet for base layout */
+/* Generic Styles
+=================================================== */
+.post-launch {
+    display: none!important;
+}
+/*
+.pre-launch{
+	display:none!important;
+}
+*/
+.desktop {
+    display: none;
+}
+iframe {
+    height: 180px;
+}
+.reduced-width {
+    width: 80%;
+}
+/* Main Layout
+=================================================== */
+.wrapper-inner section {
+    padding-top: 4em;
+}
+.wrapper-inner.blogs section {
+    padding-top: 4em;
+    padding-bottom: 4em;
+}
+.wrapper-inner section article img {
+    margin-left: auto;
+    margin-right: auto;
+}
+/* Header
+=================================================== */
+header {
+    background: white;
+    padding: 2em 0;
+}
+header .logo {
+    text-align: center;
+    margin-top: 1.25em;
+}
+header .logo a {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    margin: 0 auto;
+}
+header .logo a img {
+    max-width: 190px;
+}
+header nav {
+    text-align: center;
+    margin: 1.35em auto 1em;
+}
+header nav.half {
+    display: none;
+}
+header nav ul {
+    list-style: none;
+}
+header nav ul li {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+header nav ul li.middle {
+    margin: 0 20px;
+}
+header .social {
+    text-align: center;
+    display: none;
+}
+header .social ul {
+    list-style: none;
+}
+
+img.logo{
+    width: 300px !important;
+    margin-top: 3em !important;
+    margin-bottom: 2em;
+}
+
+
+a.app-store-badge{
+
+    background-image: url('images/content-new/app-store-badge.png');
+    background-repeat: no-repeat;
+    display: block;
+    width: 215px;
+    height: 64px;
+}
+
+img.retina {
+    display: none;
+}
+
+/* Generic Content
+=================================================== */
+/* Social Buttons */
+.social ul li {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+}
+.social ul li a {
+    background: url(../img/sprite-social.png) 0 0 no-repeat;
+    height: 20px;
+    width: 20px;
+    margin: 0 3px;
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    font-size: 0;
+    overflow: hidden;
+    text-indent: -99999px;
+}
+.social ul li a.twitter {
+    background-position: -28px 0;
+}
+.social ul li a.vk {
+    background-position: -56px 0;
+}
+.social ul li a.instagram {
+    background-position: -84px 0;
+}
+.social ul li a.vimeo {
+    background-position: -112px 0;
+}
+.social ul li a.email {
+    background-position: -140px 0;
+}
+/* Share Buttons */
+.share-buttons {
+    list-style: none;
+}
+.share-buttons li {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    margin: 0 5px;
+}
+.share-buttons li a {
+    display: -moz-inline-stack;
+    display: inline-block;
+    *display: inline;
+    zoom: 1;
+    font-size: 0;
+    overflow: hidden;
+    text-indent: -99999px;
+    border-radius: 4px;
+    -moz-border-radius: 4px;
+    -webkit-border-radius: 4px;
+    background: url(../images/interface/sprite-share.png) 0 0 no-repeat;
+    padding: 10px 21px 9px 22px;
+}
+.share-buttons li a.twitter {
+    background-color: #3b5998;
+    background-position: 11px 12px;
+}
+.share-buttons li a.twitterа {
+    background-color: #00aced;
+    background-position: 11px -46px;
+}
+.share-buttons li a.vk {
+    background-color: #d14836;
+    background-position: 12px -105px;
+}
+/* Panels Generic
+=================================================== */
+.panel {
+    text-align: center;
+}
+.panel img {
+    margin-top: 5em;
+}
+.panel p {
+    max-width: 740px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.panel.primary {
+    background-color: #85daef;
+}
+.panel.secondary {
+    background-color: #e5e5e5;
+}
+.panel.tertiary {
+    background-color: #e76851;
+}
+.panel.tint {
+    background-color: #f8f8f8;
+}
+.panel h2 {
+    margin-bottom: 5px;
+}
+/* Hero Panel
+=================================================== */.hero section {
+                                                          padding-top: 0em;
+                                                      }
+.hero section img {
+    margin-top: 1.5em;
+    max-width: 385px;
+}
+.hero section article h1 {
+    margin-bottom: 10px;
+}
+.hero section article h1 br {
+    display: none;
+}
+.hero section article h2 {
+    margin-bottom: 20px;
+}
+.hero section article .button {
+    margin-top: 10px;
+    margin-bottom: 15px;
+}
+.hero section article  h2 {
+    margin-bottom: 25px;
+}
+.hero section article .sub {
+    margin-bottom: 15px;
+}
+.hero section article input.email {
+    width: 150px;
+    margin-right: 3px;
+}
+.hero section article .submit {
+    height: 46px;
+}
+.hero section article .response {
+    margin: 15px 0 0;
+}
+/* Video Panel
+=================================================== */.teaser section {
+                                                          padding-bottom: 3.5em;
+                                                      }
+.video-wrapper {
+    position: relative;
+    padding-bottom: 54.1%;
+    padding-top: 2.2%;
+    height: 0;
+}
+.video-wrapper iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.teaser section iframe {
+    margin: 1.5em auto 2em !important;
+}
+.teaser section p:last-child {
+    margin-bottom: 0;
+}
+
+/* BLOGS Panel
+=================================================== */
+
+.blogs ul{
+    margin: 0 auto;
+}
+
+.blogs ul li{
+    display: inline-block;
+    margin: 0.5em 1.5em;
+}
+
+.blogs ul li img {
+    width: auto;
+    margin-top: 0;
+}
+
+.blogs ul li img.blog-apple {
+    max-width: 33px;
+}
+
+.blogs ul li img.blog-bless {
+    max-width: 197px;
+}
+
+.blogs ul li img.blog-gizmodo {
+    max-width: 169px;
+}
+
+.blogs ul li img.blog-lifehacker {
+    max-width: 125px;
+}
+
+.blogs ul li img.blog-time {
+    max-width: 98px;
+}
+
+.blogs ul li img.blog-wired {
+    max-width: 142px;
+}
+
+/* USPs Panel
+=================================================== */.usp {
+                                                          padding-bottom: 5em;
+                                                      }
+.usp img {
+    width: 68px;
+    margin-bottom: 1.5em;
+}
+.usp img.retina {
+    display: none;
+}
+.usp br.row-three {
+    display: none;
+}
+/* Budgets Panel
+=================================================== */.budgets .full {
+                                                          overflow: hidden;
+                                                          margin-bottom: -2px;
+                                                      }
+/* Testimonal Panel
+=================================================== */.testimonal {
+                                                          padding-bottom: 3em;
+                                                      }
+.testimonal p .orphin {
+    display: none;
+}
+.testimonal .flexslider {
+    margin-top: 2em;
+    margin-bottom: 3em;
+}
+.testimonal .flexslider p {
+    margin-bottom: 5px;
+}
+.testimonal .flexslider .flex-direction-nav {
+    display: none;
+}
+.testimonal .flexslider .flex-control-paging {
+    bottom: -30px;
+}
+.testimonal .flexslider .flex-control-paging li a {
+    border-radius: 100px;
+    -moz-border-radius: 100px;
+    -webkit-border-radius: 100px;
+    border: 3px solid #d9d9d9;
+    margin: 0 1px;
+    width: 6px;
+    height: 6px;
+    cursor: pointer;
+}
+.testimonal .flexslider .flex-control-paging li a.flex-active {
+    border-color: #e5e5e5;
+}
+/* Sign Up Panel
+=================================================== */.sign-up {
+                                                          padding-bottom: 3em;
+                                                      }
+.sign-up form {
+    margin: 2.5em 0;
+}
+.sign-up form input {
+    width: 100%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+    height: 46px;
+}
+.sign-up form input.submit {
+    width: 46px;
+}
+.sign-up .share-buttons {
+    margin-top: 1.5em;
+}
+#pennies_mc_embed_signup input:-webkit-autofill {
+    -webkit-box-shadow: 0 0 0px 1000px white inset;
+}
+#pennies_mc_embed_signup input:-webkit-autofill:focus {
+    -webkit-box-shadow: 0 0 0px 1000px #ffffff inset, 0 0 8px rgba(82, 168, 236, 0);
+}
+#pennies_mc_embed_signup textarea:focus,
+#pennies_mc_embed_signup input:focus {
+    outline: 0;
+}
+#pennies_mc_embed_signup *:focus {
+    outline: 0;
+}
+/* Press Kit Panel
+=================================================== */.press-kit {
+                                                          padding-bottom: 3.25em;
+                                                      }
+.press-kit .button {
+    margin-top: 15px;
+}
+/* Footer
+=================================================== */
+footer {
+    padding: 2.5em 0;
+}
+footer .social ul {
+    margin: 0;
+}
+footer .social ul li {
+    margin-bottom: 0;
+}
+footer ul {
+    margin: 2.5em 0 1.5em;
+}
+footer ul li {
+    margin-bottom: 10px;
+}
+footer ul li.divider {
+    display: none;
+}
+
+.credit a{
+    color: #666666 !important;
+}
+
+.watches img{
+    width: 55% !important;
+}
+
+.app-store-badge{
+    margin: 2em auto;
+}
+
+.reviews{
+    margin-top: 1em;
+}
+
+.review-item{
+    text-align: center;
+    margin-top: 2em;
+    margin-bottom: 2em;
+}
+
+.review-item .stars{
+    margin-bottom: 0.5em;
+    font-size: 2em;
+}
+
+.review-item h6{
+    margin-top: 1em;
+}
+
+.review-item p{
+    font-size: 1.5em;
+    margin: 0.3em 0;
+}
