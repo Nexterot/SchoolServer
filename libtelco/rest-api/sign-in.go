@@ -131,11 +131,27 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 	if exists {
 		rest.logger.Info("REST: exists in redis", "IP", req.RemoteAddr)
 		// Если существует, проверим пароль
-		// Подразумевается, что уже был успешный вход
-		isCorrect, err := rest.Db.CheckPassword(rReq.Login, rReq.ID, rReq.Passkey)
+		// Достанем имя сессии
+		sessionName, err = rest.Redis.GetCookie(uniqueUserKey)
 		if err != nil {
-			if strings.Contains(err.Error(), "record not found") {
-				rest.logger.Info("REST: Invalid id or login specified", "Error", err.Error(), "IP", req.RemoteAddr)
+			rest.logger.Error("REST: Error occured when getting existing key from redis", "Error", err, "uniqueUserKey", uniqueUserKey, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Получим удаленную сессию
+		newRemoteSession, ok := rest.sessionsMap[sessionName]
+		if !ok {
+			// Если нет удаленной сессии
+			rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
+			// Создать удаленную сессию
+			newRemoteSession = ss.NewSession(&school)
+		}
+		// Залогиниться
+		err = newRemoteSession.Login()
+		if err != nil {
+			if strings.Contains(err.Error(), "invalid login or password") {
+				// Пароль неверный
+				rest.logger.Info("REST: Error occured when remote signing in", "Error", "invalid login or password", "Config", school, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusBadRequest)
 				status, err := respwr.Write(rest.Errors.InvalidLoginData)
 				if err != nil {
@@ -145,68 +161,34 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 				}
 				return
 			}
-			rest.logger.Error("REST: Error occured when checking password in db", "Error", err, "IP", req.RemoteAddr)
+			rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		// Получить childrenMap
+		err = newRemoteSession.GetChildrenMap()
+		if err != nil {
+			// Ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		rest.sessionsMap[sessionName] = newRemoteSession
+		remoteSession = newRemoteSession
+
+		rest.logger.Info("REST: correct pass", "IP", req.RemoteAddr)
+		// Получить существующий объект сессии
+		session, err = rest.Store.Get(req, sessionName)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when getting session from cookiestore", "Error", err, "Session name", sessionName, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		if isCorrect {
-			// Если пароль верный, достанем имя сессии
-			rest.logger.Info("REST: correct pass", "IP", req.RemoteAddr)
-			sessionName, err = rest.Redis.GetCookie(uniqueUserKey)
-			if err != nil {
-				rest.logger.Error("REST: Error occured when getting existing key from redis", "Error", err, "uniqueUserKey", uniqueUserKey, "IP", req.RemoteAddr)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			// Получить существующий объект сессии
-			session, err = rest.Store.Get(req, sessionName)
-			if err != nil {
-				rest.logger.Error("REST: Error occured when getting session from cookiestore", "Error", err, "Session name", sessionName, "IP", req.RemoteAddr)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			// Получим удаленную сессию
-			newRemoteSession, ok := rest.sessionsMap[sessionName]
-			if !ok {
-				// Если нет удаленной сессии
-				rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
-				// Создать удаленную сессию и залогиниться
-				newRemoteSession = ss.NewSession(&school)
-				err = newRemoteSession.Login()
-				if err != nil {
-					rest.logger.Error("REST: Error remote signing in", "Error", err, "IP", req.RemoteAddr)
-					respwr.WriteHeader(http.StatusBadGateway)
-					return
-				}
-				// Получить childrenMap
-				err = newRemoteSession.GetChildrenMap()
-				if err != nil {
-					// Ошибка
-					rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
-					respwr.WriteHeader(http.StatusBadGateway)
-					return
-				}
-				rest.sessionsMap[sessionName] = newRemoteSession
-			}
-			remoteSession = newRemoteSession
-			// Получим из БД данные о профиле
-			profile, err = rest.Db.GetUserProfile(rReq.Login, rReq.ID)
-			if err != nil {
-				rest.logger.Error("REST: Error occured when getting user profile from db", "Error", err, "IP", req.RemoteAddr)
-				respwr.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-		} else {
-			// Если неверный, пошлем BadRequest
-			rest.logger.Info("REST: incorrect pass", "IP", req.RemoteAddr)
-			respwr.WriteHeader(http.StatusBadRequest)
-			// Отправить ответ клиенту
-			status, err := respwr.Write(rest.Errors.InvalidLoginData)
-			if err != nil {
-				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
-			} else {
-				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
-			}
+		// Получим из БД данные о профиле
+		profile, err = rest.Db.GetUserProfile(rReq.Login, rReq.ID)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when getting user profile from db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	} else {
