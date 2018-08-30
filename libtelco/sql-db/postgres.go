@@ -275,7 +275,7 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 	}
 	// Получаем запись пользователя
 	where := User{Login: login, SchoolID: uint(schoolID)}
-	err = db.SchoolServerDB.Where(where).First(&user).Error
+	err = db.SchoolServerDB.Unscoped().Where(where).First(&user).Error
 	if err != nil {
 		if err.Error() == "record not found" {
 			// Пользователь не найден, создадим
@@ -325,6 +325,7 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 			if errInner != nil {
 				return errors.Wrapf(errInner, "Error creating user='%v'", user)
 			}
+			db.Logger.Info("User created", "User", user)
 			return nil
 		}
 		return errors.Wrapf(err, "Error query user='%v'", where)
@@ -332,11 +333,41 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 	// Пользователь найден, обновим
 	user.Password = passkey
 	user.SchoolID = uint(schoolID)
-	err = db.SchoolServerDB.Save(&user).Error
-	if err != nil {
-		return errors.Wrapf(err, "Error saving updated user='%v'", user)
+	// Если пользователь был псевдоудален
+	if user.DeletedAt != nil {
+		user.DeletedAt = nil
+		err = db.SchoolServerDB.Unscoped().Save(&user).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error saving updated deleted user='%v'", user)
+		}
+	} else {
+		err = db.SchoolServerDB.Save(&user).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error saving updated user='%v'", user)
+		}
 	}
 	return nil
+}
+
+// PseudoDeleteUser псевдоудаляет пользователя
+func (db *Database) PseudoDeleteUser(userName string, schoolID int) error {
+	var (
+		user   User
+		school School
+	)
+	// Получаем школу по id
+	err := db.SchoolServerDB.First(&school, schoolID).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query school by id='%v'", schoolID)
+	}
+	// Получаем пользователя по школе и логину
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err = db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Псевдоудаляем
+	return db.SchoolServerDB.Delete(&user).Error
 }
 
 // GetUserProfile возвращает профиль пользователя

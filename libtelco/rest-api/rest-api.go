@@ -90,6 +90,7 @@ func (rest *RestAPI) BindHandlers() http.Handler {
 	mux.HandleFunc("/check_permission", rest.CheckPermissionHandler) // done
 	mux.HandleFunc("/sign_in", rest.SignInHandler)                   // done
 	mux.HandleFunc("/log_out", rest.LogOutHandler)                   // done
+	mux.HandleFunc("/delete_account", rest.DeleteAccountHandler)     // done
 	// Дневник: задания и оценки на неделю, отметить задание
 	// как выполненное/невыполненное
 	mux.HandleFunc("/get_tasks_and_marks", rest.GetTasksAndMarksHandler)        // done
