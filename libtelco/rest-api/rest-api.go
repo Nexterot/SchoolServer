@@ -125,7 +125,9 @@ func (rest *RestAPI) BindHandlers() http.Handler {
 	mux.HandleFunc("/create_topic", rest.CreateTopicHandler)                   // done
 	mux.HandleFunc("/create_message_in_topic", rest.CreateTopicMessageHandler) // done
 	// Настройки
-	mux.HandleFunc("/change_password", rest.ChangePasswordHandler) // done
+	mux.HandleFunc("/change_password", rest.ChangePasswordHandler)      // done
+	mux.HandleFunc("/push_do_not_disturb", rest.PushDontDisturbHandler) // done
+	mux.HandleFunc("/push_settings", rest.Handler)                      // in dev
 	// Файлы
 	mux.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir(".")))) // done
 

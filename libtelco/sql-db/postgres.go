@@ -6,6 +6,7 @@ package db
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
@@ -67,19 +68,20 @@ type School struct {
 // User struct представляет структуру записи пользователя
 type User struct {
 	gorm.Model
-	SchoolID   uint // parent id
-	UID        int
-	Login      string    `sql:"size:255;index"`
-	Password   string    `sql:"size:255"`
-	Permission bool      `sql:"DEFAULT:false"`
-	FirstName  string    `sql:"size:255"`
-	LastName   string    `sql:"size:255"`
-	TrueLogin  string    `sql:"size:255"`
-	Role       string    `sql:"size:255"`
-	Year       string    `sql:"size:255"`
-	IsParent   bool      `sql:"DEFAULT:false"`
-	Students   []Student // has-many relation
-	Devices    []Device  // has-many relation
+	SchoolID          uint // parent id
+	UID               int
+	Login             string     `sql:"size:255;index"`
+	Password          string     `sql:"size:255"`
+	Permission        bool       `sql:"DEFAULT:false"`
+	FirstName         string     `sql:"size:255"`
+	LastName          string     `sql:"size:255"`
+	TrueLogin         string     `sql:"size:255"`
+	Role              string     `sql:"size:255"`
+	Year              string     `sql:"size:255"`
+	IsParent          bool       `sql:"DEFAULT:false"`
+	DoNotDisturbUntil *time.Time // для push
+	Students          []Student  // has-many relation
+	Devices           []Device   // has-many relation
 }
 
 // Device struct представляет структуру устройства, которое будет получать
@@ -345,6 +347,34 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 		if err != nil {
 			return errors.Wrapf(err, "Error saving updated user='%v'", user)
 		}
+	}
+	return nil
+}
+
+// UpdatePushTime обновляет время, до которого не беспокоить пользователя push-уведомлениями
+func (db *Database) UpdatePushTime(userName string, schoolID int, minutes int) error {
+	var (
+		user   User
+		school School
+	)
+	// Получаем школу по id
+	err := db.SchoolServerDB.First(&school, schoolID).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query school by id='%v'", schoolID)
+	}
+	// Получаем пользователя по школе и логину
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err = db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Обновим поле
+	t := time.Now().Add(time.Minute * time.Duration(minutes))
+	user.DoNotDisturbUntil = &t
+	// Сохраним
+	err = db.SchoolServerDB.Save(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving user='%v'", user)
 	}
 	return nil
 }

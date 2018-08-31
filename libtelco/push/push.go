@@ -78,9 +78,16 @@ func (p *Push) sendPushes() {
 	}
 	// Отображение schoolID в число новых ресурсов для этой школы
 	nResources := make(map[uint]int)
+	// Текущее время
+	now := time.Now()
 	// Гоним по пользователям
 	for _, usr := range users {
 		p.logger.Info("PUSH: user", "Login", usr.Login)
+		// Если стоит "не беспокоить", пропустим
+		if now.Sub(*usr.DoNotDisturbUntil).String()[0] == '-' {
+			p.logger.Info("Not disturbing this user until date", "Date", usr.DoNotDisturbUntil, "User", usr.Login)
+			continue
+		}
 		// Получаем школу по id
 		err := pg.First(&school, usr.SchoolID).Error
 		if err != nil {
