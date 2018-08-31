@@ -10,9 +10,8 @@ import (
 
 // getMailRequest используется в GetMailHandler
 type getMailRequest struct {
-	Section    int    `json:"section"`
-	StartIndex int    `json:"startIndex"`
-	Order      string `json:"order"`
+	Section    int `json:"section"`
+	StartIndex int `json:"startIndex"`
 }
 
 // GetMailHandler обрабатывает запросы на получение списка писем
@@ -74,7 +73,7 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 		return
 	}
 	// Сходить за списком писем по удаленной сессии
-	emailsList, err := remoteSession.GetEmailsList(strconv.Itoa(rReq.Section), strconv.Itoa(rReq.StartIndex), "25", rReq.Order)
+	emailsList, err := remoteSession.GetEmailsList(strconv.Itoa(rReq.Section), strconv.Itoa(rReq.StartIndex), "25", "DESC")
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -85,7 +84,7 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 				return
 			}
 			// Повторно получить с сайта школы
-			emailsList, err = remoteSession.GetEmailsList(strconv.Itoa(rReq.Section), strconv.Itoa(rReq.StartIndex), "25", rReq.Order)
+			emailsList, err = remoteSession.GetEmailsList(strconv.Itoa(rReq.Section), strconv.Itoa(rReq.StartIndex), "25", "DESC")
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
