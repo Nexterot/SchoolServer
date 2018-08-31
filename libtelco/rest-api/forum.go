@@ -82,7 +82,7 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 			// Запрашиваемая страница не существует
 			rest.logger.Info("REST: Invalid page number", "Error", err.Error(), "Page", rReq.Page, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
-			status, err := respwr.Write(rest.Errors.InvalidData)
+			status, err := respwr.Write(rest.Errors.InvalidPage)
 			if err != nil {
 				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 			} else {

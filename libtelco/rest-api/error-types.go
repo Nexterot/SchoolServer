@@ -12,6 +12,7 @@ type marshalledErrors struct {
 	MalformedData    []byte
 	InvalidData      []byte
 	InvalidLoginData []byte
+	InvalidPage      []byte
 	WrongOldPassword []byte
 	SamePassword     []byte
 }
@@ -32,6 +33,11 @@ func NewMarshalledErrors(logger *log.Logger) *marshalledErrors {
 	if err != nil {
 		logger.Fatal("REST: Error occured when marshalling error mnemocode", "Error", err, "Mnemo", "invalid_login_data")
 	}
+	// Invalid Page on forum
+	invalidPage, err := json.Marshal(errorMnemocode{"invalid_page"})
+	if err != nil {
+		logger.Fatal("REST: Error occured when marshalling error mnemocode", "Error", err, "Mnemo", "invalid_page")
+	}
 	// WrongOldPassword
 	wrongOldPassword, err := json.Marshal(errorMnemocode{"wrong_old_password"})
 	if err != nil {
@@ -47,6 +53,7 @@ func NewMarshalledErrors(logger *log.Logger) *marshalledErrors {
 		MalformedData:    malformedData,
 		InvalidData:      invalidData,
 		InvalidLoginData: invalidLoginData,
+		InvalidPage:      invalidPage,
 		WrongOldPassword: wrongOldPassword,
 		SamePassword:     samePassword,
 	}
