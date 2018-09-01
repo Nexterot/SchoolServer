@@ -68,36 +68,35 @@ type School struct {
 // User struct представляет структуру записи пользователя
 type User struct {
 	gorm.Model
-	SchoolID          uint // parent id
-	UID               int
-	Login             string     `sql:"size:255;index"`
-	Password          string     `sql:"size:255"`
-	Permission        bool       `sql:"DEFAULT:false"`
-	FirstName         string     `sql:"size:255"`
-	LastName          string     `sql:"size:255"`
-	TrueLogin         string     `sql:"size:255"`
-	Role              string     `sql:"size:255"`
-	Year              string     `sql:"size:255"`
-	IsParent          bool       `sql:"DEFAULT:false"`
-	DoNotDisturbUntil *time.Time // для push
-	Students          []Student  // has-many relation
-	Devices           []Device   // has-many relation
+	SchoolID   uint // parent id
+	UID        int
+	Login      string    `sql:"size:255;index"`
+	Password   string    `sql:"size:255"`
+	Permission bool      `sql:"DEFAULT:false"`
+	FirstName  string    `sql:"size:255"`
+	LastName   string    `sql:"size:255"`
+	TrueLogin  string    `sql:"size:255"`
+	Role       string    `sql:"size:255"`
+	Year       string    `sql:"size:255"`
+	Students   []Student // has-many relation
+	Devices    []Device  // has-many relation
 }
 
 // Device struct представляет структуру устройства, которое будет получать
 // push-уведомления
 type Device struct {
 	gorm.Model
-	UserID                uint   // parent id
-	SystemType            int    // android/ios
-	Token                 string // unique device token (FCM)
-	MarksNotification     int    `sql:"DEFAULT:1"`
-	TasksNotification     int    `sql:"DEFAULT:1"`
-	ReportsNotification   bool   `sql:"DEFAULT:true"`
-	ScheduleNotification  bool   `sql:"DEFAULT:true"`
-	MailNotification      bool   `sql:"DEFAULT:true"`
-	ForumNotification     bool   `sql:"DEFAULT:true"`
-	ResourcesNotification bool   `sql:"DEFAULT:true"`
+	UserID                uint       // parent id
+	SystemType            int        // android/ios
+	Token                 string     // unique device token (FCM)
+	DoNotDisturbUntil     *time.Time // для push
+	MarksNotification     int        `sql:"DEFAULT:1"`
+	TasksNotification     int        `sql:"DEFAULT:1"`
+	ReportsNotification   bool       `sql:"DEFAULT:true"`
+	ScheduleNotification  bool       `sql:"DEFAULT:true"`
+	MailNotification      bool       `sql:"DEFAULT:true"`
+	ForumNotification     bool       `sql:"DEFAULT:true"`
+	ResourcesNotification bool       `sql:"DEFAULT:true"`
 }
 
 // Student struct представляет структуру ученика
@@ -264,11 +263,12 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 }
 
 // UpdateUser обновляет данные о пользователе
-func (db *Database) UpdateUser(login string, passkey string, isParent bool, schoolID int, childrenMap map[string]dt.Student, profile *dt.Profile) error {
+func (db *Database) UpdateUser(login string, passkey string, schoolID int, token string, systemType int, childrenMap map[string]dt.Student, profile *dt.Profile) error {
 	var (
 		school  School
 		student Student
 		user    User
+		device  Device
 	)
 	// Получаем запись школы
 	err := db.SchoolServerDB.First(&school, schoolID).Error
@@ -298,7 +298,7 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 			}
 			// Создать список девайсов
 			devices := make([]Device, 1)
-			dev := Device{SystemType: Android, Token: "token_sample"}
+			dev := Device{SystemType: Android, Token: token}
 			// Создать девайс
 			errInner := db.SchoolServerDB.Create(&dev).Error
 			devices[0] = dev
@@ -306,19 +306,18 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 				return errors.Wrapf(errInner, "Error creating device='%v' for user='%v'", dev, user)
 			}
 			user := User{
-				SchoolID: uint(schoolID),
-				IsParent: isParent,
-				Login:    login,
-				Password: passkey,
-				Students: students,
-				Devices:  devices,
+				SchoolID:  uint(schoolID),
+				Login:     login,
+				Password:  passkey,
+				Students:  students,
+				Devices:   devices,
+				Role:      profile.Role,
+				LastName:  profile.Surname,
+				FirstName: profile.Name,
+				Year:      profile.Schoolyear,
+				TrueLogin: profile.Username,
 			}
 			// Записываем профиль
-			user.Role = profile.Role
-			user.LastName = profile.Surname
-			user.FirstName = profile.Name
-			user.Year = profile.Schoolyear
-			user.TrueLogin = profile.Username
 			user.UID, err = strconv.Atoi(profile.UID)
 			if err != nil {
 				return errors.Wrapf(err, "Error converting string to int: %v'", profile.UID)
@@ -335,6 +334,20 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 	// Пользователь найден, обновим
 	user.Password = passkey
 	user.SchoolID = uint(schoolID)
+	// Если девайс новый, добавить
+	wh := Device{UserID: user.ID, Token: token, SystemType: systemType}
+	err = db.SchoolServerDB.Unscoped().FirstOrCreate(&device, wh).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query firstorcreate device='%v'", wh)
+	}
+	// Если девайс был удален
+	if device.DeletedAt != nil {
+		device.DeletedAt = nil
+		err = db.SchoolServerDB.Unscoped().Save(&device).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error saving updated deleted device='%v'", device)
+		}
+	}
 	// Если пользователь был псевдоудален
 	if user.DeletedAt != nil {
 		user.DeletedAt = nil
@@ -352,10 +365,11 @@ func (db *Database) UpdateUser(login string, passkey string, isParent bool, scho
 }
 
 // UpdatePushTime обновляет время, до которого не беспокоить пользователя push-уведомлениями
-func (db *Database) UpdatePushTime(userName string, schoolID int, minutes int) error {
+func (db *Database) UpdatePushTime(userName string, schoolID int, token string, systemType int, minutes int) error {
 	var (
 		user   User
 		school School
+		device Device
 	)
 	// Получаем школу по id
 	err := db.SchoolServerDB.First(&school, schoolID).Error
@@ -368,13 +382,19 @@ func (db *Database) UpdatePushTime(userName string, schoolID int, minutes int) e
 	if err != nil {
 		return errors.Wrapf(err, "Error query user='%v'", where)
 	}
+	// Получаем устройство по token и UserID
+	wh := Device{UserID: user.ID, Token: token, SystemType: systemType}
+	err = db.SchoolServerDB.Where(wh).First(&device).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query device='%v'", wh)
+	}
 	// Обновим поле
 	t := time.Now().Add(time.Minute * time.Duration(minutes))
-	user.DoNotDisturbUntil = &t
+	device.DoNotDisturbUntil = &t
 	// Сохраним
-	err = db.SchoolServerDB.Save(&user).Error
+	err = db.SchoolServerDB.Save(&device).Error
 	if err != nil {
-		return errors.Wrapf(err, "Error saving user='%v'", user)
+		return errors.Wrapf(err, "Error saving device='%v'", user)
 	}
 	return nil
 }
@@ -398,6 +418,34 @@ func (db *Database) PseudoDeleteUser(userName string, schoolID int) error {
 	}
 	// Псевдоудаляем
 	return db.SchoolServerDB.Delete(&user).Error
+}
+
+// PseudoDeleteDevice псевдоудаляет девайс пользователя
+func (db *Database) PseudoDeleteDevice(userName string, schoolID int, token string, systemType int) error {
+	var (
+		user   User
+		school School
+		device Device
+	)
+	// Получаем школу по id
+	err := db.SchoolServerDB.First(&school, schoolID).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query school by id='%v'", schoolID)
+	}
+	// Получаем пользователя по школе и логину
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err = db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем устройство по token и UserID
+	wh := Device{UserID: user.ID, Token: token, SystemType: systemType}
+	err = db.SchoolServerDB.Where(wh).First(&device).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query device='%v'", wh)
+	}
+	// Псевдоудаляем
+	return db.SchoolServerDB.Delete(&device).Error
 }
 
 // GetUserProfile возвращает профиль пользователя

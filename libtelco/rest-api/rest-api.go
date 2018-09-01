@@ -185,7 +185,6 @@ func (rest *RestAPI) remoteRelogin(respwr http.ResponseWriter, req *http.Request
 	// Полезть в базу данных за данными для авторизации
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	rest.logger.Info("go to database")
 	school, err := rest.Db.GetUserAuthData(userName.(string), schoolID.(int))
 	if err != nil {
 		// Ошибок тут быть не должно

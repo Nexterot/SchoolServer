@@ -4,11 +4,14 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 // pushDontDisturbRequest используется в PushDontDisturbHandler
 type pushDontDisturbRequest struct {
-	Minutes int `json:"minutes"`
+	Minutes    int    `json:"minutes"`
+	Token      string `json:"token"`
+	SystemType int    `json:"systemType"`
 }
 
 // PushDontDisturbHandler обрабатывает запросы на удаление письма
@@ -42,28 +45,27 @@ func (rest *RestAPI) PushDontDisturbHandler(respwr http.ResponseWriter, req *htt
 	}
 	// Распечатаем запрос от клиента
 	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
-	// Проверим данные
-	if rReq.Minutes <= 0 {
-		rest.logger.Info("REST: non-positive minutes", "Minutes", rReq.Minutes, "IP", req.RemoteAddr)
-		respwr.WriteHeader(http.StatusBadRequest)
-		status, err := respwr.Write(rest.Errors.InvalidData)
-		if err != nil {
-			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
-		} else {
-			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
-		}
-		return
-	}
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
 	// Обновить время в БД
-	err = rest.Db.UpdatePushTime(userName.(string), schoolID.(int), rReq.Minutes)
+	err = rest.Db.UpdatePushTime(userName.(string), schoolID.(int), rReq.Token, rReq.SystemType, rReq.Minutes)
 	if err != nil {
+		if strings.Contains(err.Error(), "record not found") {
+			rest.logger.Info("REST: Invalid device info specified", "Error", err.Error(), "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			status, err := respwr.Write(rest.Errors.InvalidDeviceInfo)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+			}
+			return
+		}
 		rest.logger.Error("REST: Error occured when saving do not disturb time to DB", "Error", err, "userName", userName, "schoolID", schoolID, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// Отправить ответ клиенту
-	rest.logger.Info("REST: Successfully updated do not diturb time", "IP", req.RemoteAddr)
+	rest.logger.Info("REST: Successfully updated do not disturb time", "IP", req.RemoteAddr)
 	respwr.WriteHeader(http.StatusOK)
 }

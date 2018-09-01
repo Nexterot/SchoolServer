@@ -2,6 +2,8 @@
 package restapi
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"strings"
@@ -9,8 +11,14 @@ import (
 
 // changePasswordRequest используется в ChangePasswordHandler
 type changePasswordRequest struct {
-	OldPasskey string `json:"oldPasskey"`
-	NewPasskey string `json:"newPasskey"`
+	Old string `json:"old"`
+	New string `json:"new"`
+}
+
+// getMD5Hash получает md5 сумму.
+func getMD5Hash(text string) string {
+	hash := md5.Sum([]byte(text))
+	return hex.EncodeToString(hash[:])
 }
 
 // ChangePasswordHandler обрабатывает запросы на удаление письма
@@ -44,6 +52,18 @@ func (rest *RestAPI) ChangePasswordHandler(respwr http.ResponseWriter, req *http
 	}
 	// Распечатаем запрос от клиента
 	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
+	// Проверим валидность данных
+	if rReq.New == "" || rReq.Old == "" {
+		rest.logger.Info("REST: Invalid data", "Error", err.Error(), "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		status, err := respwr.Write(rest.Errors.InvalidData)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+		}
+		return
+	}
 	// Получим удаленную сессию
 	remoteSession, ok := rest.sessionsMap[sessionName]
 	if !ok {
@@ -55,8 +75,11 @@ func (rest *RestAPI) ChangePasswordHandler(respwr http.ResponseWriter, req *http
 			return
 		}
 	}
+	// Применить md5 к паролям
+	oldPasskey := getMD5Hash(rReq.Old)
+	newPasskey := getMD5Hash(rReq.New)
 	// Сходить по удаленной сессии
-	err = remoteSession.ChangePassword(rReq.OldPasskey, rReq.NewPasskey)
+	err = remoteSession.ChangePassword(oldPasskey, newPasskey)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -67,7 +90,7 @@ func (rest *RestAPI) ChangePasswordHandler(respwr http.ResponseWriter, req *http
 				return
 			}
 			// Повторно получить с сайта школы
-			err = remoteSession.ChangePassword(rReq.OldPasskey, rReq.NewPasskey)
+			err = remoteSession.ChangePassword(oldPasskey, newPasskey)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
@@ -84,9 +107,9 @@ func (rest *RestAPI) ChangePasswordHandler(respwr http.ResponseWriter, req *http
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
 	// Обновить пароль в БД
-	err = rest.Db.UpdateUser(userName.(string), rReq.NewPasskey, false, schoolID.(int), nil, nil)
+	err = rest.Db.UpdateUser(userName.(string), newPasskey, schoolID.(int), "", 0, nil, nil)
 	if err != nil {
-		rest.logger.Error("REST: Error occured when saving updated password to DB", "Error", err, "userName", userName, "schoolID", schoolID, "newPasskey", rReq.NewPasskey, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when saving updated password to DB", "Error", err, "userName", userName, "schoolID", schoolID, "newPasskey", newPasskey, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}

@@ -83,11 +83,6 @@ func (p *Push) sendPushes() {
 	// Гоним по пользователям
 	for _, usr := range users {
 		p.logger.Info("PUSH: user", "Login", usr.Login)
-		// Если стоит "не беспокоить", пропустим
-		if now.Sub(*usr.DoNotDisturbUntil).String()[0] == '-' {
-			p.logger.Info("Not disturbing this user until date", "Date", usr.DoNotDisturbUntil, "User", usr.Login)
-			continue
-		}
 		// Получаем школу по id
 		err := pg.First(&school, usr.SchoolID).Error
 		if err != nil {
@@ -194,7 +189,12 @@ func (p *Push) sendPushes() {
 		}
 		// Гоним по девайсам
 		for _, dev := range devices {
-			p.logger.Info("PUSH: device", "System", dev.SystemType, "Token", dev.Token, "MarksNotification", dev.MarksNotification)
+			p.logger.Info("PUSH: device", "System", dev.SystemType, "Token", dev.Token)
+			// Если стоит "не беспокоить", пропустим
+			if dev.DoNotDisturbUntil != nil && now.Sub(*dev.DoNotDisturbUntil).String()[0] == '-' {
+				p.logger.Info("Not disturbing this device until date", "Date", dev.DoNotDisturbUntil)
+				continue
+			}
 			// Если андроид
 			if dev.SystemType == db.Android {
 				// Посмотрим, каким образом надо выводить уведомления

@@ -17,9 +17,11 @@ import (
 
 // signInRequest используется в SignInHandler
 type signInRequest struct {
-	Login   string `json:"login"`
-	Passkey string `json:"passkey"`
-	ID      int    `json:"id"`
+	Login      string `json:"login"`
+	Passkey    string `json:"passkey"`
+	ID         int    `json:"id"`
+	Token      string `json:"token"`
+	SystemType int    `json:"systemType"`
 }
 
 // student используется в signInResponse
@@ -68,6 +70,30 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		rest.logger.Info("REST: Invalid passkey len", "Passkey", rReq.Passkey, "Len", len(rReq.Passkey), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		status, err := respwr.Write(rest.Errors.InvalidLoginData)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+		}
+		return
+	}
+	// Проверим systemType
+	if rReq.SystemType != 1 && rReq.SystemType != 2 {
+		rest.logger.Info("REST: Invalid system type", "systemType", rReq.SystemType, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		status, err := respwr.Write(rest.Errors.InvalidSystemType)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+		} else {
+			rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+		}
+		return
+	}
+	// проверим token
+	if rReq.Token == "" {
+		rest.logger.Info("REST: Empty token", "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusBadRequest)
+		status, err := respwr.Write(rest.Errors.InvalidToken)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
 		} else {
@@ -157,6 +183,8 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 			rest.logger.Info("REST: No remote session", "IP", req.RemoteAddr)
 			// Создать удаленную сессию
 			newRemoteSession = ss.NewSession(&school)
+		} else {
+			newRemoteSession.Serv.Password = rReq.Passkey
 		}
 		// Залогиниться
 		err = newRemoteSession.Login()
@@ -200,6 +228,13 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		profile, err = rest.Db.GetUserProfile(rReq.Login, rReq.ID)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when getting user profile from db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		// Обновляем базу данных
+		err = rest.Db.UpdateUser(rReq.Login, rReq.Passkey, rReq.ID, rReq.Token, rReq.SystemType, newRemoteSession.Children, profile)
+		if err != nil {
+			rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -278,8 +313,7 @@ func (rest *RestAPI) SignInHandler(respwr http.ResponseWriter, req *http.Request
 		sessionName = newSessionName
 		session = newLocalSession
 		// Обновляем базу данных
-		isParent := true
-		err = rest.Db.UpdateUser(rReq.Login, rReq.Passkey, isParent, rReq.ID, newRemoteSession.Children, profile)
+		err = rest.Db.UpdateUser(rReq.Login, rReq.Passkey, rReq.ID, rReq.Token, rReq.SystemType, newRemoteSession.Children, profile)
 		if err != nil {
 			rest.logger.Error("REST: Error occured when updating user in db", "Error", err, "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusInternalServerError)
