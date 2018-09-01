@@ -4,13 +4,14 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // getMailDescriptionRequest используется в GetMailDescriptionHandler
 type getMailDescriptionRequest struct {
-	MID  string `json:"mid"`
-	MBID string `json:"mbid"`
+	Section int `json:"section"`
+	ID      int `json:"id"`
 }
 
 // GetMailDescriptionHandler обрабатывает запросы на получение подробностей письма
@@ -56,7 +57,7 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 		}
 	}
 	// Сходить по удаленной сессии
-	emailDesc, err := remoteSession.GetEmailDescription(rReq.MID, rReq.MBID)
+	emailDesc, err := remoteSession.GetEmailDescription(strconv.Itoa(rReq.ID), strconv.Itoa(rReq.Section))
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -67,7 +68,7 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 				return
 			}
 			// Повторно получить с сайта школы
-			emailDesc, err = remoteSession.GetEmailDescription(rReq.MID, rReq.MBID)
+			emailDesc, err = remoteSession.GetEmailDescription(strconv.Itoa(rReq.ID), strconv.Itoa(rReq.Section))
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)

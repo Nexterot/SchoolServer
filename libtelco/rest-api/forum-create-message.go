@@ -4,13 +4,14 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // createTopicMessageRequest используется в CreateTopicMessageHandler
 type createTopicMessageRequest struct {
 	Message string `json:"message"`
-	ID      string `json:"id"`
+	ID      int    `json:"id"`
 }
 
 // CreateTopicMessageHandler обрабатывает запросы на получение тем форума
@@ -56,7 +57,7 @@ func (rest *RestAPI) CreateTopicMessageHandler(respwr http.ResponseWriter, req *
 		}
 	}
 	// Сходить по удаленной сессии
-	err = remoteSession.CreateForumThemeMessage("1", rReq.Message, rReq.ID)
+	err = remoteSession.CreateForumThemeMessage("1", rReq.Message, strconv.Itoa(rReq.ID))
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -67,7 +68,7 @@ func (rest *RestAPI) CreateTopicMessageHandler(respwr http.ResponseWriter, req *
 				return
 			}
 			// Повторно получить с сайта школы
-			err = remoteSession.CreateForumThemeMessage("1", rReq.Message, rReq.ID)
+			err = remoteSession.CreateForumThemeMessage("1", rReq.Message, strconv.Itoa(rReq.ID))
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)

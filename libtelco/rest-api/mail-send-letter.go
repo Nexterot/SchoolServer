@@ -4,17 +4,19 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // sendLetterRequest используется в SendLetterHandler
 type sendLetterRequest struct {
-	UserID  string `json:"userID"`
-	LBC     string `json:"LBC"`
-	LCC     string `json:"LCC"`
-	LTO     string `json:"LTO"`
-	Name    string `json:"name"`
-	Message string `json:"message"`
+	UserID       int    `json:"user_id"`
+	LBC          []int  `json:"to"`
+	LCC          []int  `json:"copy"`
+	LTO          []int  `json:"hidden_copy"`
+	Name         string `json:"title"`
+	Message      string `json:"description"`
+	Notification bool   `json:"notification"`
 }
 
 // SendLetterHandler обрабатывает запросы на создание письма
@@ -59,8 +61,27 @@ func (rest *RestAPI) SendLetterHandler(respwr http.ResponseWriter, req *http.Req
 			return
 		}
 	}
+	// Сформировать аргументы
+	LBC := make([]string, 0)
+	for _, id := range rReq.LBC {
+		LBC = append(LBC, strconv.Itoa(id))
+	}
+	lbc := strings.Join(LBC, ";")
+
+	LCC := make([]string, 0)
+	for _, id := range rReq.LCC {
+		LCC = append(LCC, strconv.Itoa(id))
+	}
+	lcc := strings.Join(LCC, ";")
+
+	LTO := make([]string, 0)
+	for _, id := range rReq.LTO {
+		LTO = append(LTO, strconv.Itoa(id))
+	}
+	lto := strings.Join(LTO, ";")
+
 	// Сходить по удаленной сессии
-	err = remoteSession.CreateEmail(rReq.UserID, rReq.LBC, rReq.LCC, rReq.LTO, rReq.Name, rReq.Message)
+	err = remoteSession.CreateEmail(strconv.Itoa(rReq.UserID), lbc, lcc, lto, rReq.Name, rReq.Message)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -71,7 +92,7 @@ func (rest *RestAPI) SendLetterHandler(respwr http.ResponseWriter, req *http.Req
 				return
 			}
 			// Повторно получить с сайта школы
-			err = remoteSession.CreateEmail(rReq.UserID, rReq.LBC, rReq.LCC, rReq.LTO, rReq.Name, rReq.Message)
+			err = remoteSession.CreateEmail(strconv.Itoa(rReq.UserID), lbc, lcc, lto, rReq.Name, rReq.Message)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)

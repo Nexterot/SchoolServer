@@ -56,10 +56,6 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 			return
 		}
 	}
-	// Если поле page пустое, page = 1
-	if rReq.Section == 0 {
-		rReq.Section = 1
-	}
 	// Проверим валидность данных
 	if rReq.Section < 1 || rReq.Section > 4 {
 		rest.logger.Info("REST: Invalid data", "Error", "must be between 1 and 4", "Section", rReq.Section, "IP", req.RemoteAddr)

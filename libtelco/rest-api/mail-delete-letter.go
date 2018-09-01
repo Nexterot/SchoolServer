@@ -4,13 +4,14 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // deleteMailRequest используется в DeleteMailHandler
 type deleteMailRequest struct {
-	BoxID      string   `json:"boxID"`
-	MessagesID []string `json:"messagesID"`
+	Section  int   `json:"section"`
+	Messages []int `json:"messages"`
 }
 
 // DeleteMailHandler обрабатывает запросы на удаление письма
@@ -55,8 +56,12 @@ func (rest *RestAPI) DeleteMailHandler(respwr http.ResponseWriter, req *http.Req
 			return
 		}
 	}
+	messages := make([]string, 0)
+	for _, id := range rReq.Messages {
+		messages = append(messages, strconv.Itoa(id))
+	}
 	// Сходить по удаленной сессии
-	err = remoteSession.DeleteEmails(rReq.BoxID, rReq.MessagesID)
+	err = remoteSession.DeleteEmails(strconv.Itoa(rReq.Section), messages)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -67,7 +72,7 @@ func (rest *RestAPI) DeleteMailHandler(respwr http.ResponseWriter, req *http.Req
 				return
 			}
 			// Повторно получить с сайта школы
-			err = remoteSession.DeleteEmails(rReq.BoxID, rReq.MessagesID)
+			err = remoteSession.DeleteEmails(strconv.Itoa(rReq.Section), messages)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)

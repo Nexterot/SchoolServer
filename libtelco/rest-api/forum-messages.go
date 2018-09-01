@@ -4,13 +4,14 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
 // getForumMessagesRequest используется в GetForumMessagesHandler
 type getForumMessagesRequest struct {
-	ID   string `json:"id"`
-	Page string `json:"page"`
+	ID   int `json:"id"`
+	Page int `json:"page"`
 }
 
 // GetForumMessagesHandler обрабатывает запросы на получение тем форума
@@ -56,7 +57,7 @@ func (rest *RestAPI) GetForumMessagesHandler(respwr http.ResponseWriter, req *ht
 		}
 	}
 	// Сходить по удаленной сессии
-	themeMessages, err := remoteSession.GetForumThemeMessages(rReq.ID, rReq.Page, "10")
+	themeMessages, err := remoteSession.GetForumThemeMessages(strconv.Itoa(rReq.ID), strconv.Itoa(rReq.Page), "10")
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -67,7 +68,7 @@ func (rest *RestAPI) GetForumMessagesHandler(respwr http.ResponseWriter, req *ht
 				return
 			}
 			// Повторно получить с сайта школы
-			themeMessages, err = remoteSession.GetForumThemeMessages(rReq.ID, rReq.Page, "10")
+			themeMessages, err = remoteSession.GetForumThemeMessages(strconv.Itoa(rReq.ID), strconv.Itoa(rReq.Page), "10")
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
