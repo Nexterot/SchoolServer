@@ -9,7 +9,7 @@ import (
 
 // createTopicRequest используется в CreateTopicHandler
 type createTopicRequest struct {
-	Name    string `json:"name"`
+	Title   string `json:"title"`
 	Message string `json:"message"`
 }
 
@@ -56,7 +56,7 @@ func (rest *RestAPI) CreateTopicHandler(respwr http.ResponseWriter, req *http.Re
 		}
 	}
 	// Сходить по удаленной сессии
-	err = remoteSession.CreateForumTheme("1", rReq.Name, rReq.Message)
+	err = remoteSession.CreateForumTheme("1", rReq.Title, rReq.Message)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -67,7 +67,7 @@ func (rest *RestAPI) CreateTopicHandler(respwr http.ResponseWriter, req *http.Re
 				return
 			}
 			// Повторно получить с сайта школы
-			err = remoteSession.CreateForumTheme("1", rReq.Name, rReq.Message)
+			err = remoteSession.CreateForumTheme("1", rReq.Title, rReq.Message)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
