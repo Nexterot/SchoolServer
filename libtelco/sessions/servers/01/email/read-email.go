@@ -74,7 +74,7 @@ func GetEmailsList(s *dt.Session, nBoxID, startInd, pageSize, sequence string) (
 
 	// Если мы дошли до этого места, то можно распарсить JSON,
 	// находящийся в теле ответа, и найти в нем список всех сообщений.
-	emailsList := &dt.EmailsList{}
+	emailsList := dt.NewEmailsList()
 	if err := json.Unmarshal(b, emailsList); err != nil {
 		return nil, err
 	}
@@ -155,26 +155,26 @@ func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription,
 	}
 
 	formEmailDescription := func(node *html.Node) (*dt.EmailDescription, error) {
-		description := dt.EmailDescription{}
+		description := dt.NewEmailDescription()
 		if node == nil {
-			return &description, errors.New("Node is nil in func formMailLetterDescription")
+			return description, errors.New("Node is nil in func formMailLetterDescription")
 		}
 		if node.FirstChild == nil {
-			return &description, errors.New("Couldn't find mail description in func formMailLetterDescription")
+			return description, errors.New("Couldn't find mail description in func formMailLetterDescription")
 		}
 		infoNode := node.FirstChild
 		for infoNode != nil && infoNode.Data != "div" {
 			infoNode = infoNode.NextSibling
 		}
 		if infoNode == nil {
-			return &description, errors.New("Couldn't find mail description in func formMailLetterDescription")
+			return description, errors.New("Couldn't find mail description in func formMailLetterDescription")
 		}
 		if infoNode.NextSibling == nil {
-			return &description, errors.New("Couldn't find mail description in func formMailLetterDescription")
+			return description, errors.New("Couldn't find mail description in func formMailLetterDescription")
 		}
 		infoNode = infoNode.NextSibling
 		if infoNode.NextSibling == nil {
-			return &description, errors.New("Couldn't find mail description in func formMailLetterDescription")
+			return description, errors.New("Couldn't find mail description in func formMailLetterDescription")
 		}
 		infoNode = infoNode.NextSibling
 
@@ -286,7 +286,7 @@ func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription,
 		if infoNode.NextSibling != nil {
 			infoNode = infoNode.NextSibling
 			if infoNode.NextSibling == nil {
-				return &description, errors.New("Couldn't find body of letter description")
+				return description, errors.New("Couldn't find body of letter description")
 			}
 			infoNode = infoNode.NextSibling
 			if infoNode.FirstChild != nil {
@@ -297,7 +297,7 @@ func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription,
 				if infoNode != nil && infoNode.FirstChild != nil {
 					infoNode = infoNode.FirstChild
 					if infoNode.NextSibling == nil {
-						return &description, errors.New("Couldn't find body of letter description")
+						return description, errors.New("Couldn't find body of letter description")
 					}
 					infoNode = infoNode.NextSibling
 					if infoNode.FirstChild != nil {
@@ -360,7 +360,7 @@ func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription,
 																				if a.Key == "href" {
 																					file.Path, file.ID, err = findURLAndID(a.Val)
 																					if err != nil {
-																						return &description, err
+																						return description, err
 																					}
 																					break
 																				}
@@ -416,7 +416,7 @@ func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription,
 				}
 			}
 		}
-		return &description, nil
+		return description, nil
 	}
 
 	makeEmailDescription := func(node *html.Node) (*dt.EmailDescription, error) {

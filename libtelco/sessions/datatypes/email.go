@@ -10,6 +10,14 @@ type AddressBook struct {
 	Classes []AddressBookClass `json:"classes"`
 }
 
+// NewAddressBook создает новую адресную книгу.
+func NewAddressBook() *AddressBook {
+	return &AddressBook{
+		Groups:  []AddressBookGroup{},
+		Classes: []AddressBookClass{},
+	}
+}
+
 // AddressBookGroupUser struct -- пользователь в группе из адресной книги
 type AddressBookGroupUser struct {
 	Name string `json:"name"`
@@ -53,6 +61,12 @@ type EmailsList struct {
 	Record           []Email `json:"Records"`
 }
 
+func NewEmailsList() *EmailsList {
+	return &EmailsList{
+		Record: []Email{},
+	}
+}
+
 // Email struct содержит в себе одно заголовок одного письма.
 type Email struct {
 	MessageID  int    `json:"MessageId"`
@@ -62,6 +76,22 @@ type Email struct {
 	Sent       string `json:"Sent"`
 	Read       string `json:"Read"`
 	SentTo     string `json:"SentTo"`
+}
+
+// EmailDescription struct - подробности письма.
+type EmailDescription struct {
+	To          []EmailUser `json:"to"`
+	Copy        []EmailUser `json:"copy"`
+	Description string      `json:"description"`
+	Files       []EmailFile `json:"files"`
+}
+
+func NewEmailDescription() *EmailDescription {
+	return &EmailDescription{
+		To:    []EmailUser{},
+		Copy:  []EmailUser{},
+		Files: []EmailFile{},
+	}
 }
 
 // EmailUser struct - пользователь электронной почты.
@@ -80,12 +110,4 @@ type EmailFile struct {
 	// Эти поля нужны для скачивания файла.
 	Path string
 	ID   string
-}
-
-// EmailDescription struct - подробности письма.
-type EmailDescription struct {
-	To          []EmailUser `json:"to"`
-	Copy        []EmailUser `json:"copy"`
-	Description string      `json:"description"`
-	Files       []EmailFile `json:"files"`
 }

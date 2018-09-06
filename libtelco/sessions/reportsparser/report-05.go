@@ -184,15 +184,13 @@ func StudentTotalReportParser(r io.Reader) (*dt.StudentTotalReport, error) {
 
 	// Создаёт отчёт
 	makeStudentTotalReportTable := func(node *html.Node) (*dt.StudentTotalReport, error) {
-		var report dt.StudentTotalReport
+		report := dt.NewStudentTotalReport()
 		tableNode := findPerformanceAndAttendanceTableNode(node)
 		report.MainTable, report.AverageMarks, err = formStudentTotalReportTable(tableNode)
-
-		return &report, err
+		return report, err
 	}
 
-	var report *dt.StudentTotalReport
-	report, err = makeStudentTotalReportTable(parsedHTML)
+	report, err := makeStudentTotalReportTable(parsedHTML)
 	if err != nil {
 		return nil, err
 	}

@@ -198,12 +198,12 @@ func GetResourcesList(s *dt.Session) (*dt.Resources, error) {
 
 	// Создаёт отчёт
 	makeSchoolResources := func(node *html.Node) (*dt.Resources, error) {
-		var resources dt.Resources
+		resources := dt.NewResources()
 		groupsNodes := make([]*html.Node, 0, 1)
 		getGroupsNodes(node, &groupsNodes)
 		resources.Data, err = formGroups(groupsNodes)
 
-		return &resources, err
+		return resources, err
 	}
 	return makeSchoolResources(parsedHTML)
 }

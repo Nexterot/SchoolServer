@@ -177,7 +177,7 @@ func GetAddressBook(s *dt.Session) (*dt.AddressBook, error) {
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
 	// находящуюся в теле ответа, и найти в ней список всех групп рассылки.
-	addressBook := &dt.AddressBook{}
+	addressBook := dt.NewAddressBook()
 
 	parsedHTML, err := html.Parse(bytes.NewReader(b))
 	if err != nil {

@@ -49,8 +49,7 @@ func JournalAccessReportParser(r io.Reader) (*dt.JournalAccessReport, error) {
 	}
 
 	// Формирует отчёт
-	var formJournalAccessReportTable func(*html.Node) ([]dt.JournalAccessReportNote, error)
-	formJournalAccessReportTable = func(node *html.Node) ([]dt.JournalAccessReportNote, error) {
+	formJournalAccessReportTable := func(node *html.Node) ([]dt.JournalAccessReportNote, error) {
 		notes := make([]dt.JournalAccessReportNote, 0, 10)
 		if node != nil {
 			noteNode := node.FirstChild.FirstChild
@@ -114,11 +113,10 @@ func JournalAccessReportParser(r io.Reader) (*dt.JournalAccessReport, error) {
 
 	// Создаёт отчёт
 	makeJournalAccessReport := func(node *html.Node) (*dt.JournalAccessReport, error) {
-		var report dt.JournalAccessReport
+		report := dt.NewJournalAccessReport()
 		tableNode := findJournalAccessTableNode(node)
 		report.Data, err = formJournalAccessReportTable(tableNode)
-
-		return &report, err
+		return report, err
 	}
 
 	var report *dt.JournalAccessReport

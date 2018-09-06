@@ -9,6 +9,12 @@ type Resources struct {
 	Data []Group `json:"data"`
 }
 
+func NewResources() *Resources {
+	return &Resources{
+		Data: []Group{},
+	}
+}
+
 // File struct struct содержит в себе один файл в школьных ресурсах.
 type File struct {
 	Name string `json:"name"`

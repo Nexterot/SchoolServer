@@ -11,6 +11,12 @@ type TimeTable struct {
 	Days []DayTimeTable `json:"days"`
 }
 
+func NewTimeTable() *TimeTable {
+	return &TimeTable{
+		Days: []DayTimeTable{},
+	}
+}
+
 // DayTimeTable struct содержит в себе расписание на день.
 type DayTimeTable struct {
 	Date    string   `json:"date"`

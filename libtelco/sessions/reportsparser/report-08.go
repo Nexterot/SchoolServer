@@ -167,15 +167,13 @@ func ParentInfoLetterReportParser(r io.Reader) (*dt.ParentInfoLetterReport, erro
 
 	// Создаёт отчёт
 	makeParentInfoLetterReport := func(node *html.Node) (*dt.ParentInfoLetterReport, error) {
-		var report dt.ParentInfoLetterReport
+		report := dt.NewParentInfoLetterReport()
 		tableNode := findParentInfoLetterTableNode(node)
 		report.Data, err = formParentInfoLetterReportTable(tableNode)
-
-		return &report, err
+		return report, err
 	}
 
-	var report *dt.ParentInfoLetterReport
-	report, err = makeParentInfoLetterReport(parsedHTML)
+	report, err := makeParentInfoLetterReport(parsedHTML)
 	if err != nil {
 		return nil, err
 	}

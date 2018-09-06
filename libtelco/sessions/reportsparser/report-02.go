@@ -62,7 +62,7 @@ func AverageMarkReportParser(r io.Reader) (*dt.AverageMarkReport, error) {
 
 	// Создаёт отчёт
 	makeAverageMarkReportTable := func(node *html.Node) *dt.AverageMarkReport {
-		var report dt.AverageMarkReport
+		report := dt.NewAverageMarkReport()
 		tableNode := findAverageMarkTableNode(node)
 		studentReport := make(map[string]string)
 		classReport := make(map[string]string)
@@ -76,11 +76,15 @@ func AverageMarkReportParser(r io.Reader) (*dt.AverageMarkReport, error) {
 			if err != nil {
 				v2 = -1.0
 			}
-			innerReport := dt.AverageMarkReportNote{k, float32(v1), float32(v2)}
+			innerReport := dt.AverageMarkReportNote{
+				Subject:     k,
+				StudentMark: float32(v1),
+				ClassMark:   float32(v2),
+			}
 			report.Table = append(report.Table, innerReport)
 		}
 
-		return &report
+		return report
 	}
 
 	return makeAverageMarkReportTable(parsedHTML), nil

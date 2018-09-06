@@ -244,18 +244,18 @@ func GetWeekSchoolMarks(s *dt.Session, date, studentID string) (*dt.WeekSchoolMa
 
 	// Составляет таблицу с днями и их уроками
 	makeWeekSchoolMarks := func(node *html.Node, requestDate string) (*dt.WeekSchoolMarks, error) {
-		var days dt.WeekSchoolMarks
+		days := dt.NewWeekSchoolMarks()
 		var err error
 		lessonsNode := searchForSchoolMarksNode(node)
 		if lessonsNode == nil {
 			// Проверяем, является ли день выходным
 			if checkWeekend(node) != nil {
 				days.Data = make([]dt.DaySchoolMarks, 0)
-				return &days, nil
+				return days, nil
 			}
 		}
 		days.Data, err = getAllSchoolMarksInfo(lessonsNode, requestDate)
-		return &days, err
+		return days, err
 	}
 
 	return makeWeekSchoolMarks(parsedHTML, date)

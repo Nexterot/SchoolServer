@@ -77,15 +77,24 @@ func TotalMarkReportParser(r io.Reader) (*dt.TotalMarkReport, error) {
 
 	// Создаёт отчёт
 	makeTotalMarkReport := func(node *html.Node) (*dt.TotalMarkReport, error) {
-		var report dt.TotalMarkReport
+		report := dt.NewTotalMarkReport()
 		tableNode := findNode(node)
 		data := make(map[string][]int)
 		formTotalMarkReport(tableNode, data)
 		for k, v := range data {
-			innerReport := dt.TotalMarkReportNote{k, v[0], v[1], v[2], v[3], v[4], v[5], v[6]}
+			innerReport := dt.TotalMarkReportNote{
+				Subject: k,
+				Period1: v[0],
+				Period2: v[1],
+				Period3: v[2],
+				Period4: v[3],
+				Year:    v[4],
+				Exam:    v[5],
+				Final:   v[6],
+			}
 			report.Table = append(report.Table, innerReport)
 		}
-		return &report, nil
+		return report, nil
 	}
 
 	return makeTotalMarkReport(parsedHTML)

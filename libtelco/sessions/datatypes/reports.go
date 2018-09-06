@@ -11,6 +11,12 @@ type TotalMarkReport struct {
 	Table []TotalMarkReportNote `json:"table"`
 }
 
+func NewTotalMarkReport() *TotalMarkReport {
+	return &TotalMarkReport{
+		Table: []TotalMarkReportNote{},
+	}
+}
+
 // TotalMarkReportNote struct - подотчет об одном предмете.
 type TotalMarkReportNote struct {
 	Subject string `json:"subject"`
@@ -32,6 +38,12 @@ type AverageMarkReport struct {
 	Table []AverageMarkReportNote `json:"table"`
 }
 
+func NewAverageMarkReport() *AverageMarkReport {
+	return &AverageMarkReport{
+		Table: []AverageMarkReportNote{},
+	}
+}
+
 // AverageMarkReportNote - подотчет об одном предмете.
 type AverageMarkReportNote struct {
 	Subject     string  `json:"subject"`
@@ -46,6 +58,12 @@ type AverageMarkReportNote struct {
 // AverageMarkDynReport struct - отчет третьего типа.
 type AverageMarkDynReport struct {
 	Data []AverageMarkDynReportNote `json:"table"`
+}
+
+func NewAverageMarkDynReport() *AverageMarkDynReport {
+	return &AverageMarkDynReport{
+		Data: []AverageMarkDynReportNote{},
+	}
 }
 
 // AverageMarkDynReportNote struct - одна запись в отчёте "Динамика среднего балла".
@@ -66,6 +84,12 @@ type StudentGradeReport struct {
 	Data []StudentGradeReportNote `json:"table"`
 }
 
+func NewStudentGradeReport() *StudentGradeReport {
+	return &StudentGradeReport{
+		Data: []StudentGradeReportNote{},
+	}
+}
+
 // StudentGradeReportNote struct - одна запись в отчете об успеваемости.
 type StudentGradeReportNote struct {
 	Type             string `json:"type"`
@@ -82,6 +106,13 @@ type StudentGradeReportNote struct {
 type StudentTotalReport struct {
 	MainTable    []Month              `json:"months"`
 	AverageMarks []SubjectAverageMark `json:"average_marks"`
+}
+
+func NewStudentTotalReport() *StudentTotalReport {
+	return &StudentTotalReport{
+		MainTable:    []Month{},
+		AverageMarks: []SubjectAverageMark{},
+	}
 }
 
 type SubjectMarks struct {
@@ -121,6 +152,12 @@ type JournalAccessReport struct {
 	Data []JournalAccessReportNote `json:"table"`
 }
 
+func NewJournalAccessReport() *JournalAccessReport {
+	return &JournalAccessReport{
+		Data: []JournalAccessReportNote{},
+	}
+}
+
 // JournalAccessReportNote struct - одна запись в отчёте о доступе к классному журналу
 type JournalAccessReportNote struct {
 	Class      int    `json:"class"`
@@ -142,6 +179,13 @@ type ParentInfoLetterData struct {
 	Periods     []Period     `json:"periods"`
 }
 
+func NewParentInfoLetterData() *ParentInfoLetterData {
+	return &ParentInfoLetterData{
+		ReportTypes: []ReportType{},
+		Periods:     []Period{},
+	}
+}
+
 // ReportType struct - тип отчёта
 type ReportType struct {
 	ReportTypeID   int    `json:"report_type_id"`
@@ -157,6 +201,12 @@ type Period struct {
 // ParentInfoLetterReport struct - отчет восьмого типа.
 type ParentInfoLetterReport struct {
 	Data []ParentInfoLetterReportNote `json:"table"`
+}
+
+func NewParentInfoLetterReport() *ParentInfoLetterReport {
+	return &ParentInfoLetterReport{
+		Data: []ParentInfoLetterReportNote{},
+	}
 }
 
 // ParentInfoLetterReportNote struct - одна запись в отчёте "Информационное письмо для родителей"

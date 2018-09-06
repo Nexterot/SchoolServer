@@ -163,9 +163,12 @@ func GetLessonsMap(s *dt.Session, studentID string) (*dt.LessonsMap, error) {
 	if err != nil {
 		return nil, err
 	}
-	var lm dt.LessonsMap
+	lm := dt.NewLessonsMap()
 	for k, v := range subjectsIDsMap {
-		lm.Data = append(lm.Data, dt.LessonMap{k, v})
+		lm.Data = append(lm.Data, dt.LessonMap{
+			Name: k,
+			ID:   v,
+		})
 	}
-	return &lm, nil
+	return lm, nil
 }

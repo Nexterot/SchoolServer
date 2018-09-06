@@ -86,10 +86,10 @@ func StudentGradeReportParser(r io.Reader) (*dt.StudentGradeReport, error) {
 
 	// Создаёт отчёт
 	makeStudentGradeReportTable := func(node *html.Node) (*dt.StudentGradeReport, error) {
-		var report dt.StudentGradeReport
+		report := dt.NewStudentGradeReport()
 		tableNode := findPerformanceTableNode(node)
 		report.Data, err = formStudentGradeReportTable(tableNode)
-		return &report, err
+		return report, err
 	}
 
 	return makeStudentGradeReportTable(parsedHTML)

@@ -117,11 +117,11 @@ func AverageMarkDynReportParser(r io.Reader) (*dt.AverageMarkDynReport, error) {
 
 	// Создаёт отчёт
 	makeAverageMarkDynReportTable := func(node *html.Node) (*dt.AverageMarkDynReport, error) {
-		var report dt.AverageMarkDynReport
+		report := dt.NewAverageMarkDynReport()
 		tableNode := findAverageMarkDynTableNode(node)
 		report.Data = make([]dt.AverageMarkDynReportNote, 0, 10)
 		err := formAverageMarkDynReportTable(tableNode, &report.Data)
-		return &report, err
+		return report, err
 	}
 	return makeAverageMarkDynReportTable(parsedHTML)
 }

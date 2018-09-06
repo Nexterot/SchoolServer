@@ -7,6 +7,12 @@ type ForumThemesList struct {
 	Posts []ForumTheme `json:"posts"`
 }
 
+func NewForumThemesList() *ForumThemesList {
+	return &ForumThemesList{
+		Posts: []ForumTheme{},
+	}
+}
+
 // ForumTheme struct содержит в себе одну тему форума.
 type ForumTheme struct {
 	Date       string `json:"date"`
@@ -23,6 +29,12 @@ type ForumTheme struct {
 // ForumThemeMessages struct содержит в себе все сообщения из темы форума.
 type ForumThemeMessages struct {
 	Messages []ForumThemeMessage `json:"messages"`
+}
+
+func NewForumThemeMessages() *ForumThemeMessages {
+	return &ForumThemeMessages{
+		Messages: []ForumThemeMessage{},
+	}
 }
 
 // ForumThemeMessage struct содержит в себе подробности одного сообщения на форуме.

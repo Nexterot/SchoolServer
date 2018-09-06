@@ -218,7 +218,7 @@ func GetForumThemesList(s *dt.Session, page string) (*dt.ForumThemesList, error)
 	}
 
 	makeForumThemesList := func(node *html.Node) (*dt.ForumThemesList, error) {
-		themes := &dt.ForumThemesList{}
+		themes := dt.NewForumThemesList()
 		tableNode := findForumThemesTableNode(node)
 		themes.Posts, err = formForumThemesList(tableNode)
 
@@ -448,11 +448,10 @@ func GetForumThemeMessages(s *dt.Session, TID, page, pageSize string) (*dt.Forum
 	}
 
 	makeForumPostMessages := func(node *html.Node) (*dt.ForumThemeMessages, error) {
-		messages := dt.ForumThemeMessages{}
-		tableNode := findForumPostMessagesTableNode(node)
-		messages.Messages, err = formForumPostMessages(tableNode)
+		messages := dt.NewForumThemeMessages()
+		messages.Messages, err = formForumPostMessages(findForumPostMessagesTableNode(node))
 
-		return &messages, err
+		return messages, err
 	}
 
 	return makeForumPostMessages(parsedHTML)

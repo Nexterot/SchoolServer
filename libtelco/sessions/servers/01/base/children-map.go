@@ -116,7 +116,10 @@ func GetChildrenMap(s *dt.Session) error {
 							if nameNode != nil && !flag {
 								for _, a2 := range nameNode.Attr {
 									if a2.Key == "value" {
-										childrenIDs[a2.Val] = dt.Student{a.Val, ""}
+										childrenIDs[a2.Val] = dt.Student{
+											SID:  a.Val,
+											CLID: "",
+										}
 										if _, err := strconv.Atoi(a.Val); err != nil {
 											return nil, false, fmt.Errorf("ID has incorrect format \"%v\"", a.Val)
 										}
@@ -131,7 +134,10 @@ func GetChildrenMap(s *dt.Session) error {
 					if len(n.Attr) != 0 {
 						for _, a := range n.Attr {
 							if a.Key == "value" {
-								childrenIDs[n.FirstChild.Data] = dt.Student{a.Val, ""}
+								childrenIDs[n.FirstChild.Data] = dt.Student{
+									SID:  a.Val,
+									CLID: "",
+								}
 								if _, err := strconv.Atoi(a.Val); err != nil {
 									return nil, false, fmt.Errorf("ID has incorrect format \"%v\"", a.Val)
 								}

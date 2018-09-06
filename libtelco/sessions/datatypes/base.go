@@ -11,6 +11,12 @@ type LessonsMap struct {
 	Data []LessonMap `json:"lessons"`
 }
 
+func NewLessonsMap() *LessonsMap {
+	return &LessonsMap{
+		Data: []LessonMap{},
+	}
+}
+
 // LessonMap struct содержит в себе имя предмета и его id.
 type LessonMap struct {
 	Name string `json:"name"`

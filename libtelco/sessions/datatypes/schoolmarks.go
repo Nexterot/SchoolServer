@@ -11,6 +11,12 @@ type WeekSchoolMarks struct {
 	Data []DaySchoolMarks `json:"days"`
 }
 
+func NewWeekSchoolMarks() *WeekSchoolMarks {
+	return &WeekSchoolMarks{
+		Data: []DaySchoolMarks{},
+	}
+}
+
 // DaySchoolMarks struct содержит в себе оценки и ДЗ на текущий день.
 type DaySchoolMarks struct {
 	Date    string       `json:"date"`

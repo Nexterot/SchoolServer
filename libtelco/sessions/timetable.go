@@ -33,9 +33,7 @@ func (s *Session) GetTimeTable(date string, n int, studentID string) (*dt.TimeTa
 		err = fmt.Errorf("Invalid days number %v", n)
 		return nil, err
 	}
-	timeTable = &dt.TimeTable{
-		Days: make([]dt.DayTimeTable, 0, n),
-	}
+	timeTable = dt.NewTimeTable()
 	for i := 0; i < n; i++ {
 		day, err := s.getDayTimeTable(date, studentID)
 		if err != nil {
