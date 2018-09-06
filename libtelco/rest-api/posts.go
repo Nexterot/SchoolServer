@@ -6,6 +6,11 @@ import (
 	"net/http"
 )
 
+// postsResponse struct используется в GetPostsHandler
+type postsResponse struct {
+	Posts []string `json:"posts"`
+}
+
 // GetPostsHandler обрабатывает запрос на получение объявлений
 func (rest *RestAPI) GetPostsHandler(respwr http.ResponseWriter, req *http.Request) {
 	rest.logger.Info("REST: GetPostsHandler called", "IP", req.RemoteAddr)
@@ -59,7 +64,7 @@ func (rest *RestAPI) GetPostsHandler(respwr http.ResponseWriter, req *http.Reque
 			}
 		}
 	*/
-	posts := make([]string, 0)
+	posts := postsResponse{make([]string, 0)}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(posts)
 	if err != nil {
