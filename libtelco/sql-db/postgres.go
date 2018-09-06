@@ -910,7 +910,7 @@ func (db *Database) MarkMailRead(userName string, schoolID int, section int, ID 
 	}
 	// Получаем нужное письмо
 	w := MailMessage{NetschoolID: ID, UserID: user.ID, Section: section}
-	err = db.SchoolServerDB.Where(w).Find(&mail).Error
+	err = db.SchoolServerDB.Where(w).First(&mail).Error
 	if err != nil {
 		return errors.Wrapf(err, "Error query mail: '%v'", w)
 	}
