@@ -98,7 +98,7 @@ func (rest *RestAPI) BindHandlers() http.Handler {
 	mux.HandleFunc("/mark_as_done", rest.MarkAsDoneHandler)                     // done
 	mux.HandleFunc("/unmark_as_done", rest.UnmarkAsDoneHandler)                 // done
 	// Объявления: получение списка объявлений
-	mux.HandleFunc("/get_posts", rest.Handler)
+	mux.HandleFunc("/get_posts", rest.GetPostsHandler) // done
 	// Расписание: получение расписания на N дней
 	mux.HandleFunc("/get_schedule", rest.GetScheduleHandler) // done
 	// Отчеты
