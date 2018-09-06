@@ -131,6 +131,11 @@ func ChangePassword(s *dt.Session, oldMD5, newMD5 string) error {
 		defer func() {
 			_ = r.Close()
 		}()
+		if strings.Contains(r.String(), `"Cтарый пароль введен неверно"`) {
+			return false, errors.New("Invalid old password")
+		} else if strings.Contains(r.String(), `"Новый пароль должен отличаться от старого"`) {
+			return false, errors.New("Equal new and old passwords")
+		}
 		return check.CheckResponse(s, r)
 	}
 	flag, err = r2()

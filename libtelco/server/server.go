@@ -48,18 +48,6 @@ func (serv *Server) Run() {
 	// Задаем максимальное количество потоков.
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
-	/*
-		// ТЕСТЫ.
-		kek := ss.NewSession(&serv.config.Schools[0])
-		if err := kek.Login(); err != nil {
-			fmt.Println(err)
-		}
-
-		if err := kek.Logout(); err != nil {
-			fmt.Println(err)
-		}
-	*/
-
 	// Подключить рассылку пушей
 	// go serv.push.Run()
 
