@@ -97,6 +97,28 @@ func (rest *RestAPI) ChangePasswordHandler(respwr http.ResponseWriter, req *http
 				respwr.WriteHeader(http.StatusBadGateway)
 				return
 			}
+		} else if strings.Contains(err.Error(), "Invalid old password") {
+			// Если старый пароль введен неверно
+			rest.logger.Info("REST: Invalid old password")
+			respwr.WriteHeader(http.StatusBadRequest)
+			status, err := respwr.Write(rest.Errors.WrongOldPassword)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+			}
+			return
+		} else if strings.Contains(err.Error(), "Equal new and old passwords") {
+			// Если старый пароль введен неверно
+			rest.logger.Info("REST: Equal new and old passwords")
+			respwr.WriteHeader(http.StatusBadRequest)
+			status, err := respwr.Write(rest.Errors.SamePassword)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+			}
+			return
 		} else {
 			// Другая ошибка
 			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
