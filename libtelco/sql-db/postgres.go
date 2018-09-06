@@ -167,6 +167,7 @@ type MailMessage struct {
 	Date        string
 	Author      string
 	Topic       string
+	Section     int
 	Unread      bool
 }
 
@@ -405,7 +406,7 @@ func (db *Database) UpdateUser(login string, passkey string, schoolID int, token
 			}
 			// Создать список девайсов
 			devices := make([]Device, 1)
-			dev := Device{SystemType: Android, Token: token}
+			dev := Device{SystemType: systemType, Token: token}
 			// Создать девайс
 			errInner := db.SchoolServerDB.Create(&dev).Error
 			devices[0] = dev
@@ -413,17 +414,18 @@ func (db *Database) UpdateUser(login string, passkey string, schoolID int, token
 				return errors.Wrapf(errInner, "Error creating device='%v' for user='%v'", dev, user)
 			}
 			user := User{
-				SchoolID:    uint(schoolID),
-				Login:       login,
-				Password:    passkey,
-				Students:    students,
-				Devices:     devices,
-				Role:        profile.Role,
-				LastName:    profile.Surname,
-				FirstName:   profile.Name,
-				Year:        profile.Schoolyear,
-				TrueLogin:   profile.Username,
-				ForumTopics: []ForumTopic{},
+				SchoolID:     uint(schoolID),
+				Login:        login,
+				Password:     passkey,
+				Students:     students,
+				Devices:      devices,
+				Role:         profile.Role,
+				LastName:     profile.Surname,
+				FirstName:    profile.Name,
+				Year:         profile.Schoolyear,
+				TrueLogin:    profile.Username,
+				ForumTopics:  []ForumTopic{},
+				MailMessages: []MailMessage{},
 			}
 			// Записываем профиль
 			user.UID, err = strconv.Atoi(profile.UID)
@@ -834,7 +836,7 @@ type getMailResponse struct {
 }
 
 // UpdateMailStatuses добавляет в БД несуществующие сообщения почты и обновляет статусы
-func (db *Database) UpdateMailStatuses(userName string, schoolID int, emailsList *dt.EmailsList) (*getMailResponse, error) {
+func (db *Database) UpdateMailStatuses(userName string, schoolID int, section int, emailsList *dt.EmailsList) (*getMailResponse, error) {
 	var (
 		user       User
 		newMessage MailMessage
@@ -876,7 +878,7 @@ func (db *Database) UpdateMailStatuses(userName string, schoolID int, emailsList
 		}
 		if !postFound {
 			// Сообщения не существует, надо создать
-			newMessage = MailMessage{UserID: user.ID, NetschoolID: post.ID, Date: post.Date, Author: post.Author, Unread: post.Unread, Topic: post.Topic}
+			newMessage = MailMessage{UserID: user.ID, Section: section, NetschoolID: post.ID, Date: post.Date, Author: post.Author, Unread: post.Unread, Topic: post.Topic}
 			err = db.SchoolServerDB.Create(&newMessage).Error
 			if err != nil {
 				return nil, errors.Wrapf(err, "Error creating newMessage='%v'", newMessage)
@@ -892,6 +894,34 @@ func (db *Database) UpdateMailStatuses(userName string, schoolID int, emailsList
 		return nil, errors.Wrapf(err, "Error saving user='%v'", user)
 	}
 	return &response, nil
+}
+
+// MarkMailRead меняет статус письма на прочитанное
+func (db *Database) MarkMailRead(userName string, schoolID int, section int, ID int) error {
+	var (
+		user User
+		mail MailMessage
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем нужное письмо
+	w := MailMessage{NetschoolID: ID, UserID: user.ID, Section: section}
+	err = db.SchoolServerDB.Where(w).Find(&mail).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query mail: '%v'", w)
+	}
+	// Обновим статус
+	mail.Unread = false
+	// Сохраним письмо
+	err = db.SchoolServerDB.Save(&mail).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving updated mail='%v'", mail)
+	}
+	return nil
 }
 
 // TaskMarkDone меняет статус задания на "Выполненное"

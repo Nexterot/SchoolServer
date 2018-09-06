@@ -97,7 +97,7 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 	// Обновить статусы в бд
 	userName := session.Values["userName"]
 	schoolID := session.Values["schoolID"]
-	resp, err := rest.Db.UpdateMailStatuses(userName.(string), schoolID.(int), emailsList)
+	resp, err := rest.Db.UpdateMailStatuses(userName.(string), schoolID.(int), rReq.Section, emailsList)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when updating statuses for mail", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)

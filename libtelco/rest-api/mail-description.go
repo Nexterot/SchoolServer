@@ -82,6 +82,28 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 			return
 		}
 	}
+	// Лезть в БД
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	err = rest.Db.MarkMailRead(userName.(string), schoolID.(int), rReq.Section, rReq.ID)
+	if err != nil {
+		if strings.Contains(err.Error(), "record not found") {
+			// Такого письма нет в БД
+			rest.logger.Info("REST: Mail with specified id not found in db", "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			status, err := respwr.Write(rest.Errors.InvalidData)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+			}
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when marking task as done in db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(emailDesc)
 	if err != nil {
