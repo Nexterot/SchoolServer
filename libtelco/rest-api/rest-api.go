@@ -83,8 +83,6 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 func (rest *RestAPI) BindHandlers() http.Handler {
 	mux := http.NewServeMux()
 
-	// Сайт
-	// mux.Handle("/", http.FileServer(http.Dir("./static"))) // done
 	// Общее: Запрос списка школ, запрос доступа, авторизация, выход
 	mux.HandleFunc("/get_school_list", rest.GetSchoolListHandler)    // done
 	mux.HandleFunc("/check_permission", rest.CheckPermissionHandler) // done

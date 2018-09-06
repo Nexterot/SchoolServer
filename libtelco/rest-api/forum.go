@@ -55,10 +55,6 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 			return
 		}
 	}
-	// Если страница пустая поставить в 1
-	if rReq.Page == 0 {
-		rReq.Page = 1
-	}
 	// Сходить по удаленной сессии
 	forumThemes, err := remoteSession.GetForumThemesList(strconv.Itoa(rReq.Page))
 	if err != nil {
@@ -95,6 +91,15 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 			respwr.WriteHeader(http.StatusBadGateway)
 			return
 		}
+	}
+	// Сравнить с БД
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	err = rest.Db.UpdateTopicsStatuses(userName.(string), schoolID.(int), forumThemes)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when updating statuses for forum themes", "Error", err, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(forumThemes)

@@ -68,18 +68,19 @@ type School struct {
 // User struct представляет структуру записи пользователя
 type User struct {
 	gorm.Model
-	SchoolID   uint // parent id
-	UID        int
-	Login      string    `sql:"size:255;index"`
-	Password   string    `sql:"size:255"`
-	Permission bool      `sql:"DEFAULT:false"`
-	FirstName  string    `sql:"size:255"`
-	LastName   string    `sql:"size:255"`
-	TrueLogin  string    `sql:"size:255"`
-	Role       string    `sql:"size:255"`
-	Year       string    `sql:"size:255"`
-	Students   []Student // has-many relation
-	Devices    []Device  // has-many relation
+	SchoolID    uint // parent id
+	UID         int
+	Login       string       `sql:"size:255;index"`
+	Password    string       `sql:"size:255"`
+	Permission  bool         `sql:"DEFAULT:false"`
+	FirstName   string       `sql:"size:255"`
+	LastName    string       `sql:"size:255"`
+	TrueLogin   string       `sql:"size:255"`
+	Role        string       `sql:"size:255"`
+	Year        string       `sql:"size:255"`
+	Students    []Student    // has-many relation
+	Devices     []Device     // has-many relation
+	ForumTopics []ForumTopic // has-many relation
 }
 
 // Device struct представляет структуру устройства, которое будет получать
@@ -134,6 +135,29 @@ type Task struct {
 	Author string
 }
 
+// ForumTopic struct представляет структуру темы на форуме
+type ForumTopic struct {
+	gorm.Model
+	UserID      uint // parent id
+	NetschoolID int
+	Date        string
+	Creator     string
+	Title       string
+	Unread      bool
+	Answers     int
+	Posts       []ForumPost // has-many relation
+}
+
+// ForumPost struct представляет структуру сообщения в теме на форуме
+type ForumPost struct {
+	gorm.Model
+	ForumTopicID uint // parent id
+	Date         string
+	Author       string
+	Message      string
+	Unread       bool
+}
+
 // Resource struct представляет структуру школьного ресурса
 type Resource struct {
 	gorm.Model
@@ -179,6 +203,11 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 			return nil, err
 		}
 		logger.Info("DB: Successfully created 'users' table")
+	} else {
+		logger.Info("DB: Table 'users' exists")
+	}
+	// Если таблицы с устрйоствами не существует, создадим её
+	if !sdb.HasTable(&Device{}) {
 		// Device
 		logger.Info("DB: Creating 'device' table")
 		err = sdb.CreateTable(&Device{}).Error
@@ -186,6 +215,11 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 			return nil, err
 		}
 		logger.Info("DB: Successfully created 'device' table")
+	} else {
+		logger.Info("DB: Table 'devices' exists")
+	}
+	// Если таблицы со студентами не существует, создадим её
+	if !sdb.HasTable(&Student{}) {
 		// Student
 		logger.Info("DB: Creating 'students' table")
 		err = sdb.CreateTable(&Student{}).Error
@@ -193,43 +227,92 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 			return nil, err
 		}
 		logger.Info("DB: Successfully created 'students' table")
+	} else {
+		logger.Info("DB: Table 'students' exists")
+	}
+	// Если таблицы со днями не существует, создадим её
+	if !sdb.HasTable(&Day{}) {
 		// Day
-		logger.Info("DB: Creating 'day' table")
+		logger.Info("DB: Creating 'days' table")
 		err = sdb.CreateTable(&Day{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'day' table")
+		logger.Info("DB: Successfully created 'days' table")
+	} else {
+		logger.Info("DB: Table 'days' exists")
+	}
+	// Если таблицы с заданиями не существует, создадим её
+	if !sdb.HasTable(&Task{}) {
 		// Task
-		logger.Info("DB: Creating 'task' table")
+		logger.Info("DB: Creating 'tasks' table")
 		err = sdb.CreateTable(&Task{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'task' table")
+		logger.Info("DB: Successfully created 'tasks' table")
+	} else {
+		logger.Info("DB: Table 'tasks' exists")
+	}
+	// Если таблицы с ресурсами не существует, создадим её
+	if !sdb.HasTable(&Resource{}) {
 		// Resource
-		logger.Info("DB: Creating 'resource' table")
+		logger.Info("DB: Creating 'resources' table")
 		err = sdb.CreateTable(&Resource{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'resource' table")
+		logger.Info("DB: Successfully created 'resources' table")
+	} else {
+		logger.Info("DB: Table 'resources' exists")
+	}
+	// Если таблицы с группой ресурсов не существует, создадим её
+	if !sdb.HasTable(&ResourceGroup{}) {
 		// ResourceGroup
-		logger.Info("DB: Creating 'resourcegroup' table")
+		logger.Info("DB: Creating 'resource-groups' table")
 		err = sdb.CreateTable(&ResourceGroup{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'resourcegroup' table")
+		logger.Info("DB: Successfully created 'resource-groups' table")
+	} else {
+		logger.Info("DB: Table 'resource-groups' exists")
+	}
+	// Если таблицы с подгруппой ресурсов не существует, создадим её
+	if !sdb.HasTable(&ResourceSubgroup{}) {
 		// ResourceSubgroup
-		logger.Info("DB: Creating 'resourcesubgroup' table")
+		logger.Info("DB: Creating 'resource-subgroups' table")
 		err = sdb.CreateTable(&ResourceSubgroup{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'resourcesubgroup' table")
+		logger.Info("DB: Successfully created 'resource-subgroups' table")
 	} else {
-		logger.Info("DB: Table 'users' exists")
+		logger.Info("DB: Table 'resource-subgroups' exists")
+	}
+	// Если таблицы с темами форума не существует, создадим её
+	if !sdb.HasTable(&ForumTopic{}) {
+		// ForumTopic
+		logger.Info("DB: Creating 'forum-topics' table")
+		err = sdb.CreateTable(&ForumTopic{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'forum-topics' table")
+	} else {
+		logger.Info("DB: Table 'forum-topics' exists")
+	}
+	// Если таблицы с сообщениями форума не существует, создадим её
+	if !sdb.HasTable(&ForumPost{}) {
+		// ForumPost
+		logger.Info("DB: Creating 'forum-posts' table")
+		err = sdb.CreateTable(&ForumPost{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'forum-posts' table")
+	} else {
+		logger.Info("DB: Table 'forum-posts' exists")
 	}
 	// Если таблицы со школами не существует, создадим её
 	if !sdb.HasTable(&School{}) {
@@ -306,16 +389,17 @@ func (db *Database) UpdateUser(login string, passkey string, schoolID int, token
 				return errors.Wrapf(errInner, "Error creating device='%v' for user='%v'", dev, user)
 			}
 			user := User{
-				SchoolID:  uint(schoolID),
-				Login:     login,
-				Password:  passkey,
-				Students:  students,
-				Devices:   devices,
-				Role:      profile.Role,
-				LastName:  profile.Surname,
-				FirstName: profile.Name,
-				Year:      profile.Schoolyear,
-				TrueLogin: profile.Username,
+				SchoolID:    uint(schoolID),
+				Login:       login,
+				Password:    passkey,
+				Students:    students,
+				Devices:     devices,
+				Role:        profile.Role,
+				LastName:    profile.Surname,
+				FirstName:   profile.Name,
+				Year:        profile.Schoolyear,
+				TrueLogin:   profile.Username,
+				ForumTopics: []ForumTopic{},
 			}
 			// Записываем профиль
 			user.UID, err = strconv.Atoi(profile.UID)
@@ -599,6 +683,114 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 	err = db.SchoolServerDB.Save(&student).Error
 	if err != nil {
 		return errors.Wrapf(err, "Error saving student='%v'", student)
+	}
+	return nil
+}
+
+// UpdateTopicsStatuses добавляет в БД несуществующие темы форума и обновляет статусы
+func (db *Database) UpdateTopicsStatuses(userName string, schoolID int, themes *dt.ForumThemesList) error {
+	var (
+		user     User
+		newTopic ForumTopic
+		topics   []ForumTopic
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем список тем у пользователя
+	err = db.SchoolServerDB.Model(&user).Related(&topics).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting user='%v' forum topics", user)
+	}
+	// Гоняем по темам из пакета
+	for topicNum, topic := range themes.Posts {
+		// Найдем подходящую тему в БД
+		topicFound := false
+		for _, dbTopic := range topics {
+			if topic.ID == dbTopic.NetschoolID {
+				topicFound = true
+				newTopic = dbTopic
+				break
+			}
+		}
+		if !topicFound {
+			// Темы не существует, надо создать
+			newTopic = ForumTopic{UserID: user.ID, NetschoolID: topic.ID, Date: topic.Date, Creator: topic.Creator, Title: topic.Title, Unread: true, Answers: topic.Answers, Posts: []ForumPost{}}
+			err = db.SchoolServerDB.Create(&newTopic).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newTopic='%v'", newTopic)
+			}
+			topics = append(topics, newTopic)
+		}
+		// Присвоить статусу темы из пакета статус темы из БД
+		themes.Posts[topicNum].Unread = newTopic.Unread
+	}
+	// Сохраним пользователя
+	err = db.SchoolServerDB.Save(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving user='%v'", user)
+	}
+	return nil
+}
+
+// UpdatePostsStatuses добавляет в БД несуществующие сообщения форума и обновляет статусы
+func (db *Database) UpdatePostsStatuses(userName string, schoolID int, themeID int, topics *dt.ForumThemeMessages) error {
+	var (
+		user       User
+		topic      ForumTopic
+		newMessage ForumPost
+		messages   []ForumPost
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем нужную тему у пользователя
+	wh := ForumTopic{NetschoolID: themeID}
+	err = db.SchoolServerDB.Where(wh).First(&topic).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting forum topic='%v'", wh)
+	}
+	// Помечаем тему как прочитанную
+	topic.Unread = false
+	// Получаем сообщения у темы
+	err = db.SchoolServerDB.Model(&topic).Related(&messages).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting topic='%v' messages", topic)
+	}
+	// Гоняем по сообщениям из пакета
+	for postNum, post := range topics.Messages {
+		// Найдем подходящее сообщение в БД
+		postFound := false
+		for _, dbPost := range messages {
+			if post.Date == dbPost.Date && post.Author == dbPost.Author && post.Message == dbPost.Message {
+				postFound = true
+				newMessage = dbPost
+				break
+				// В этом случае гарантируется, что сообщение уже было прочитано
+			}
+		}
+		if !postFound {
+			// Сообщения не существует, надо создать
+			newMessage = ForumPost{ForumTopicID: topic.ID, Date: post.Date, Author: post.Author, Unread: false, Message: post.Message}
+			err = db.SchoolServerDB.Create(&newMessage).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newMessage='%v'", newMessage)
+			}
+			messages = append(messages, newMessage)
+			// Присвоить статусу сообщения из пакет из БД "не прочитано"
+			topics.Messages[postNum].Unread = true
+		}
+	}
+	// Сохраним тему
+	err = db.SchoolServerDB.Save(&topic).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving topic='%v'", topic)
 	}
 	return nil
 }

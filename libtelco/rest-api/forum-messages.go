@@ -82,6 +82,15 @@ func (rest *RestAPI) GetForumMessagesHandler(respwr http.ResponseWriter, req *ht
 			return
 		}
 	}
+	// Сравнить с БД
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	err = rest.Db.UpdatePostsStatuses(userName.(string), schoolID.(int), rReq.ID, themeMessages)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when updating statuses for forum messages", "Error", err, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(themeMessages)
 	if err != nil {
