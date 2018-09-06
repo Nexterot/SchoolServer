@@ -8,6 +8,20 @@ import (
 	"strings"
 )
 
+// Letter используется в getMailResponse
+type Letter struct {
+	Date   string `json:"date"`
+	ID     int    `json:"id"`
+	Author string `json:"author"`
+	Topic  string `json:"topic"`
+	Unread bool   `json:"unread"`
+}
+
+// getMailResponse используется в GetMailHandler
+type getMailResponse struct {
+	Letters []Letter `json:"letters"`
+}
+
 // getMailRequest используется в GetMailHandler
 type getMailRequest struct {
 	Section    int `json:"section"`
@@ -94,18 +108,29 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 			return
 		}
 	}
+	letters := make([]Letter, 0)
+	// Сформировать ответ по протоколу
+	for _, record := range emailsList.Record {
+		unread := true
+		if record.Read == "Y" {
+			unread = false
+		}
+		letter := Letter{Date: record.Sent, ID: record.MessageID, Author: record.FromName, Topic: record.Subj, Unread: unread}
+		letters = append(letters, letter)
+	}
+	resp := getMailResponse{Letters: letters}
 	// Закодировать ответ в JSON
-	bytes, err := json.Marshal(emailsList)
+	bytes, err := json.Marshal(resp)
 	if err != nil {
-		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", emailsList, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when marshalling response", "Error", err, "Response", resp, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 	// Отправить ответ клиенту
 	status, err := respwr.Write(bytes)
 	if err != nil {
-		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", emailsList, "Status", status, "IP", req.RemoteAddr)
+		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
 	} else {
-		rest.logger.Info("REST: Successfully sent response", "Response", emailsList, "IP", req.RemoteAddr)
+		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
 	}
 }
