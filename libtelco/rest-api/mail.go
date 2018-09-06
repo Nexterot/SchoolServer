@@ -8,20 +8,6 @@ import (
 	"strings"
 )
 
-// Letter используется в getMailResponse
-type Letter struct {
-	Date   string `json:"date"`
-	ID     int    `json:"id"`
-	Author string `json:"author"`
-	Topic  string `json:"topic"`
-	Unread bool   `json:"unread"`
-}
-
-// getMailResponse используется в GetMailHandler
-type getMailResponse struct {
-	Letters []Letter `json:"letters"`
-}
-
 // getMailRequest используется в GetMailHandler
 type getMailRequest struct {
 	Section    int `json:"section"`
@@ -108,17 +94,15 @@ func (rest *RestAPI) GetMailHandler(respwr http.ResponseWriter, req *http.Reques
 			return
 		}
 	}
-	letters := make([]Letter, 0)
-	// Сформировать ответ по протоколу
-	for _, record := range emailsList.Record {
-		unread := true
-		if record.Read == "Y" {
-			unread = false
-		}
-		letter := Letter{Date: record.Sent, ID: record.MessageID, Author: record.FromName, Topic: record.Subj, Unread: unread}
-		letters = append(letters, letter)
+	// Обновить статусы в бд
+	userName := session.Values["userName"]
+	schoolID := session.Values["schoolID"]
+	resp, err := rest.Db.UpdateMailStatuses(userName.(string), schoolID.(int), emailsList)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when updating statuses for mail", "Error", err, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
 	}
-	resp := getMailResponse{Letters: letters}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(resp)
 	if err != nil {

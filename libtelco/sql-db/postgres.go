@@ -68,19 +68,20 @@ type School struct {
 // User struct представляет структуру записи пользователя
 type User struct {
 	gorm.Model
-	SchoolID    uint // parent id
-	UID         int
-	Login       string       `sql:"size:255;index"`
-	Password    string       `sql:"size:255"`
-	Permission  bool         `sql:"DEFAULT:false"`
-	FirstName   string       `sql:"size:255"`
-	LastName    string       `sql:"size:255"`
-	TrueLogin   string       `sql:"size:255"`
-	Role        string       `sql:"size:255"`
-	Year        string       `sql:"size:255"`
-	Students    []Student    // has-many relation
-	Devices     []Device     // has-many relation
-	ForumTopics []ForumTopic // has-many relation
+	SchoolID     uint // parent id
+	UID          int
+	Login        string        `sql:"size:255;index"`
+	Password     string        `sql:"size:255"`
+	Permission   bool          `sql:"DEFAULT:false"`
+	FirstName    string        `sql:"size:255"`
+	LastName     string        `sql:"size:255"`
+	TrueLogin    string        `sql:"size:255"`
+	Role         string        `sql:"size:255"`
+	Year         string        `sql:"size:255"`
+	Students     []Student     // has-many relation
+	Devices      []Device      // has-many relation
+	ForumTopics  []ForumTopic  // has-many relation
+	MailMessages []MailMessage //  has-many relation
 }
 
 // Device struct представляет структуру устройства, которое будет получать
@@ -156,6 +157,17 @@ type ForumPost struct {
 	Author       string
 	Message      string
 	Unread       bool
+}
+
+// MailMessage struct представляет структуру сообщения на почте
+type MailMessage struct {
+	gorm.Model
+	UserID      uint //  parent id
+	NetschoolID int
+	Date        string
+	Author      string
+	Topic       string
+	Unread      bool
 }
 
 // Resource struct представляет структуру школьного ресурса
@@ -269,50 +281,62 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 	// Если таблицы с группой ресурсов не существует, создадим её
 	if !sdb.HasTable(&ResourceGroup{}) {
 		// ResourceGroup
-		logger.Info("DB: Creating 'resource-groups' table")
+		logger.Info("DB: Creating 'resource_groups' table")
 		err = sdb.CreateTable(&ResourceGroup{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'resource-groups' table")
+		logger.Info("DB: Successfully created 'resource_groups' table")
 	} else {
-		logger.Info("DB: Table 'resource-groups' exists")
+		logger.Info("DB: Table 'resource_groups' exists")
 	}
 	// Если таблицы с подгруппой ресурсов не существует, создадим её
 	if !sdb.HasTable(&ResourceSubgroup{}) {
 		// ResourceSubgroup
-		logger.Info("DB: Creating 'resource-subgroups' table")
+		logger.Info("DB: Creating 'resource_subgroups' table")
 		err = sdb.CreateTable(&ResourceSubgroup{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'resource-subgroups' table")
+		logger.Info("DB: Successfully created 'resource_subgroups' table")
 	} else {
-		logger.Info("DB: Table 'resource-subgroups' exists")
+		logger.Info("DB: Table 'resource_subgroups' exists")
 	}
 	// Если таблицы с темами форума не существует, создадим её
 	if !sdb.HasTable(&ForumTopic{}) {
 		// ForumTopic
-		logger.Info("DB: Creating 'forum-topics' table")
+		logger.Info("DB: Creating 'forum_topics' table")
 		err = sdb.CreateTable(&ForumTopic{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'forum-topics' table")
+		logger.Info("DB: Successfully created 'forum_topics' table")
 	} else {
-		logger.Info("DB: Table 'forum-topics' exists")
+		logger.Info("DB: Table 'forum_topics' exists")
 	}
 	// Если таблицы с сообщениями форума не существует, создадим её
 	if !sdb.HasTable(&ForumPost{}) {
 		// ForumPost
-		logger.Info("DB: Creating 'forum-posts' table")
+		logger.Info("DB: Creating 'forum_posts' table")
 		err = sdb.CreateTable(&ForumPost{}).Error
 		if err != nil {
 			return nil, err
 		}
-		logger.Info("DB: Successfully created 'forum-posts' table")
+		logger.Info("DB: Successfully created 'forum_posts' table")
 	} else {
-		logger.Info("DB: Table 'forum-posts' exists")
+		logger.Info("DB: Table 'forum_posts' exists")
+	}
+	// Если таблицы с сообщениями почты не существует, создадим её
+	if !sdb.HasTable(&MailMessage{}) {
+		// ForumPost
+		logger.Info("DB: Creating 'mail_messages' table")
+		err = sdb.CreateTable(&MailMessage{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'mail_messages' table")
+	} else {
+		logger.Info("DB: Table 'mail_messages' exists")
 	}
 	// Если таблицы со школами не существует, создадим её
 	if !sdb.HasTable(&School{}) {
@@ -793,6 +817,81 @@ func (db *Database) UpdatePostsStatuses(userName string, schoolID int, themeID i
 		return errors.Wrapf(err, "Error saving topic='%v'", topic)
 	}
 	return nil
+}
+
+// Letter используется в getMailResponse
+type Letter struct {
+	Date   string `json:"date"`
+	ID     int    `json:"id"`
+	Author string `json:"author"`
+	Topic  string `json:"topic"`
+	Unread bool   `json:"unread"`
+}
+
+// getMailResponse используется в GetMailHandler
+type getMailResponse struct {
+	Letters []Letter `json:"letters"`
+}
+
+// UpdateMailStatuses добавляет в БД несуществующие сообщения почты и обновляет статусы
+func (db *Database) UpdateMailStatuses(userName string, schoolID int, emailsList *dt.EmailsList) (*getMailResponse, error) {
+	var (
+		user       User
+		newMessage MailMessage
+		messages   []MailMessage
+	)
+	letters := make([]Letter, 0)
+	// Сформировать ответ по протоколу
+	for _, record := range emailsList.Record {
+		unread := true
+		if record.Read == "Y" {
+			unread = false
+		}
+		letter := Letter{Date: record.Sent, ID: record.MessageID, Author: record.FromName, Topic: record.Subj, Unread: unread}
+		letters = append(letters, letter)
+	}
+	response := getMailResponse{Letters: letters}
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем сообщения у почты
+	err = db.SchoolServerDB.Model(&user).Related(&messages).Error
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error getting user='%v' messages", user)
+	}
+	// Гоняем по сообщениям из пакета
+	for postNum, post := range response.Letters {
+		// Найдем подходящее сообщение в БД
+		postFound := false
+		for _, dbPost := range messages {
+			if post.ID == dbPost.NetschoolID {
+				postFound = true
+				newMessage = dbPost
+				break
+				// В этом случае гарантируется, что сообщение уже было прочитано
+			}
+		}
+		if !postFound {
+			// Сообщения не существует, надо создать
+			newMessage = MailMessage{UserID: user.ID, NetschoolID: post.ID, Date: post.Date, Author: post.Author, Unread: post.Unread, Topic: post.Topic}
+			err = db.SchoolServerDB.Create(&newMessage).Error
+			if err != nil {
+				return nil, errors.Wrapf(err, "Error creating newMessage='%v'", newMessage)
+			}
+			messages = append(messages, newMessage)
+			// Присвоить статусу сообщения из пакет из БД "не прочитано"
+			response.Letters[postNum].Unread = true
+		}
+	}
+	// Сохраним пользователя
+	err = db.SchoolServerDB.Save(&user).Error
+	if err != nil {
+		return nil, errors.Wrapf(err, "Error saving user='%v'", user)
+	}
+	return &response, nil
 }
 
 // TaskMarkDone меняет статус задания на "Выполненное"
