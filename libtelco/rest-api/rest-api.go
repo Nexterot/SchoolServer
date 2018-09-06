@@ -129,7 +129,7 @@ func (rest *RestAPI) BindHandlers() http.Handler {
 	mux.HandleFunc("/push_do_not_disturb", rest.PushDontDisturbHandler) // done
 	mux.HandleFunc("/push_settings", rest.Handler)                      // in dev
 	// Файлы
-	mux.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir(".")))) // done
+	mux.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir("./files")))) // done
 
 	rest.logger.Info("REST: Successfully bound handlers")
 	return context.ClearHandler(mux)
