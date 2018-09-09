@@ -9,7 +9,6 @@ import (
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	"github.com/masyagin1998/SchoolServer/libtelco/server"
-	// ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 )
 
 var (
@@ -62,11 +61,11 @@ func main() {
 			fmt.Println(err)
 		}
 
-		data, err := kek.GetAverageMarkDynReport("01.09.2018", "06.11.2018", "T", "11207")
+		kek.GetEmailsList("1", "0", "100", "DESC")
+		data, err := kek.GetEmailDescription("01", "228", "13598", "1", "zalupa")
 		if err != nil {
 			fmt.Println(err)
 		}
-
 		fmt.Println(data)
 
 		if err := kek.Logout(); err != nil {

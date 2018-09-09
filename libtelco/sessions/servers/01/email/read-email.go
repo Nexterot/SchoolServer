@@ -442,7 +442,7 @@ func getFile(s *dt.Session, emailDesc *dt.EmailDescription, schoolID, userID, MI
 
 	for i := 0; i < len(emailDesc.Files); i++ {
 		// Проверка, есть ли файл на диске.
-		path := fmt.Sprintf("files/%s/users/%s/%s/%s/", schoolID, userID, MID, emailDesc.Files[i].FileName)
+		path := fmt.Sprintf("files/%s/users/%s/%s/%s/", schoolID, userID, MID, emailDesc.Files[i].ID)
 		if _, err := os.Stat(path + emailDesc.Files[i].FileName); err == nil {
 			emailDesc.Files[i].Link = serverAddr + "/doc/" + path[6:] + emailDesc.Files[i].FileName
 		}
@@ -460,7 +460,7 @@ func getFile(s *dt.Session, emailDesc *dt.EmailDescription, schoolID, userID, MI
 				"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
 			},
 		}
-		r, err := s.Sess.Post(p+s.Serv.Link+emailDesc.Files[i].Link, ro)
+		r, err := s.Sess.Post(p+s.Serv.Link+emailDesc.Files[i].Path, ro)
 		if err != nil {
 			emailDesc.Files[i].Link = ""
 			emailDesc.Files[i].FileName = "Broken"
