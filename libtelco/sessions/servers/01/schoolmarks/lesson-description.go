@@ -270,7 +270,7 @@ func getFile(s *dt.Session, lessonDesc *dt.LessonDescription, schoolID, classID,
 		}
 		currTime := time.Now().Unix()
 		if (currTime - fileTime) < 12*3600 {
-			lessonDesc.File = serverAddr + "/doc/" + path + lessonDesc.FileName
+			lessonDesc.File = serverAddr + "/doc/" + path[6:] + lessonDesc.FileName
 			return lessonDesc, nil
 		}
 	}

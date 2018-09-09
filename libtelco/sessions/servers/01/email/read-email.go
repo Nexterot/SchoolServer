@@ -6,6 +6,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"strings"
 
 	gr "github.com/levigross/grequests"
@@ -424,5 +426,65 @@ func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription,
 		return formEmailDescription(tableNode)
 	}
 
-	return makeEmailDescription(parsedHTML)
+	data, err := makeEmailDescription(parsedHTML)
+	if err != nil {
+		return nil, err
+	}
+	return getFile(s, data, schoolID, userID, MID, serverAddr)
+}
+
+// getFile выкачивает файл по заданной ссылке в заданную директорию (если его там ещё нет) и возвращает
+// - true, если файл был скачан;
+// - false, если файл уже был в директории;
+// с сервера первого типа.
+func getFile(s *dt.Session, emailDesc *dt.EmailDescription, schoolID, userID, ID, serverAddr string) (*dt.EmailDescription, error) {
+	p := "http://"
+
+	for i := 0; i < len(emailDesc.Files); i++ {
+		// Проверка, есть ли файл на диске.
+		path := fmt.Sprintf("files/%s/users/%s/%s/", schoolID, userID, ID)
+		if _, err := os.Stat(path + emailDesc.Files[i].FileName); err == nil {
+			emailDesc.Files[i].Link = serverAddr + "/doc/" + path[6:] + emailDesc.Files[i].FileName
+		}
+		// Закачка файла.
+		// 0-ой POST-запрос.
+		ro := &gr.RequestOptions{
+			Data: map[string]string{
+				"VER":          s.VER,
+				"at":           s.AT,
+				"attachmentId": ID,
+			},
+			Headers: map[string]string{
+				"Origin":                    p + s.Serv.Link,
+				"Upgrade-Insecure-Requests": "1",
+				"Referer":                   p + s.Serv.Link + "/asp/Curriculum/Assignments.asp",
+			},
+		}
+		r, err := s.Sess.Post(p+s.Serv.Link+emailDesc.Files[i].Link, ro)
+		if err != nil {
+			emailDesc.Files[i].Link = ""
+			emailDesc.Files[i].FileName = "Broken"
+			continue
+		}
+		defer func() {
+			_ = r.Close()
+		}()
+		if _, err := check.CheckResponse(s, r); err != nil {
+			emailDesc.Files[i].Link = ""
+			emailDesc.Files[i].FileName = "Broken"
+			continue
+		}
+		// Сохранение файла на диск.
+		// Создание папок, если надо.
+		if err = os.MkdirAll(path, 0700); err != nil {
+			return nil, err
+		}
+		// Создание файла.
+		if err := ioutil.WriteFile(path+emailDesc.Files[i].FileName, r.Bytes(), 0700); err != nil {
+			return nil, err
+		}
+		// Подмена Ссылки.
+		emailDesc.Files[i].Link = serverAddr + "/doc/" + path[6:] + emailDesc.Files[i].FileName
+	}
+	return emailDesc, nil
 }

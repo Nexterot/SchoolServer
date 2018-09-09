@@ -106,8 +106,4 @@ type EmailUser struct {
 type EmailFile struct {
 	FileName string `json:"file_name"`
 	Link     string `json:"link"`
-
-	// Эти поля нужны для скачивания файла.
-	Path string
-	ID   string
 }
