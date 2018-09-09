@@ -5,6 +5,7 @@ package reports
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 	"github.com/masyagin1998/SchoolServer/libtelco/sessions/reportsparser"
@@ -164,6 +165,10 @@ func GetAverageMarkDynReport(s *dt.Session, dateBegin, dateEnd, Type, studentID 
 		if !flag {
 			return nil, fmt.Errorf("retry didn't work for 2 POST")
 		}
+	}
+
+	if strings.Contains(strings.ToLower(string(b)), "оценки не проставлены") {
+		return dt.NewAverageMarkDynReport(), nil
 	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,

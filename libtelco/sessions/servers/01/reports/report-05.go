@@ -5,6 +5,7 @@ package reports
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 	"github.com/masyagin1998/SchoolServer/libtelco/sessions/reportsparser"
@@ -162,6 +163,10 @@ func GetStudentTotalReport(s *dt.Session, dateBegin, dateEnd, studentID string) 
 		if !flag {
 			return nil, fmt.Errorf("retry didn't work for 2 POST")
 		}
+	}
+
+	if strings.Contains(strings.ToLower(string(b)), "нет сведений за этот период") {
+		return dt.NewStudentTotalReport(), nil
 	}
 
 	// Если мы дошли до этого места, то можно распарсить HTML-страницу,
