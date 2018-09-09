@@ -314,7 +314,7 @@ func getFile(s *dt.Session, lessonDesc *dt.LessonDescription, schoolID, classID,
 		return nil, err
 	}
 	// Подмена Ссылки.
-	lessonDesc.File = serverAddr + "/doc/" + path + lessonDesc.FileName
+	lessonDesc.File = serverAddr + "/doc/" + path[6:] + lessonDesc.FileName
 	// Запись в Redis.
 	if err := db.AddFileDate(path+lessonDesc.FileName, fmt.Sprintf("%v", time.Now().Unix())); err != nil {
 		return nil, err
