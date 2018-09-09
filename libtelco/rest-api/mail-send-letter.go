@@ -17,6 +17,7 @@ type sendLetterRequest struct {
 	Name         string `json:"title"`
 	Message      string `json:"description"`
 	Notification bool   `json:"notification"`
+	IsDraft      bool   `json:"is_draft"`
 }
 
 // SendLetterHandler обрабатывает запросы на создание письма
@@ -81,7 +82,7 @@ func (rest *RestAPI) SendLetterHandler(respwr http.ResponseWriter, req *http.Req
 	lto := strings.Join(LTO, ";")
 
 	// Сходить по удаленной сессии
-	err = remoteSession.CreateEmail(strconv.Itoa(rReq.UserID), lbc, lcc, lto, rReq.Name, rReq.Message)
+	err = remoteSession.CreateEmail(strconv.Itoa(rReq.UserID), lbc, lcc, lto, rReq.Name, rReq.Message, rReq.Notification, rReq.IsDraft)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -92,7 +93,7 @@ func (rest *RestAPI) SendLetterHandler(respwr http.ResponseWriter, req *http.Req
 				return
 			}
 			// Повторно получить с сайта школы
-			err = remoteSession.CreateEmail(strconv.Itoa(rReq.UserID), lbc, lcc, lto, rReq.Name, rReq.Message)
+			err = remoteSession.CreateEmail(strconv.Itoa(rReq.UserID), lbc, lcc, lto, rReq.Name, rReq.Message, rReq.Notification, rReq.IsDraft)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)

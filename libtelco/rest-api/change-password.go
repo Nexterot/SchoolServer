@@ -109,7 +109,7 @@ func (rest *RestAPI) ChangePasswordHandler(respwr http.ResponseWriter, req *http
 			}
 			return
 		} else if strings.Contains(err.Error(), "Equal new and old passwords") {
-			// Если старый пароль введен неверно
+			// Если пароли одинаковы
 			rest.logger.Info("REST: Equal new and old passwords")
 			respwr.WriteHeader(http.StatusBadRequest)
 			status, err := respwr.Write(rest.Errors.SamePassword)
