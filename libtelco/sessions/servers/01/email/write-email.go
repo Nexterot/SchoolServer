@@ -12,7 +12,7 @@ import (
 )
 
 // CreateEmail создает сообщение и отправляет его адресатам с сервера первого типа.
-func CreateEmail(s *dt.Session, userID, LBC, LCC, LTO, name, message string) error {
+func CreateEmail(s *dt.Session, userID, LBC, LCC, LTO, name, message string, notify, draft bool) error {
 	p := "http://"
 
 	// 0-ой GET-запрос (не дублирующийся).
@@ -99,6 +99,12 @@ func CreateEmail(s *dt.Session, userID, LBC, LCC, LTO, name, message string) err
 				"TA":          "",
 				"VER":         s.VER,
 			},
+		}
+		if notify {
+			ro.Data["NEEDNOTIFY"] = "1"
+		}
+		if draft {
+			ro.Data["DMID"] = "DRAFT"
 		}
 		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Messages/sendsavemsg.asp", ro)
 		if err != nil {

@@ -60,13 +60,13 @@ func (s *Session) GetEmailDescription(MID, MBID string) (*dt.EmailDescription, e
 }
 
 // CreateEmail создает сообщение и отправляет его адресатам.
-func (s *Session) CreateEmail(userID, LBC, LCC, LTO, name, message string) error {
+func (s *Session) CreateEmail(userID, LBC, LCC, LTO, name, message string, notify, draft bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var err error
 	switch s.Serv.Type {
 	case cp.FirstType:
-		err = t01.CreateEmail(&s.Session, userID, LBC, LCC, LTO, name, message)
+		err = t01.CreateEmail(&s.Session, userID, LBC, LCC, LTO, name, message, notify, draft)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}
