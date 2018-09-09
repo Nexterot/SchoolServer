@@ -61,13 +61,6 @@ func main() {
 			fmt.Println(err)
 		}
 
-		kek.GetEmailsList("1", "0", "100", "DESC")
-		data, err := kek.GetEmailDescription("01", "228", "13598", "1", "zalupa")
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(data)
-
 		if err := kek.Logout(); err != nil {
 			fmt.Println(err)
 		}

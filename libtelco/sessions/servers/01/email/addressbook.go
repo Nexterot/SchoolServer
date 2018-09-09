@@ -519,6 +519,12 @@ func GetAddressBook(s *dt.Session) (*dt.AddressBook, error) {
 
 	addressBook.Classes = classes
 
+	for i := 0; i < len(addressBook.Groups); i++ {
+		if addressBook.Groups[i].Title == "классы" {
+			addressBook.Groups = append(addressBook.Groups[:i], addressBook.Groups[i+1:]...)
+		}
+	}
+
 	return addressBook, nil
 }
 
