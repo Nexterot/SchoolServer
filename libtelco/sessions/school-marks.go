@@ -40,7 +40,7 @@ func (s *Session) GetWeekSchoolMarks(date, studentID string) (*dt.WeekSchoolMark
 */
 
 // GetLessonDescription вовзращает подробности урока.
-func (s *Session) GetLessonDescription(AID, CID, TP int, studentID, classID, serverAddr string, db *red.Database) (*dt.LessonDescription, error) {
+func (s *Session) GetLessonDescription(AID, CID, TP int, schoolID, studentID, classID, serverAddr string, db *red.Database) (*dt.LessonDescription, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if studentID == "" {
@@ -50,7 +50,7 @@ func (s *Session) GetLessonDescription(AID, CID, TP int, studentID, classID, ser
 	var lessonDescription *dt.LessonDescription
 	switch s.Serv.Type {
 	case cp.FirstType:
-		lessonDescription, err = t01.GetLessonDescription(&s.Session, AID, CID, TP, studentID, classID, serverAddr, db)
+		lessonDescription, err = t01.GetLessonDescription(&s.Session, AID, CID, TP, schoolID, studentID, classID, serverAddr, db)
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)
 	}

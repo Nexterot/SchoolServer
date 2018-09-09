@@ -20,7 +20,7 @@ import (
 )
 
 // GetLessonDescription вовзращает подробности урока с сервера первого типа.
-func GetLessonDescription(s *dt.Session, AID, CID, TP int, studentID, classID, serverAddr string, db *redis.Database) (*dt.LessonDescription, error) {
+func GetLessonDescription(s *dt.Session, AID, CID, TP int, schoolID, studentID, classID, serverAddr string, db *redis.Database) (*dt.LessonDescription, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -241,14 +241,14 @@ func GetLessonDescription(s *dt.Session, AID, CID, TP int, studentID, classID, s
 
 	// Если мы дошли до этого места, то можно запустить закачку файла и
 	// подменить нашей ссылкой ссылку NetSchool.
-	return getFile(s, lessonDesc, classID, ID, serverAddr, db)
+	return getFile(s, lessonDesc, schoolID, classID, ID, serverAddr, db)
 }
 
 // getFile выкачивает файл по заданной ссылке в заданную директорию (если его там ещё нет) и возвращает
 // - true, если файл был скачан;
 // - false, если файл уже был в директории;
 // с сервера первого типа.
-func getFile(s *dt.Session, lessonDesc *dt.LessonDescription, classID, ID, serverAddr string, db *redis.Database) (*dt.LessonDescription, error) {
+func getFile(s *dt.Session, lessonDesc *dt.LessonDescription, schoolID, classID, ID, serverAddr string, db *redis.Database) (*dt.LessonDescription, error) {
 	p := "http://"
 
 	// Проверка, а есть ли вообще прикрепленный файл.
@@ -257,7 +257,7 @@ func getFile(s *dt.Session, lessonDesc *dt.LessonDescription, classID, ID, serve
 	}
 
 	// Проверка, есть ли файл на диске.
-	path := fmt.Sprintf("files/classes/%s/", classID)
+	path := fmt.Sprintf("files/%s/classes/%s/%s/", schoolID, classID, ID)
 	if _, err := os.Stat(path + lessonDesc.FileName); err == nil {
 		// Проверка, актуален ли он (время "протухания" файла - 12 часов).
 		stringTime, err := db.GetFileDate(path + lessonDesc.FileName)
