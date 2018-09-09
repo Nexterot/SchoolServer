@@ -56,8 +56,30 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 			return
 		}
 	}
+	// Сходить в бд за uid юзера
+	schoolID := session.Values["schoolID"].(int)
+	userName := session.Values["userName"].(string)
+	uid, err := rest.Db.GetUserUID(userName, schoolID)
+	if err != nil {
+		if err.Error() == "record not found" {
+			// Такого пользователя нет
+			rest.logger.Info("REST: Invalid student id specified", "Error", err.Error(), "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			status, err := respwr.Write(rest.Errors.InvalidData)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+			}
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting class id from db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
 	// Сходить по удаленной сессии
-	emailDesc, err := remoteSession.GetEmailDescription(strconv.Itoa(rReq.ID), strconv.Itoa(rReq.Section))
+	emailDesc, err := remoteSession.GetEmailDescription(strconv.Itoa(schoolID), uid, strconv.Itoa(rReq.ID), strconv.Itoa(rReq.Section), rest.config.ServerName)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -68,7 +90,7 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 				return
 			}
 			// Повторно получить с сайта школы
-			emailDesc, err = remoteSession.GetEmailDescription(strconv.Itoa(rReq.ID), strconv.Itoa(rReq.Section))
+			emailDesc, err = remoteSession.GetEmailDescription(strconv.Itoa(schoolID), uid, strconv.Itoa(rReq.ID), strconv.Itoa(rReq.Section), rest.config.ServerName)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
@@ -83,9 +105,7 @@ func (rest *RestAPI) GetMailDescriptionHandler(respwr http.ResponseWriter, req *
 		}
 	}
 	// Лезть в БД
-	userName := session.Values["userName"]
-	schoolID := session.Values["schoolID"]
-	err = rest.Db.MarkMailRead(userName.(string), schoolID.(int), rReq.Section, rReq.ID)
+	err = rest.Db.MarkMailRead(userName, schoolID, rReq.Section, rReq.ID)
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") {
 			// Такого письма нет в БД

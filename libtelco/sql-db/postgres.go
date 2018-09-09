@@ -1038,6 +1038,21 @@ func (db *Database) GetStudentClassID(userName string, schoolID int, studentID i
 	return student.ClassID, nil
 }
 
+// GetUserUID получает UserUID пользователя
+func (db *Database) GetUserUID(userName string, schoolID int) (string, error) {
+	var (
+		user User
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return "", errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Вернуть UserID
+	return strconv.Itoa(user.UID), nil
+}
+
 // GetSchoolPermission проверяет разрешение школы на работу с сервисом
 func (db *Database) GetSchoolPermission(id int) (bool, error) {
 	var school School
