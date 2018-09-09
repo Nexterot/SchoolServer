@@ -84,7 +84,7 @@ func GetEmailsList(s *dt.Session, nBoxID, startInd, pageSize, sequence string) (
 }
 
 // GetEmailDescription возвращает подробности заданного электронного письма с сервера первого типа.
-func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription, error) {
+func GetEmailDescription(s *dt.Session, schoolID, userID, MID, MBID, serverAddr string) (*dt.EmailDescription, error) {
 	p := "http://"
 
 	// 0-ой Get-запрос (не дублирующийся).
@@ -437,12 +437,12 @@ func GetEmailDescription(s *dt.Session, MID, MBID string) (*dt.EmailDescription,
 // - true, если файл был скачан;
 // - false, если файл уже был в директории;
 // с сервера первого типа.
-func getFile(s *dt.Session, emailDesc *dt.EmailDescription, schoolID, userID, ID, serverAddr string) (*dt.EmailDescription, error) {
+func getFile(s *dt.Session, emailDesc *dt.EmailDescription, schoolID, userID, MID, serverAddr string) (*dt.EmailDescription, error) {
 	p := "http://"
 
 	for i := 0; i < len(emailDesc.Files); i++ {
 		// Проверка, есть ли файл на диске.
-		path := fmt.Sprintf("files/%s/users/%s/%s/", schoolID, userID, ID)
+		path := fmt.Sprintf("files/%s/users/%s/%s/%s/", schoolID, userID, MID, emailDesc.Files[i].FileName)
 		if _, err := os.Stat(path + emailDesc.Files[i].FileName); err == nil {
 			emailDesc.Files[i].Link = serverAddr + "/doc/" + path[6:] + emailDesc.Files[i].FileName
 		}
@@ -452,7 +452,7 @@ func getFile(s *dt.Session, emailDesc *dt.EmailDescription, schoolID, userID, ID
 			Data: map[string]string{
 				"VER":          s.VER,
 				"at":           s.AT,
-				"attachmentId": ID,
+				"attachmentId": emailDesc.Files[i].ID,
 			},
 			Headers: map[string]string{
 				"Origin":                    p + s.Serv.Link,

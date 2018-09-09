@@ -106,4 +106,6 @@ type EmailUser struct {
 type EmailFile struct {
 	FileName string `json:"file_name"`
 	Link     string `json:"link"`
+	Path     string
+	ID       string
 }
