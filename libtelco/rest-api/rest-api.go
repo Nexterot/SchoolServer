@@ -150,7 +150,7 @@ func (rest *RestAPI) ErrorHandler(respwr http.ResponseWriter, req *http.Request)
 func (rest *RestAPI) getLocalSession(respwr http.ResponseWriter, req *http.Request) (string, *sessions.Session) {
 	// Прочитать куку
 	cookie, err := req.Cookie("sessionName")
-	if err != nil {
+	if err != nil || cookie.Value == "" {
 		rest.logger.Info("REST: User not authorized", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusUnauthorized)
 		return "", nil
@@ -163,7 +163,7 @@ func (rest *RestAPI) getLocalSession(respwr http.ResponseWriter, req *http.Reque
 		delete(rest.sessionsMap, sessionName)
 		session.Options.MaxAge = -1
 		session.Save(req, respwr)
-		respwr.WriteHeader(http.StatusInternalServerError)
+		respwr.WriteHeader(http.StatusUnauthorized)
 		return "", nil
 	}
 	if session.IsNew {
