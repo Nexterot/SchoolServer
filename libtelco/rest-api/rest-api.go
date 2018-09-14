@@ -149,6 +149,7 @@ func (rest *RestAPI) ErrorHandler(respwr http.ResponseWriter, req *http.Request)
 // getLocalSession читает куки и получает объект локальной сессии
 func (rest *RestAPI) getLocalSession(respwr http.ResponseWriter, req *http.Request) (string, *sessions.Session) {
 	// Прочитать куку
+	rest.logger.Info("Headers", "heh", req.Header)
 	cookie, err := req.Cookie("sessionName")
 	if err != nil || cookie.Value == "" {
 		rest.logger.Info("REST: User not authorized", "Error", err.Error(), "IP", req.RemoteAddr)

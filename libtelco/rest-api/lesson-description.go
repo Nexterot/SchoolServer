@@ -106,6 +106,26 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 			return
 		}
 	}
+	// Лезть в БД
+	err = rest.Db.TaskMarkSeen(userName.(string), schoolID.(int), rReq.AID, rReq.CID, rReq.TP)
+	if err != nil {
+		if strings.Contains(err.Error(), "record not found") {
+			// Такого таска нет в БД
+			rest.logger.Info("REST: Task with specified id not found in db", "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadRequest)
+			status, err := respwr.Write(rest.Errors.InvalidData)
+			if err != nil {
+				rest.logger.Error("REST: Error occured when sending response", "Error", err, "Status", status, "IP", req.RemoteAddr)
+			} else {
+				rest.logger.Info("REST: Successfully sent response", "IP", req.RemoteAddr)
+			}
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when marking task as done in db", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusInternalServerError)
+		}
+		return
+	}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(lessonDescription)
 	if err != nil {

@@ -970,6 +970,54 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, AID, CID, TP int
 	return fmt.Errorf("record not found")
 }
 
+// TaskMarkSeen меняет статус задания на "Выполненное"
+func (db *Database) TaskMarkSeen(userName string, schoolID int, AID, CID, TP int) error {
+	var (
+		tasks   []Task
+		day     Day
+		student Student
+		user    User
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем таски с таким taskID
+	w := Task{AID: AID, CID: CID, TP: TP}
+	err = db.SchoolServerDB.Where(w).Find(&tasks).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query tasks: '%v'", w)
+	}
+	// Найдем нужный таск
+	for _, t := range tasks {
+		// Получим день по DayID
+		err = db.SchoolServerDB.First(&day, t.DayID).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error query day with id='%v'", t.DayID)
+		}
+		// Получим студента по дню
+		err = db.SchoolServerDB.First(&student, day.StudentID).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error query student with id='%v'", day.StudentID)
+		}
+		// Если совпал id пользователя - поменять статус, сохранить и закончить цикл
+		if user.ID == student.UserID {
+			if t.Status == StatusTaskNew {
+				t.Status = StatusTaskSeen
+				err = db.SchoolServerDB.Save(&t).Error
+				if err != nil {
+					return errors.Wrapf(err, "Error saving updated task='%v'", t)
+				}
+				return nil
+			}
+		}
+	}
+	// Таск не найден
+	return fmt.Errorf("record not found")
+}
+
 // TaskMarkUndone меняет статус задания на "Просмотренное"
 func (db *Database) TaskMarkUndone(userName string, schoolID int, AID, CID, TP int) error {
 	var (
