@@ -1010,8 +1010,8 @@ func (db *Database) TaskMarkSeen(userName string, schoolID int, AID, CID, TP int
 				if err != nil {
 					return errors.Wrapf(err, "Error saving updated task='%v'", t)
 				}
-				return nil
 			}
+			return nil
 		}
 	}
 	// Таск не найден
