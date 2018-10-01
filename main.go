@@ -70,7 +70,9 @@ func main() {
 	if err := kek.Logout(); err != nil {
 		fmt.Println(err)
 	}
-	os.Exit(1)
+	/*
+		os.Exit(1)
+	*/
 
 	// Запуск сервера.
 	server := server.NewServer(config, logger)

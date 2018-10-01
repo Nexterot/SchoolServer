@@ -4,6 +4,7 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 // postsResponse struct используется в GetPostsHandler
@@ -36,35 +37,32 @@ func (rest *RestAPI) GetPostsHandler(respwr http.ResponseWriter, req *http.Reque
 			return
 		}
 	}
-	/*
-		// Получить описание таска
-		lessonDescription, err := remoteSession.GetPosts()
-		if err != nil {
-			if strings.Contains(err.Error(), "You was logged out from server") {
-				// Если удаленная сессия есть, но не активна
-				rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
-				// Создать новую
-				remoteSession = rest.remoteRelogin(respwr, req, session)
-				if remoteSession == nil {
-					return
-				}
-				// Повторно получить с сайта школы
-				lessonDescription, err = remoteSession.GetPosts()
-				if err != nil {
-					// Ошибка
-					rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
-					respwr.WriteHeader(http.StatusBadGateway)
-					return
-				}
-			} else {
-				// Другая ошибка
+	// Получить объявления
+	posts, err := remoteSession.GetAnnouncements()
+	if err != nil {
+		if strings.Contains(err.Error(), "You was logged out from server") {
+			// Если удаленная сессия есть, но не активна
+			rest.logger.Info("REST: Remote connection timed out", "IP", req.RemoteAddr)
+			// Создать новую
+			remoteSession = rest.remoteRelogin(respwr, req, session)
+			if remoteSession == nil {
+				return
+			}
+			// Повторно получить с сайта школы
+			posts, err = remoteSession.GetAnnouncements()
+			if err != nil {
+				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
 				respwr.WriteHeader(http.StatusBadGateway)
 				return
 			}
+		} else {
+			// Другая ошибка
+			rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
+			respwr.WriteHeader(http.StatusBadGateway)
+			return
 		}
-	*/
-	posts := postsResponse{make([]string, 0)}
+	}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(posts)
 	if err != nil {
