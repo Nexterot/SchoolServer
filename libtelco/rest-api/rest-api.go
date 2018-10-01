@@ -125,7 +125,7 @@ func (rest *RestAPI) BindHandlers() http.Handler {
 	// Настройки
 	mux.HandleFunc("/change_password", rest.ChangePasswordHandler)      // done
 	mux.HandleFunc("/push_do_not_disturb", rest.PushDontDisturbHandler) // done
-	mux.HandleFunc("/push_settings", rest.Handler)                      // in dev
+	mux.HandleFunc("/push_settings", rest.PushSettingsHandler)          // done
 	// Файлы
 	mux.Handle("/doc/", http.StripPrefix("/doc/", http.FileServer(http.Dir("./files")))) // done
 
@@ -149,8 +149,9 @@ func (rest *RestAPI) ErrorHandler(respwr http.ResponseWriter, req *http.Request)
 // getLocalSession читает куки и получает объект локальной сессии
 func (rest *RestAPI) getLocalSession(respwr http.ResponseWriter, req *http.Request) (string, *sessions.Session) {
 	// Прочитать куку
-	rest.logger.Info("Headers", "heh", req.Header)
 	cookie, err := req.Cookie("sessionName")
+	// Дебаг хедеров
+	// rest.logger.Info("Headers", "heh", req.Header)
 	if err != nil || cookie.Value == "" {
 		rest.logger.Info("REST: User not authorized", "Error", err.Error(), "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusUnauthorized)

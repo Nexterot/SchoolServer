@@ -1131,6 +1131,40 @@ func (db *Database) CheckPassword(userName string, schoolID int, pass string) (b
 	return user.Password == pass, nil
 }
 
+// UpdatePushSettings обновляет настройки предпочтений устройства по поводу push уведомлений
+func (db *Database) UpdatePushSettings(userName string, schoolID int, systemType int, token string, marks, tasks int, reports, schedule, mail, forum, resources bool) error {
+	var (
+		user User
+		dev  Device
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем ассоциированное устройство по systemType и token
+	wh := Device{Token: token, SystemType: systemType}
+	err = db.SchoolServerDB.Where(wh).First(&dev).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query device='%v'", wh)
+	}
+	// Обновляем настройки
+	dev.MarksNotification = marks
+	dev.TasksNotification = tasks
+	dev.ReportsNotification = reports
+	dev.ScheduleNotification = schedule
+	dev.MailNotification = mail
+	dev.ForumNotification = forum
+	dev.ResourcesNotification = resources
+	// Сохраняем в бд
+	err = db.SchoolServerDB.Save(&dev).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving updated device='%v'", dev)
+	}
+	return nil
+}
+
 // Close закрывает БД
 func (db *Database) Close() error {
 	return db.SchoolServerDB.Close()
