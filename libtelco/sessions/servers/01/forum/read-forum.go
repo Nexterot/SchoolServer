@@ -296,7 +296,7 @@ func GetForumThemeMessages(s *dt.Session, TID, page, pageSize string) (*dt.Forum
 				"BACK":      "",
 				"DELARR":    "",
 				"LoginType": "0",
-				"PAGE":      page,
+				"PAGE":      "1",
 				"PAGESIZE":  pageSize,
 				"VER":       s.VER,
 			},
@@ -307,7 +307,7 @@ func GetForumThemeMessages(s *dt.Session, TID, page, pageSize string) (*dt.Forum
 			},
 		}
 		r, err := s.Sess.Post(p+s.Serv.Link+
-			fmt.Sprintf("/asp/Forum/ShowThread.asp?TID=%s", TID), ro)
+			fmt.Sprintf("/asp/Forum/ShowThread.asp?TID=%s&TPAGE=%s", TID, page), ro)
 		if err != nil {
 			return nil, false, err
 		}
