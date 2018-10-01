@@ -4,10 +4,11 @@ Package push содержит объявления функций, посыла�
 package push
 
 import (
+	"bytes"
+	"encoding/json"
+	"net/http"
 	"strconv"
 	"time"
-
-	"context"
 
 	"github.com/appleboy/gorush/rpc/proto"
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
@@ -17,27 +18,30 @@ import (
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 	db "github.com/masyagin1998/SchoolServer/libtelco/sql-db"
 	"github.com/pkg/errors"
-	"google.golang.org/grpc"
 )
 
 // Push struct содержит конфигурацию пушей.
 type Push struct {
-	api     *api.RestAPI
-	db      *db.Database
-	logger  *log.Logger
-	stopped bool
-	period  time.Duration
-	client  *proto.GorushClient
+	api           *api.RestAPI
+	db            *db.Database
+	logger        *log.Logger
+	stopped       bool
+	period        time.Duration
+	client        *proto.GorushClient
+	gorushAddress string
+	appTopic      string
 }
 
 // NewPush создает структуру пушей и возвращает указатель на неё.
 func NewPush(restapi *api.RestAPI, logger *log.Logger) *Push {
 	return &Push{
-		api:     restapi,
-		db:      restapi.Db,
-		logger:  logger,
-		stopped: true,
-		period:  time.Second * 15,
+		api:           restapi,
+		db:            restapi.Db,
+		logger:        logger,
+		stopped:       true,
+		period:        time.Second * 15,
+		gorushAddress: "http://localhost:8088/api/push",
+		appTopic:      "kir4567.NetSchoolApp",
 	}
 }
 
@@ -61,7 +65,7 @@ func (p *Push) Stop() {
 	p.stopped = true
 }
 
-//
+// handlePushes содержит основную логику пушей
 func (p *Push) handlePushes() {
 	var (
 		users   []db.User
@@ -142,31 +146,24 @@ func (p *Push) handlePushes() {
 			}
 			// Появился новый учебный материал
 			rChanges := nResources[usr.SchoolID]
-			p.logger.Info("kek", "changes", rChanges)
-			if rChanges != nil {
-				alert := proto.Alert{
-					Title:    "Test Title",
-					Body:     "Test Alert Body",
-					Subtitle: "Test Alert Sub Title",
-					LocKey:   "Test loc key",
-					LocArgs:  []string{"test", "test"},
-				}
+			p.logger.Info("Resources", "Number of changes", rChanges)
+			if rChanges != nil && dev.ReportsNotification {
 				for _, v := range rChanges.Changes {
-					alert.Title = v.Title
-					alert.Body = v.Body
-					alert.Subtitle = v.Subtitle
+					title := v.Title
+					subtitle := v.Subtitle
+					body := v.Body
 					if v.Subtitle == "" {
 						// это группа
-						err = p.sendGRPC("", "resources_new_file_group", &alert, dev.SystemType, dev.Token)
+						err = p.send(dev.SystemType, dev.Token, "resources_new_file_group", title, subtitle, body, "")
 						if err != nil {
-							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "alert", alert, "Platform Type", dev.SystemType, "Token", dev.Token)
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
 							return
 						}
 					} else {
 						// это файл
-						err = p.sendGRPC("", "resources_new_file", &alert, dev.SystemType, dev.Token)
+						err = p.send(dev.SystemType, dev.Token, "resources_new_file", title, subtitle, body, "")
 						if err != nil {
-							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "alert", alert, "Platform Type", dev.SystemType, "Token", dev.Token)
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
 							return
 						}
 					}
@@ -188,7 +185,7 @@ type changes struct {
 	nNewHomeTasks int
 }
 
-// countChanges считает количество изменений.
+// countChanges считает количество изменений в дневнике
 func (p *Push) countChanges(userID uint, studentID string, week *dt.WeekSchoolMarks) (*changes, error) {
 	var (
 		student db.Student
@@ -480,42 +477,60 @@ func (p *Push) checkResources(schoolID uint, resources *dt.Resources) (*resource
 			return nil, errors.Wrapf(err, "Error saving newGroup='%v'", newGroup)
 		}
 	}
-	return &resourcesChanges{
-		Changes: changes,
-	}, nil
+	return &resourcesChanges{Changes: changes}, nil
 }
 
 type gorushRequest struct {
 	Notifications []notification `json:"notifications"`
 }
 
-type notification struct {
-	Tokens   []string `json:"tokens"`
-	Platform int      `json:"platform"`
-	Message  string   `json:"message"`
+type alert struct {
+	Title    string `json:"title,omitempty"`
+	Subtitle string `json:"subtitle,omitempty"`
+	Body     string `json:"body,omitempty"`
 }
 
-func (p *Push) sendGRPC(msg, category string, alert *proto.Alert, platformType int, token string) error {
-	// Set up a connection to the server.
-	conn, err := grpc.Dial("localhost:9000", grpc.WithInsecure())
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	c := proto.NewGorushClient(conn)
-	_, err = c.Send(context.Background(), &proto.NotificationRequest{
-		Platform: int32(platformType),
-		Tokens:   []string{token},
-		//Message:        "",
+type notification struct {
+	Tokens         []string `json:"tokens,omitempty"`
+	Platform       int      `json:"platform,omitempty"`
+	Badge          int      `json:"badge,omitempty"`
+	Category       string   `json:"category,omitempty"`
+	MutableContent bool     `json:"mutableContent,omitempty"`
+	Topic          string   `json:"topic,omitempty"`
+	Alert          alert    `json:"alert,omitempty"`
+	Message        string   `json:"message,omitempty"`
+	Sound          string   `json:"sound,omitempty"`
+}
+
+// send посылает push-уведомление по web api gorush
+func (p *Push) send(systemType int, token, category, title, subtitle, body, message string) error {
+	var notifications []notification
+	notifications = make([]notification, 1)
+	notifications[0] = notification{
+		Tokens:         []string{token},
+		Platform:       systemType,
 		Badge:          1,
 		Category:       category,
-		Sound:          "default",
 		MutableContent: true,
-		Alert:          alert,
-		Topic:          "kir4567.NetSchoolApp",
-	})
-	if err != nil {
-		return err
+		Topic:          p.appTopic,
+		Message:        message,
+		Sound:          "default",
+		Alert: alert{
+			Title:    title,
+			Subtitle: subtitle,
+			Body:     body,
+		},
 	}
+	req := gorushRequest{Notifications: notifications}
+	byt, err := json.Marshal(req)
+	if err != nil {
+		return errors.Wrap(err, "PUSH: Error marshalling norification")
+	}
+	resp, err := http.Post(p.gorushAddress, "application/json", bytes.NewBuffer(byt))
+	if err != nil {
+		return errors.Wrap(err, "PUSH: Error sending web api gorush request")
+	}
+	defer resp.Body.Close()
+	p.logger.Info("PUSH: Got response from gorush", "Response", resp)
 	return nil
 }

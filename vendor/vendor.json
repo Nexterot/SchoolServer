@@ -392,12 +392,6 @@
 			"revisionTime": "2018-08-31T17:14:23Z"
 		},
 		{
-			"checksumSHA1": "sC+logD19GbMTYt+0Fuj650V7zw=",
-			"path": "google.golang.org/grpc",
-			"revision": "5fe5ce74bb4367bbef83a0bf91e8af5f07160823",
-			"revisionTime": "2018-09-07T18:05:56Z"
-		},
-		{
 			"checksumSHA1": "4yTqW34Ah/CewKahr++5qSyjdVs=",
 			"path": "google.golang.org/grpc/balancer",
 			"revision": "5fe5ce74bb4367bbef83a0bf91e8af5f07160823",
