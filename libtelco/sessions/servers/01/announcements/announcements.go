@@ -29,7 +29,7 @@ func GetAnnouncements(s *dt.Session) (*dt.Posts, error) {
 				"Referer":                   p + s.Serv.Link,
 			},
 		}
-		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Curriculum/Assignments.asp", ro)
+		r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Announce/ViewAnnouncements.asp", ro)
 		if err != nil {
 			return nil, false, err
 		}

@@ -9,6 +9,7 @@ import (
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	"github.com/masyagin1998/SchoolServer/libtelco/server"
+	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 )
 
 var (
@@ -54,18 +55,22 @@ func main() {
 		)
 	}
 
-	/*
-		// ТЕСТЫ.
-		kek := ss.NewSession(&config.Schools[0])
-		if err := kek.Login(); err != nil {
-			fmt.Println(err)
-		}
+	// ТЕСТЫ.
+	kek := ss.NewSession(&config.Schools[0])
+	if err := kek.Login(); err != nil {
+		fmt.Println(err)
+	}
 
-		if err := kek.Logout(); err != nil {
-			fmt.Println(err)
-		}
-		os.Exit(1)
-	*/
+	data, err := kek.GetAnnouncements()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(data)
+
+	if err := kek.Logout(); err != nil {
+		fmt.Println(err)
+	}
+	os.Exit(1)
 
 	// Запуск сервера.
 	server := server.NewServer(config, logger)
