@@ -114,9 +114,10 @@ type Student struct {
 // Day struct представляет структуру дня с дз
 type Day struct {
 	gorm.Model
-	StudentID uint   // parent id
-	Date      string `sql:"size:255"`
-	Tasks     []Task // has-many relation
+	StudentID uint     // parent id
+	Date      string   `sql:"size:255"`
+	Tasks     []Task   // has-many relation
+	Lessons   []Lesson // has-many relation
 }
 
 // Task struct представляет структуру задания
@@ -134,6 +135,16 @@ type Task struct {
 	Mark   string
 	Weight string
 	Author string
+}
+
+// Lesson struct представляет структуру урока в расписании
+type Lesson struct {
+	gorm.Model
+	DayID     uint // parent id
+	Begin     string
+	End       string
+	Name      string
+	Classroom string
 }
 
 // ForumTopic struct представляет структуру темы на форуме
@@ -266,6 +277,18 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 		logger.Info("DB: Successfully created 'tasks' table")
 	} else {
 		logger.Info("DB: Table 'tasks' exists")
+	}
+	// Если таблицы с уроками не существует, создадим её
+	if !sdb.HasTable(&Lesson{}) {
+		// Lesson
+		logger.Info("DB: Creating 'lessons' table")
+		err = sdb.CreateTable(&Lesson{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'lessons' table")
+	} else {
+		logger.Info("DB: Table 'lessons' exists")
 	}
 	// Если таблицы с ресурсами не существует, создадим её
 	if !sdb.HasTable(&Resource{}) {
@@ -665,7 +688,7 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 		}
 		if !dbDayFound {
 			// Дня не существует, надо создать
-			newDay = Day{StudentID: student.ID, Date: date, Tasks: []Task{}}
+			newDay = Day{StudentID: student.ID, Date: date, Tasks: []Task{}, Lessons: []Lesson{}}
 			err = db.SchoolServerDB.Create(&newDay).Error
 			if err != nil {
 				return errors.Wrapf(err, "Error creating newDay='%v'", newDay)
@@ -817,6 +840,111 @@ func (db *Database) UpdatePostsStatuses(userName string, schoolID int, themeID i
 	err = db.SchoolServerDB.Save(&topic).Error
 	if err != nil {
 		return errors.Wrapf(err, "Error saving topic='%v'", topic)
+	}
+	return nil
+}
+
+// UpdateLessons добавляет в БД несуществующие уроки в расписании
+func (db *Database) UpdateLessons(userName string, schoolID int, studentID int, week *dt.TimeTable) error {
+	var (
+		student   Student
+		students  []Student
+		user      User
+		newDay    Day
+		days      []Day
+		newLesson Lesson
+		lessons   []Lesson
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем ученика по studentID
+	err = db.SchoolServerDB.Model(&user).Related(&students).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query students for user='%v'", user)
+	}
+	studentFound := false
+	for _, stud := range students {
+		if stud.NetSchoolID == studentID {
+			studentFound = true
+			student = stud
+			break
+		}
+	}
+	if !studentFound {
+		return errors.Wrapf(fmt.Errorf("record not found"), "No student with id='%v' found for userName='%s'", studentID, userName)
+	}
+	// Получаем список дней у ученика
+	err = db.SchoolServerDB.Model(&student).Related(&days).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting student='%v' days", student)
+	}
+	// Гоняем по дням из пакета
+	for _, day := range week.Days {
+		date := day.Date
+		// Найдем подходящий день в БД
+		dbDayFound := false
+		for _, dbDay := range days {
+			if date == dbDay.Date {
+				dbDayFound = true
+				newDay = dbDay
+				break
+			}
+		}
+		if !dbDayFound {
+			// Дня не существует, надо создать
+			newDay = Day{StudentID: student.ID, Date: date, Tasks: []Task{}, Lessons: []Lesson{}}
+			err = db.SchoolServerDB.Create(&newDay).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newDay='%v'", newDay)
+			}
+			days = append(days, newDay)
+		}
+		// Получаем список уроков для дня
+		err = db.SchoolServerDB.Model(&newDay).Related(&lessons).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error getting newDay='%v' lessons", newDay)
+		}
+		// Гоняем по урокам
+		for _, lesson := range day.Lessons {
+			// Найдем подходящий урок в БД
+			dbLessonFound := false
+			for _, dbLesson := range lessons {
+				if lesson.Begin == dbLesson.Begin {
+					// Если урок нашелся, обновим поля в БД
+					dbLessonFound = true
+					newLesson = dbLesson
+					// по полю Begin сравнивали, они равны, End наверное тоже
+					newLesson.Name = lesson.Name
+					newLesson.Classroom = lesson.ClassRoom
+					err = db.SchoolServerDB.Save(&newLesson).Error
+					if err != nil {
+						return errors.Wrapf(err, "Error saving updated lesson='%v'", newLesson)
+					}
+					break
+				}
+			}
+			if !dbLessonFound {
+				// Урока не существует, надо создать
+				newLesson = Lesson{DayID: newDay.ID, Begin: lesson.Begin, End: lesson.End, Name: lesson.Name, Classroom: lesson.ClassRoom}
+				err = db.SchoolServerDB.Create(&newLesson).Error
+				if err != nil {
+					return errors.Wrapf(err, "Error creating newLesson='%v'", newLesson)
+				}
+				lessons = append(lessons, newLesson)
+			}
+		}
+		err = db.SchoolServerDB.Save(&newDay).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error saving newDay='%v'", newDay)
+		}
+	}
+	err = db.SchoolServerDB.Save(&student).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving student='%v'", student)
 	}
 	return nil
 }

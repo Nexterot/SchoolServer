@@ -92,6 +92,15 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 			return
 		}
 	}
+	// Записать в БД
+	userName := session.Values["userName"].(string)
+	schoolID := session.Values["schoolID"].(int)
+	err = rest.Db.UpdateLessons(userName, schoolID, rReq.ID, timeTable)
+	if err != nil {
+		rest.logger.Error("REST: Error occured when updating schedule in DB", "Error", err, "IP", req.RemoteAddr)
+		respwr.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	// Закодировать ответ в JSON
 	bytes, err := json.Marshal(timeTable)
 	if err != nil {
