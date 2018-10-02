@@ -175,6 +175,19 @@ func (p *Push) handlePushes() {
 			}
 		}
 
+		// Скачаем почту
+		mailMessages, err := session.GetEmailsList("1", "0", "25", "DESC")
+		if err != nil {
+			p.logger.Error("PUSH: Error when getting mail", "Error", err)
+			return
+		}
+		newMail := mailNewMessages{}
+		err = p.checkMail(usr.ID, mailMessages, &newMail)
+		if err != nil {
+			p.logger.Error("PUSH: Error when checking mail", "Error", err)
+			return
+		}
+
 		// Выйдем из системы
 		if err := session.Logout(); err != nil {
 			p.logger.Error("PUSH: Error when logging out", "Error", err)
@@ -234,7 +247,7 @@ func (p *Push) handlePushes() {
 			p.logger.Info("Forum", "Number of new messages", len(nForum.Messages))
 			if dev.ForumNotification {
 				if len(nForum.Messages) > 3 {
-					err = p.send(dev.SystemType, dev.Token, "forum_new_message", "Форум", "Оставлено "+strconv.Itoa(len(nForum.Messages))+" новых сообщений", "", "")
+					err = p.send(dev.SystemType, dev.Token, "forum_new_message", "Форум", "", "Оставлено "+strconv.Itoa(len(nForum.Messages))+" новых сообщений", "")
 					if err != nil {
 						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
 						return
@@ -249,8 +262,93 @@ func (p *Push) handlePushes() {
 					}
 				}
 			}
+
+			// Новое почтовое сообщение
+			p.logger.Info("Mail", "Number of new messages", len(newMail.Messages))
+			if dev.MailNotification {
+				if len(newMail.Messages) > 3 {
+					err = p.send(dev.SystemType, dev.Token, "mail_new_message", "Почта", "", "У вас "+strconv.Itoa(len(newMail.Messages))+" новых сообщений", "")
+					if err != nil {
+						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+						return
+					}
+				} else {
+					for _, post := range newMail.Messages {
+						err = p.send(dev.SystemType, dev.Token, "mail_new_message", post.Title, "", post.Body, "")
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					}
+				}
+			}
 		}
 	}
+}
+
+// mailNewMessages
+type mailNewMessages struct {
+	Messages []mailNewMessage
+}
+
+// mailNewMessage
+type mailNewMessage struct {
+	Title string
+	Body  string
+}
+
+// checkMail
+func (p *Push) checkMail(userID uint, mailsList *dt.EmailsList, res *mailNewMessages) error {
+	var (
+		user       db.User
+		newMessage db.MailMessage
+		messages   []db.MailMessage
+	)
+	// shortcut
+	pg := p.db.SchoolServerDB
+	// Получаем пользователя по pk userID
+	err := pg.First(&user, userID).Error
+	if err != nil {
+		return errors.Wrap(err, "PUSH: Error when getting user")
+	}
+	// Получаем сообщения у почты
+	err = pg.Model(&user).Related(&messages).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting user='%v' messages", user)
+	}
+	// Гоняем по сообщениям из пакета
+	for _, post := range mailsList.Record {
+		// Найдем подходящее сообщение в БД
+		postFound := false
+		for _, dbPost := range messages {
+			if post.MessageID == dbPost.NetschoolID {
+				postFound = true
+				newMessage = dbPost
+				break
+			}
+		}
+		if !postFound {
+			unread := true
+			if post.Read == "Y" {
+				unread = false
+			}
+			// Сообщения не существует, надо создать
+			newMessage = db.MailMessage{UserID: user.ID, Section: 1, NetschoolID: post.MessageID, Date: post.Sent, Author: post.FromName, Unread: unread, Topic: post.Subj}
+			err = pg.Create(&newMessage).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newMessage='%v'", newMessage)
+			}
+			messages = append(messages, newMessage)
+			// Запишем сообщение в структуру
+			res.Messages = append(res.Messages, mailNewMessage{Title: newMessage.Author, Body: newMessage.Topic})
+		}
+	}
+	// Сохраним пользователя
+	err = pg.Save(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving user='%v'", user)
+	}
+	return nil
 }
 
 // forumNewMessages
