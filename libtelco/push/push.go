@@ -128,6 +128,7 @@ func (p *Push) handlePushes() {
 			}
 			nResources[usr.SchoolID] = rChanges
 		}
+
 		// Достанем всех "учеников" пользователя
 		// По идее должен быть всего один
 		err = pg.Model(&usr).Related(&students).Error
@@ -135,24 +136,58 @@ func (p *Push) handlePushes() {
 			p.logger.Error("PUSH: Error when getting students", "Error", err, "User", usr)
 			return
 		}
+
 		// Скачаем расписание
 		week, err := session.GetTimeTable(nowAsString, 7, strconv.Itoa(students[0].NetSchoolID))
 		if err != nil {
-			p.logger.Error("PUSH: Error when getting resource list", "Error", err)
+			p.logger.Error("PUSH: Error when getting schedule", "Error", err)
 			return
 		}
 		scheduleChanged, err := p.checkSchedule(students[0].ID, week)
+		if err != nil {
+			p.logger.Error("PUSH: Error when checking schedule", "Error", err)
+			return
+		}
+
+		// Скачаем форум
+		forumTopics, err := session.GetForumThemesList("1")
+		if err != nil {
+			p.logger.Error("PUSH: Error when getting forum", "Error", err)
+			return
+		}
+		err = p.checkForumTopics(usr.ID, forumTopics)
+		if err != nil {
+			p.logger.Error("PUSH: Error when checking forum topics", "Error", err)
+			return
+		}
+		nForum := forumNewMessages{}
+		for _, post := range forumTopics.Posts {
+			// Для каждой темы скачаем сообщения
+			messages, err := session.GetForumThemeMessages(strconv.Itoa(post.ID), "1", "10")
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting forum messages", "Error", err)
+				return
+			}
+			err = p.checkForumMessages(usr.ID, post.ID, post.Title, messages, &nForum)
+			if err != nil {
+				p.logger.Error("PUSH: Error when checking forum messages", "Error", err)
+				return
+			}
+		}
+
 		// Выйдем из системы
 		if err := session.Logout(); err != nil {
 			p.logger.Error("PUSH: Error when logging out", "Error", err)
 			return
 		}
+
 		// Достанем все девайсы пользователя
 		err = pg.Model(&usr).Related(&devices).Error
 		if err != nil {
 			p.logger.Error("PUSH: Error when getting devices list", "Error", err, "User", usr)
 			return
 		}
+
 		// Гоним по девайсам
 		for _, dev := range devices {
 			p.logger.Info("PUSH: device", "System", dev.SystemType, "Token", dev.Token)
@@ -187,7 +222,7 @@ func (p *Push) handlePushes() {
 				}
 			}
 			// Изменения в расписании
-			p.logger.Info("Schedule", "WasChanged", scheduleChanged)
+			p.logger.Info("Schedule", "Was Changed", scheduleChanged)
 			if scheduleChanged && dev.ScheduleNotification {
 				err = p.send(dev.SystemType, dev.Token, "schedule_change", "Изменения в расписании (см. детали)", "", "", "")
 				if err != nil {
@@ -195,8 +230,144 @@ func (p *Push) handlePushes() {
 					return
 				}
 			}
+			// Новые сообщения на форуме
+			p.logger.Info("Forum", "Number of new messages", len(nForum.Messages))
+			if dev.ForumNotification {
+				if len(nForum.Messages) > 3 {
+					err = p.send(dev.SystemType, dev.Token, "forum_new_message", "Форум", "Оставлено "+strconv.Itoa(len(nForum.Messages))+" новых сообщений", "", "")
+					if err != nil {
+						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+						return
+					}
+				} else {
+					for _, post := range nForum.Messages {
+						err = p.send(dev.SystemType, dev.Token, "forum_new_message", post.Title, post.Subtitle, post.Body, "")
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					}
+				}
+			}
 		}
 	}
+}
+
+// forumNewMessages
+type forumNewMessages struct {
+	Messages []forumNewMessage
+}
+
+// forumNewMessage
+type forumNewMessage struct {
+	Title    string
+	Subtitle string
+	Body     string
+}
+
+// checkForumTopics
+func (p *Push) checkForumTopics(userID uint, themes *dt.ForumThemesList) error {
+	var (
+		user     db.User
+		newTopic db.ForumTopic
+		topics   []db.ForumTopic
+	)
+	// shortcut
+	pg := p.db.SchoolServerDB
+	// Получаем пользователя по pk userID
+	err := pg.First(&user, userID).Error
+	if err != nil {
+		return errors.Wrap(err, "PUSH: Error when getting user")
+	}
+	// Получаем список тем у пользователя
+	err = pg.Model(&user).Related(&topics).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting user='%v' forum topics", user)
+	}
+	// Гоняем по темам из пакета
+	for _, topic := range themes.Posts {
+		// Найдем подходящую тему в БД
+		topicFound := false
+		for _, dbTopic := range topics {
+			if topic.ID == dbTopic.NetschoolID {
+				topicFound = true
+				newTopic = dbTopic
+				break
+			}
+		}
+		if !topicFound {
+			// Темы не существует, надо создать
+			newTopic = db.ForumTopic{UserID: user.ID, NetschoolID: topic.ID, Date: topic.Date, Creator: topic.Creator, Title: topic.Title, Unread: true, Answers: topic.Answers, Posts: []db.ForumPost{}}
+			err = pg.Create(&newTopic).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newTopic='%v'", newTopic)
+			}
+			topics = append(topics, newTopic)
+		}
+	}
+	// Сохраним пользователя
+	err = pg.Save(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving user='%v'", user)
+	}
+	return nil
+}
+
+// checkForumMessages
+func (p *Push) checkForumMessages(userID uint, themeID int, themeTitle string, topics *dt.ForumThemeMessages, ms *forumNewMessages) error {
+	var (
+		user       db.User
+		topic      db.ForumTopic
+		newMessage db.ForumPost
+		messages   []db.ForumPost
+	)
+	// shortcut
+	pg := p.db.SchoolServerDB
+	// Получаем пользователя по pk userID
+	err := pg.First(&user, userID).Error
+	if err != nil {
+		return errors.Wrap(err, "PUSH: Error when getting user")
+	}
+	// Получаем нужную тему у пользователя
+	wh := db.ForumTopic{NetschoolID: themeID}
+	err = pg.Where(wh).First(&topic).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting forum topic='%v'", wh)
+	}
+	// Получаем сообщения у темы
+	err = pg.Model(&topic).Related(&messages).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting topic='%v' messages", topic)
+	}
+	// Гоняем по сообщениям из пакета
+	for _, post := range topics.Messages {
+		// Найдем подходящее сообщение в БД
+		postFound := false
+		for _, dbPost := range messages {
+			if post.Date == dbPost.Date && post.Author == dbPost.Author && post.Message == dbPost.Message {
+				postFound = true
+				newMessage = dbPost
+				break
+			}
+		}
+		if !postFound {
+			// Сообщения не существует, надо создать
+			newMessage = db.ForumPost{ForumTopicID: topic.ID, Date: post.Date, Author: post.Author, Unread: true, Message: post.Message}
+			err = pg.Create(&newMessage).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newMessage='%v'", newMessage)
+			}
+			messages = append(messages, newMessage)
+			// Пополним возвращаемую структуру
+			ms.Messages = append(ms.Messages, forumNewMessage{Title: themeTitle, Subtitle: newMessage.Author, Body: newMessage.Message})
+		}
+	}
+	// Сохраним тему
+	err = pg.Save(&topic).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving topic='%v'", topic)
+	}
+	return nil
 }
 
 // changes struct содержит количество изменений для отправления с помощью push.
