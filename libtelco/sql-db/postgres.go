@@ -800,7 +800,7 @@ func (db *Database) UpdatePostsStatuses(userName string, schoolID int, themeID i
 		return errors.Wrapf(err, "Error query user='%v'", where)
 	}
 	// Получаем нужную тему у пользователя
-	wh := ForumTopic{NetschoolID: themeID}
+	wh := ForumTopic{NetschoolID: themeID, UserID: user.ID}
 	err = db.SchoolServerDB.Where(wh).First(&topic).Error
 	if err != nil {
 		return errors.Wrapf(err, "Error getting forum topic='%v'", wh)

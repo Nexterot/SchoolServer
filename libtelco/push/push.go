@@ -76,9 +76,8 @@ func (p *Push) handlePushes() {
 	p.logger.Info("PUSH: Sending push notifications")
 	// shortcut
 	pg := p.db.SchoolServerDB
-	// Достанем пользователей-учеников
-	wh := db.User{Role: "Ученик"}
-	err := pg.Where(wh).Find(&users).Error
+	// Достанем пользователей
+	err := pg.Find(&users).Error
 	if err != nil {
 		p.logger.Error("PUSH: Error when getting users list", "Error", err)
 		return
@@ -88,16 +87,19 @@ func (p *Push) handlePushes() {
 	// Текущее время
 	now := time.Now()
 	nowAsString := now.Format("02.01.2006")
-	// Гоним по пользователям-ученикам
+	nextAsString := now.AddDate(0, 0, 7).Format("02.01.2006")
+	// Гоним по пользователям
 	for _, usr := range users {
 		p.logger.Info("PUSH: user", "Login", usr.Login)
+		// очистим поля
+		students = []db.Student{}
 		// Получаем школу по id
 		err := pg.First(&school, usr.SchoolID).Error
 		if err != nil {
 			p.logger.Error("PUSH: Error when getting school by id", "Error", err, "SchoolID", usr.SchoolID)
 			return
 		}
-		// Сходим за оценками на удаленный сервер
+		// Сходим на удаленный сервер
 		config := cp.School{Link: school.Address, Login: usr.Login, Password: usr.Password, Type: school.Type}
 		session := ss.NewSession(&config)
 		// Залогинимся
@@ -106,47 +108,61 @@ func (p *Push) handlePushes() {
 			p.logger.Error("PUSH: Error when logging in", "Error", err)
 			return
 		}
+
 		// Получим ChidlrenMap
 		err = session.GetChildrenMap()
 		if err != nil {
 			p.logger.Error("PUSH: Error when getting children map", "Error", err)
 			return
 		}
-		// С помощью первого пользователя из каждой школы скачаем ресурсы
-		_, ok := nResources[usr.SchoolID]
-		if !ok {
-			resources, err := session.GetResourcesList()
+
+		// ИЗМЕНЕНИЯ
+		scheduleChanged := false
+		newTasksMarks := diaryNewTasksMarks{}
+
+		if usr.Role == "Ученик" {
+			// Достанем всех "учеников" пользователя
+			err = pg.Model(&usr).Related(&students).Error
 			if err != nil {
-				p.logger.Error("PUSH: Error when getting resource list", "Error", err)
+				p.logger.Error("PUSH: Error when getting students", "Error", err, "User", usr)
 				return
 			}
-			rChanges, err := p.checkResources(usr.SchoolID, resources)
-			p.logger.Info("kek", "chan", rChanges)
+
+			// Скачаем расписание
+			week, err := session.GetTimeTable(nowAsString, 7, strconv.Itoa(students[0].NetSchoolID))
 			if err != nil {
-				p.logger.Error("PUSH: Error when checking for new resources", "Error", err)
+				p.logger.Error("PUSH: Error when getting schedule", "Error", err)
 				return
 			}
-			nResources[usr.SchoolID] = rChanges
-		}
+			scheduleChanged, err = p.checkSchedule(students[0].ID, week)
+			if err != nil {
+				p.logger.Error("PUSH: Error when checking schedule", "Error", err)
+				return
+			}
 
-		// Достанем всех "учеников" пользователя
-		// По идее должен быть всего один
-		err = pg.Model(&usr).Related(&students).Error
-		if err != nil {
-			p.logger.Error("PUSH: Error when getting students", "Error", err, "User", usr)
-			return
-		}
-
-		// Скачаем расписание
-		week, err := session.GetTimeTable(nowAsString, 7, strconv.Itoa(students[0].NetSchoolID))
-		if err != nil {
-			p.logger.Error("PUSH: Error when getting schedule", "Error", err)
-			return
-		}
-		scheduleChanged, err := p.checkSchedule(students[0].ID, week)
-		if err != nil {
-			p.logger.Error("PUSH: Error when checking schedule", "Error", err)
-			return
+			// Дневник на текущую и следующие недели
+			// текущая
+			thisWeek, err := session.GetWeekSchoolMarks(nowAsString, strconv.Itoa(students[0].NetSchoolID))
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting tasks and marks", "Error", err)
+				return
+			}
+			err = p.checkDiary(students[0].ID, thisWeek, &newTasksMarks)
+			if err != nil {
+				p.logger.Error("PUSH: Error when checking tasks and marks", "Error", err)
+				return
+			}
+			// следующая
+			nextWeek, err := session.GetWeekSchoolMarks(nextAsString, strconv.Itoa(students[0].NetSchoolID))
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting tasks and marks", "Error", err)
+				return
+			}
+			err = p.checkDiary(students[0].ID, nextWeek, &newTasksMarks)
+			if err != nil {
+				p.logger.Error("PUSH: Error when checking tasks and marks", "Error", err)
+				return
+			}
 		}
 
 		// Скачаем форум
@@ -186,6 +202,23 @@ func (p *Push) handlePushes() {
 		if err != nil {
 			p.logger.Error("PUSH: Error when checking mail", "Error", err)
 			return
+		}
+
+		// С помощью первого пользователя из каждой школы скачаем ресурсы
+		_, ok := nResources[usr.SchoolID]
+		if !ok {
+			resources, err := session.GetResourcesList()
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting resource list", "Error", err)
+				return
+			}
+			rChanges, err := p.checkResources(usr.SchoolID, resources)
+			p.logger.Info("kek", "chan", rChanges)
+			if err != nil {
+				p.logger.Error("PUSH: Error when checking for new resources", "Error", err)
+				return
+			}
+			nResources[usr.SchoolID] = rChanges
 		}
 
 		// Выйдем из системы
@@ -262,7 +295,6 @@ func (p *Push) handlePushes() {
 					}
 				}
 			}
-
 			// Новое почтовое сообщение
 			p.logger.Info("Mail", "Number of new messages", len(newMail.Messages))
 			if dev.MailNotification {
@@ -282,8 +314,220 @@ func (p *Push) handlePushes() {
 					}
 				}
 			}
+			// Новое задание или оценка
+			p.logger.Info("Tasks and marks", "Total changes", len(newTasksMarks.TasksMarks))
+			for _, task := range newTasksMarks.TasksMarks {
+				if task.Type == Mark {
+					switch dev.MarksNotification {
+					case db.MarksNotificationDisabled:
+						continue
+					case db.MarksNotificationImportant:
+						if task.IsImportant {
+							err = p.send(dev.SystemType, dev.Token, "diary_new_mark", task.Title, "", task.Body, "")
+							if err != nil {
+								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+								return
+							}
+						}
+					case db.MarksNotificationAll:
+						err = p.send(dev.SystemType, dev.Token, "diary_new_mark", task.Title, "", task.Body, "")
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					default:
+						p.logger.Error("PUSH: Invalid mark type", "Type", task.Type)
+						return
+					}
+				} else if task.Type == Task {
+					switch dev.TasksNotification {
+					case db.TasksNotificationDisabled:
+						continue
+					case db.TasksNotificationHome:
+						if task.IsHomework {
+							err = p.send(dev.SystemType, dev.Token, "diary_new_task", task.Title, "", task.Body, "")
+							if err != nil {
+								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+								return
+							}
+						}
+					case db.TasksNotificationAll:
+						err = p.send(dev.SystemType, dev.Token, "diary_new_task", task.Title, "", task.Body, "")
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+							return
+						}
+					default:
+						p.logger.Error("PUSH: Invalid task type", "Type", task.Type)
+						return
+					}
+				} else {
+					p.logger.Error("PUSH: Invalid task or mark type", "Type", task.Type)
+					return
+				}
+			}
 		}
 	}
+}
+
+// diaryNewTasksMarks
+type diaryNewTasksMarks struct {
+	TasksMarks []diaryNewTaskMark
+}
+
+// Тип: задание или оценка
+const (
+	_ = iota
+	Task
+	Mark
+)
+
+// diaryNewTaskMark
+type diaryNewTaskMark struct {
+	Title       string
+	Body        string
+	IsImportant bool
+	IsHomework  bool
+	Type        int
+}
+
+// checkDiary
+func (p *Push) checkDiary(studentID uint, week *dt.WeekSchoolMarks, tasksMarks *diaryNewTasksMarks) error {
+	var (
+		student db.Student
+		days    []db.Day
+		tasks   []db.Task
+		newDay  db.Day
+		newTask db.Task
+	)
+	// shortcut
+	pg := p.db.SchoolServerDB
+	// Получаем ученика по pk studentID
+	err := pg.First(&student, studentID).Error
+	if err != nil {
+		return errors.Wrap(err, "PUSH: Error when getting student")
+	}
+	// Получаем список дней у ученика
+	err = pg.Model(&student).Related(&days).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting student='%v' days", student)
+	}
+	// Гоняем по дням из пакета
+	for _, day := range week.Data {
+		date := day.Date
+		// Найдем подходящий день в БД
+		dbDayFound := false
+		for _, dbDay := range days {
+			if date == dbDay.Date {
+				dbDayFound = true
+				newDay = dbDay
+				break
+			}
+		}
+		if !dbDayFound {
+			// Дня не существует, надо создать
+			newDay = db.Day{StudentID: student.ID, Date: date, Tasks: []db.Task{}}
+			err = pg.Create(&newDay).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newDay='%v'", newDay)
+			}
+			days = append(days, newDay)
+		}
+		// Получаем список заданий для дня
+		err = pg.Model(&newDay).Related(&tasks).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error getting newDay='%v' tasks", newDay)
+		}
+		// Гоняем по заданиям
+		for _, task := range day.Lessons {
+			// Найдем подходящее задание в БД
+			dbTaskFound := false
+			for _, dbTask := range tasks {
+				if task.AID == dbTask.AID {
+					dbTaskFound = true
+					newTask = dbTask
+					// Сравнить оценки
+					if task.Mark != dbTask.Mark {
+						// Если оценки не совпали
+						important := false
+						// Если срезовая оценка или контрольная, она важна
+						if task.Type == "В" || task.Type == "К" {
+							important = true
+						}
+						// тип работы
+						typ := "что то"
+						switch task.Type {
+						case "А":
+							typ = "практическую работу"
+						case "В":
+							typ = "срезовую работу"
+						case "Д":
+							typ = "домашнюю работу"
+						case "К":
+							typ = "контрольную работу"
+						case "С":
+							typ = "самостоятельную работу"
+						case "Л":
+							typ = "лабораторную работу"
+						case "П":
+							typ = "проект"
+						case "Н":
+							typ = "диктант"
+						case "Р":
+							typ = "реферат"
+						case "О":
+							typ = "ответ на уроке"
+						case "Ч":
+							typ = "сочинение"
+						case "И":
+							typ = "изложение"
+						case "З":
+							typ = "зачёт"
+						case "Т":
+							typ = "тестирование"
+						default:
+							typ = "что-то"
+						}
+						body := "У вас " + dbTask.Mark + " за " + typ + " " + date
+						tasksMarks.TasksMarks = append(tasksMarks.TasksMarks, diaryNewTaskMark{Title: task.Name, Body: body, IsImportant: important, IsHomework: false, Type: Mark})
+						// сохранить в бд
+						dbTask.Mark = task.Mark
+						err = pg.Save(&dbTask).Error
+						if err != nil {
+							return errors.Wrapf(err, "Error saving newTask='%v'", newTask)
+						}
+					}
+					break
+				}
+			}
+			if !dbTaskFound {
+				// Задания не существует, надо создать
+				newTask = db.Task{DayID: newDay.ID, CID: task.CID, AID: task.AID, Status: db.StatusTaskNew, TP: task.TP, InTime: task.InTime, Name: task.Name,
+					Title: task.Title, Type: task.Type, Mark: task.Mark, Weight: task.Weight, Author: task.Author}
+				err = pg.Create(&newTask).Error
+				if err != nil {
+					return errors.Wrapf(err, "Error creating newTask='%v'", newTask)
+				}
+				tasks = append(tasks, newTask)
+				// Новое задание, запишем в счетчик
+				homework := false
+				if newTask.Type == "Д" {
+					// Если домашняя работа, так же обновим счетчик
+					homework = true
+				}
+				tasksMarks.TasksMarks = append(tasksMarks.TasksMarks, diaryNewTaskMark{Title: task.Name, Body: task.Title, IsImportant: false, IsHomework: homework, Type: Task})
+			}
+		}
+		err = pg.Save(&newDay).Error
+		if err != nil {
+			return errors.Wrapf(err, "Error saving newDay='%v'", newDay)
+		}
+	}
+	err = pg.Save(&student).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving student='%v'", student)
+	}
+	return nil
 }
 
 // mailNewMessages
@@ -427,7 +671,7 @@ func (p *Push) checkForumMessages(userID uint, themeID int, themeTitle string, t
 		return errors.Wrap(err, "PUSH: Error when getting user")
 	}
 	// Получаем нужную тему у пользователя
-	wh := db.ForumTopic{NetschoolID: themeID}
+	wh := db.ForumTopic{NetschoolID: themeID, UserID: userID}
 	err = pg.Where(wh).First(&topic).Error
 	if err != nil {
 		return errors.Wrapf(err, "Error getting forum topic='%v'", wh)
@@ -466,137 +710,6 @@ func (p *Push) checkForumMessages(userID uint, themeID int, themeTitle string, t
 		return errors.Wrapf(err, "Error saving topic='%v'", topic)
 	}
 	return nil
-}
-
-// changes struct содержит количество изменений для отправления с помощью push.
-type changes struct {
-	// Оценки
-	nChangedMarks          int
-	nNewMarks              int
-	nImportantChangedMarks int
-	nImportantNewMarks     int
-	// Задания
-	nNewTasks     int
-	nNewHomeTasks int
-}
-
-// countChanges считает количество изменений в дневнике
-func (p *Push) countChanges(userID uint, studentID string, week *dt.WeekSchoolMarks) (*changes, error) {
-	var (
-		student db.Student
-		days    []db.Day
-		tasks   []db.Task
-		newDay  db.Day
-		newTask db.Task
-		chs     changes
-	)
-	id, err := strconv.Atoi(studentID)
-	if err != nil {
-		return nil, errors.Wrap(err, "PUSH: Error when converting studentID")
-	}
-	// shortcut
-	pg := p.db.SchoolServerDB
-	// Получаем ученика по userID и studentID
-	where := db.Student{NetSchoolID: id, UserID: userID}
-	err = pg.Where(where).First(&student).Error
-	if err != nil {
-		return nil, errors.Wrap(err, "PUSH: Error when getting student")
-	}
-	// Получаем список дней у ученика
-	err = pg.Model(&student).Related(&days).Error
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error getting student='%v' days", student)
-	}
-	// Гоняем по дням из пакета
-	for dayNum, day := range week.Data {
-		date := day.Date
-		// Найдем подходящий день в БД
-		dbDayFound := false
-		for _, dbDay := range days {
-			if date == dbDay.Date {
-				dbDayFound = true
-				newDay = dbDay
-				break
-			}
-		}
-		if !dbDayFound {
-			// Дня не существует, надо создать
-			newDay = db.Day{StudentID: student.ID, Date: date, Tasks: []db.Task{}}
-			err = pg.Create(&newDay).Error
-			if err != nil {
-				return nil, errors.Wrapf(err, "Error creating newDay='%v'", newDay)
-			}
-			days = append(days, newDay)
-		}
-		// Получаем список заданий для дня
-		err = pg.Model(&newDay).Related(&tasks).Error
-		if err != nil {
-			return nil, errors.Wrapf(err, "Error getting newDay='%v' tasks", newDay)
-		}
-		// Гоняем по заданиям
-		for taskNum, task := range day.Lessons {
-			// Найдем подходящее задание в БД
-			dbTaskFound := false
-			for _, dbTask := range tasks {
-				if task.AID == dbTask.AID {
-					dbTaskFound = true
-					newTask = dbTask
-					// Сравнить оценки
-					if task.Mark != dbTask.Mark {
-						// Если оценки не совпали
-						if dbTask.Mark == "-" {
-							// Если в БД лежит пустая оценка, значит оценка новая
-							if task.Type == "В" || task.Type == "К" {
-								// Если срезовая оценка или контрольная, она важна
-								chs.nImportantNewMarks++
-							}
-							chs.nNewMarks++
-						} else {
-							if task.Type == "В" || task.Type == "К" {
-								// Если срезовая оценка или контрольная, она важна
-								chs.nImportantChangedMarks++
-							}
-							// Иначе оценка была изменена
-							chs.nChangedMarks++
-						}
-						dbTask.Mark = task.Mark
-						err = pg.Save(&dbTask).Error
-						if err != nil {
-							return nil, errors.Wrapf(err, "Error saving newTask='%v'", newTask)
-						}
-					}
-					break
-				}
-			}
-			if !dbTaskFound {
-				// Задания не существует, надо создать
-				newTask = db.Task{DayID: newDay.ID, CID: task.CID, AID: task.AID, Status: db.StatusTaskNew, TP: task.TP, InTime: task.InTime, Name: task.Name,
-					Title: task.Title, Type: task.Type, Mark: task.Mark, Weight: task.Weight, Author: task.Author}
-				err = pg.Create(&newTask).Error
-				if err != nil {
-					return nil, errors.Wrapf(err, "Error creating newTask='%v'", newTask)
-				}
-				tasks = append(tasks, newTask)
-				// Новое задание, запишем в счетчик
-				if newTask.Type == "Д" {
-					// Если домашняя работа, так же обновим счетчик
-					chs.nNewHomeTasks++
-				}
-				chs.nNewTasks++
-			}
-			// Присвоить статусу таска из пакета статус таска из БД
-			week.Data[dayNum].Lessons[taskNum].Status = newTask.Status
-		}
-		err = pg.Save(&newDay).Error
-		if err != nil {
-			return nil, errors.Wrapf(err, "Error saving newDay='%v'", newDay)
-		}
-	}
-	err = pg.Save(&student).Error
-	if err != nil {
-		return nil, errors.Wrapf(err, "Error saving student='%v'", student)
-	}
-	return &chs, nil
 }
 
 type resourcesChanges struct {
