@@ -68,15 +68,17 @@ func (p *Push) Stop() {
 // handlePushes содержит основную логику пушей
 func (p *Push) handlePushes() {
 	var (
-		users   []db.User
-		devices []db.Device
-		school  db.School
+		users    []db.User
+		devices  []db.Device
+		school   db.School
+		students []db.Student
 	)
 	p.logger.Info("PUSH: Sending push notifications")
 	// shortcut
 	pg := p.db.SchoolServerDB
-	// Достанем всех пользователей
-	err := pg.Find(&users).Error
+	// Достанем пользователей-учеников
+	wh := db.User{Role: "Ученик"}
+	err := pg.Where(wh).Find(&users).Error
 	if err != nil {
 		p.logger.Error("PUSH: Error when getting users list", "Error", err)
 		return
@@ -85,7 +87,8 @@ func (p *Push) handlePushes() {
 	nResources := make(map[uint]*resourcesChanges)
 	// Текущее время
 	now := time.Now()
-	// Гоним по пользователям
+	nowAsString := now.Format("02.01.2006")
+	// Гоним по пользователям-ученикам
 	for _, usr := range users {
 		p.logger.Info("PUSH: user", "Login", usr.Login)
 		// Получаем школу по id
@@ -125,6 +128,20 @@ func (p *Push) handlePushes() {
 			}
 			nResources[usr.SchoolID] = rChanges
 		}
+		// Достанем всех "учеников" пользователя
+		// По идее должен быть всего один
+		err = pg.Model(&usr).Related(&students).Error
+		if err != nil {
+			p.logger.Error("PUSH: Error when getting students", "Error", err, "User", usr)
+			return
+		}
+		// Скачаем расписание
+		week, err := session.GetTimeTable(nowAsString, 7, strconv.Itoa(students[0].NetSchoolID))
+		if err != nil {
+			p.logger.Error("PUSH: Error when getting resource list", "Error", err)
+			return
+		}
+		scheduleChanged, err := p.checkSchedule(students[0].ID, week)
 		// Выйдем из системы
 		if err := session.Logout(); err != nil {
 			p.logger.Error("PUSH: Error when logging out", "Error", err)
@@ -167,6 +184,15 @@ func (p *Push) handlePushes() {
 							return
 						}
 					}
+				}
+			}
+			// Изменения в расписании
+			p.logger.Info("Schedule", "WasChanged", scheduleChanged)
+			if scheduleChanged && dev.ScheduleNotification {
+				err = p.send(dev.SystemType, dev.Token, "schedule_change", "Изменения в расписании (см. детали)", "", "", "")
+				if err != nil {
+					p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+					return
 				}
 			}
 		}
@@ -312,6 +338,112 @@ type resourcesChange struct {
 	Title    string
 	Subtitle string
 	Body     string
+}
+
+// checkSchedule проверяет, были ли изменения в расписании
+func (p *Push) checkSchedule(studentID uint, week *dt.TimeTable) (bool, error) {
+	var (
+		student   db.Student
+		newDay    db.Day
+		days      []db.Day
+		newLesson db.Lesson
+		lessons   []db.Lesson
+	)
+	// Флаг изменений
+	changed := false
+	// shortcut
+	pg := p.db.SchoolServerDB
+	// Получаем ученика по pk studentID
+	err := pg.First(&student, studentID).Error
+	if err != nil {
+		return false, errors.Wrap(err, "PUSH: Error when getting student")
+	}
+	// Получаем список дней у ученика
+	err = pg.Model(&student).Related(&days).Error
+	if err != nil {
+		return false, errors.Wrapf(err, "Error getting student='%v' days", student)
+	}
+	// Гоняем по дням из пакета
+	for _, day := range week.Days {
+		date := day.Date
+		// Найдем подходящий день в БД
+		dbDayFound := false
+		for _, dbDay := range days {
+			if date == dbDay.Date {
+				dbDayFound = true
+				newDay = dbDay
+				break
+			}
+		}
+		if !dbDayFound {
+			// Дня не существует, надо создать
+			newDay = db.Day{StudentID: student.ID, Date: date, Tasks: []db.Task{}, Lessons: []db.Lesson{}}
+			err = pg.Create(&newDay).Error
+			if err != nil {
+				return false, errors.Wrapf(err, "Error creating newDay='%v'", newDay)
+			}
+			days = append(days, newDay)
+			// Устанавливаем флаг
+		}
+		// Получаем список уроков для дня
+		err = pg.Model(&newDay).Related(&lessons).Error
+		if err != nil {
+			return false, errors.Wrapf(err, "Error getting newDay='%v' lessons", newDay)
+		}
+		// Гоняем по урокам
+		for _, lesson := range day.Lessons {
+			// Найдем подходящий урок в БД
+			dbLessonFound := false
+			for _, dbLesson := range lessons {
+				if lesson.Begin == dbLesson.Begin {
+					if lesson.Name != dbLesson.Name || lesson.ClassRoom != dbLesson.Classroom {
+						// Произошли изменения
+						// по полю Begin сравнивали, они равны, End наверное тоже
+						dbLesson.Name = lesson.Name
+						dbLesson.Classroom = lesson.ClassRoom
+						err = pg.Save(&dbLesson).Error
+						if err != nil {
+							return false, errors.Wrapf(err, "Error saving updated lesson='%v'", dbLesson)
+						}
+						// Устанавливаем флаг
+						changed = true
+					}
+					// Если урок нашелся, обновим поля в БД
+					dbLessonFound = true
+					newLesson = dbLesson
+					break
+				}
+			}
+			if !dbLessonFound {
+				if len(lessons) == 1 && lessons[0].Begin == "00:00" {
+					// Значит, что выходной перестал быть выходным
+					// Псевдоудаляем
+					err = pg.Delete(&lessons[0]).Error
+					if err != nil {
+						return false, errors.Wrapf(err, "Error deleting lesson='%v'", lessons[0])
+					}
+					// Устанавливаем флаг
+					changed = true
+				}
+				// Урока не существует, надо создать
+				newLesson = db.Lesson{DayID: newDay.ID, Begin: lesson.Begin, End: lesson.End, Name: lesson.Name, Classroom: lesson.ClassRoom}
+				err = pg.Create(&newLesson).Error
+				if err != nil {
+					return false, errors.Wrapf(err, "Error creating newLesson='%v'", newLesson)
+				}
+				lessons = append(lessons, newLesson)
+			}
+		}
+		err = pg.Save(&newDay).Error
+		if err != nil {
+			return false, errors.Wrapf(err, "Error saving newDay='%v'", newDay)
+		}
+	}
+	err = pg.Save(&student).Error
+	if err != nil {
+		return false, errors.Wrapf(err, "Error saving student='%v'", student)
+	}
+	return changed, nil
 }
 
 // checkResources считает число новых ресурсов у школы

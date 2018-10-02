@@ -914,21 +914,32 @@ func (db *Database) UpdateLessons(userName string, schoolID int, studentID int, 
 			dbLessonFound := false
 			for _, dbLesson := range lessons {
 				if lesson.Begin == dbLesson.Begin {
+					if lesson.Name != dbLesson.Name || lesson.ClassRoom != dbLesson.Classroom {
+						// Произошли изменения
+						// по полю Begin сравнивали, они равны, End наверное тоже
+						dbLesson.Name = lesson.Name
+						dbLesson.Classroom = lesson.ClassRoom
+						err = db.SchoolServerDB.Save(&dbLesson).Error
+						if err != nil {
+							return errors.Wrapf(err, "Error saving updated lesson='%v'", dbLesson)
+						}
+					}
 					// Если урок нашелся, обновим поля в БД
 					dbLessonFound = true
 					newLesson = dbLesson
-					// по полю Begin сравнивали, они равны, End наверное тоже
-					newLesson.Name = lesson.Name
-					newLesson.Classroom = lesson.ClassRoom
-					err = db.SchoolServerDB.Save(&newLesson).Error
-					if err != nil {
-						return errors.Wrapf(err, "Error saving updated lesson='%v'", newLesson)
-					}
 					break
 				}
 			}
 			if !dbLessonFound {
 				// Урока не существует, надо создать
+				if len(lessons) == 1 && lessons[0].Begin == "00:00" {
+					// Значит, что выходной перестал быть выходным
+					// Псевдоудаляем
+					err = db.SchoolServerDB.Delete(&lessons[0]).Error
+					if err != nil {
+						return errors.Wrapf(err, "Error deleting lesson='%v'", lessons[0])
+					}
+				}
 				newLesson = Lesson{DayID: newDay.ID, Begin: lesson.Begin, End: lesson.End, Name: lesson.Name, Classroom: lesson.ClassRoom}
 				err = db.SchoolServerDB.Create(&newLesson).Error
 				if err != nil {
