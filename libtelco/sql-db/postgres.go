@@ -81,7 +81,8 @@ type User struct {
 	Students     []Student     // has-many relation
 	Devices      []Device      // has-many relation
 	ForumTopics  []ForumTopic  // has-many relation
-	MailMessages []MailMessage //  has-many relation
+	MailMessages []MailMessage // has-many relation
+	Posts        []Post        // has-many realtion
 }
 
 // Device struct представляет структуру устройства, которое будет получать
@@ -109,6 +110,19 @@ type Student struct {
 	NetSchoolID int    // id ученика в системе NetSchool
 	ClassID     string // id класса, в котором учится ученик
 	Days        []Day  // has-many relation
+}
+
+// Post struct представляет структуру объявления
+type Post struct {
+	gorm.Model
+	UserID   uint // parent id
+	Unread   bool
+	Author   string
+	Title    string
+	Date     string
+	Message  string
+	File     string
+	FileName string
 }
 
 // Day struct представляет структуру дня с дз
@@ -230,7 +244,7 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 	} else {
 		logger.Info("DB: Table 'users' exists")
 	}
-	// Если таблицы с устрйоствами не существует, создадим её
+	// Если таблицы с устройствами не существует, создадим её
 	if !sdb.HasTable(&Device{}) {
 		// Device
 		logger.Info("DB: Creating 'device' table")
@@ -253,6 +267,18 @@ func NewDatabase(logger *log.Logger, config *cp.Config) (*Database, error) {
 		logger.Info("DB: Successfully created 'students' table")
 	} else {
 		logger.Info("DB: Table 'students' exists")
+	}
+	// Если таблицы с объявлениями не существует, создадим её
+	if !sdb.HasTable(&Post{}) {
+		// Post
+		logger.Info("DB: Creating 'posts' table")
+		err = sdb.CreateTable(&Post{}).Error
+		if err != nil {
+			return nil, err
+		}
+		logger.Info("DB: Successfully created 'posts' table")
+	} else {
+		logger.Info("DB: Table 'posts' exists")
 	}
 	// Если таблицы со днями не существует, создадим её
 	if !sdb.HasTable(&Day{}) {
@@ -840,6 +866,53 @@ func (db *Database) UpdatePostsStatuses(userName string, schoolID int, themeID i
 	err = db.SchoolServerDB.Save(&topic).Error
 	if err != nil {
 		return errors.Wrapf(err, "Error saving topic='%v'", topic)
+	}
+	return nil
+}
+
+// UpdatePosts добавляет в БД несуществующие объявления и обновляет их статусы
+func (db *Database) UpdatePosts(userName string, schoolID int, ps *dt.Posts) error {
+	var (
+		user    User
+		newPost Post
+		posts   []Post
+	)
+	// Получаем пользователя по логину и schoolID
+	where := User{Login: userName, SchoolID: uint(schoolID)}
+	err := db.SchoolServerDB.Where(where).First(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error query user='%v'", where)
+	}
+	// Получаем список объявлений у пользователя
+	err = db.SchoolServerDB.Model(&user).Related(&posts).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting user='%v' posts", user)
+	}
+	// Гоняем по объявлениям из пакета
+	for _, post := range ps.Posts {
+		// Найдем подходящую тему в БД
+		postFound := false
+		for _, dbPost := range posts {
+			if post.Author == dbPost.Author && post.Title == dbPost.Title && post.Message == dbPost.Message {
+				postFound = true
+				newPost = dbPost
+				break
+			}
+		}
+		if !postFound {
+			// Объявления не существует, надо создать
+			newPost = Post{UserID: user.ID, Unread: post.Unread, Author: post.Author, Title: post.Title, Date: post.Date, Message: post.Message, File: post.FileLink, FileName: post.FileName}
+			err = db.SchoolServerDB.Create(&newPost).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newPost='%v'", newPost)
+			}
+			posts = append(posts, newPost)
+		}
+	}
+	// Сохраним пользователя
+	err = db.SchoolServerDB.Save(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving user='%v'", user)
 	}
 	return nil
 }
