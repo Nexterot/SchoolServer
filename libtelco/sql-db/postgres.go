@@ -893,7 +893,7 @@ func (db *Database) UpdatePosts(userName string, schoolID int, ps *dt.Posts) err
 		// Найдем подходящую тему в БД
 		postFound := false
 		for _, dbPost := range posts {
-			if post.Author == dbPost.Author && post.Title == dbPost.Title && post.Message == dbPost.Message {
+			if post.Author == dbPost.Author && post.Title == dbPost.Title && post.Date == dbPost.Date {
 				postFound = true
 				newPost = dbPost
 				break

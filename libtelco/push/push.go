@@ -39,7 +39,7 @@ func NewPush(restapi *api.RestAPI, logger *log.Logger) *Push {
 		db:            restapi.Db,
 		logger:        logger,
 		stopped:       true,
-		period:        time.Second * 15,
+		period:        time.Second * 20,
 		gorushAddress: "http://localhost:8088/api/push",
 		appTopic:      "kir4567.NetSchoolApp",
 	}
@@ -221,6 +221,19 @@ func (p *Push) handlePushes() {
 			nResources[usr.SchoolID] = rChanges
 		}
 
+		// Скачаем объявления
+		posts, err := session.GetAnnouncements()
+		if err != nil {
+			p.logger.Error("PUSH: Error when getting posts", "Error", err)
+			return
+		}
+		newPs := newPosts{}
+		err = p.checkPosts(usr.ID, posts, &newPs)
+		if err != nil {
+			p.logger.Error("PUSH: Error when checking posts", "Error", err)
+			return
+		}
+
 		// Выйдем из системы
 		if err := session.Logout(); err != nil {
 			p.logger.Error("PUSH: Error when logging out", "Error", err)
@@ -366,8 +379,81 @@ func (p *Push) handlePushes() {
 					return
 				}
 			}
+			// Новое объявление
+			p.logger.Info("Posts", "Total changes", len(newPs.Posts))
+			if dev.ReportsNotification {
+				for _, post := range newPs.Posts {
+					err = p.send(dev.SystemType, dev.Token, "new_post", post.Title, "", post.Body, "")
+					if err != nil {
+						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+						return
+					}
+
+				}
+			}
 		}
 	}
+}
+
+// newPosts struct
+type newPosts struct {
+	Posts []newPostStruct
+}
+
+// newPostStruct struct
+type newPostStruct struct {
+	Title string
+	Body  string
+}
+
+// checkPosts
+func (p *Push) checkPosts(userID uint, ps *dt.Posts, res *newPosts) error {
+	var (
+		user    db.User
+		newPost db.Post
+		posts   []db.Post
+	)
+	// shortcut
+	pg := p.db.SchoolServerDB
+	// Получаем пользователя по pk userID
+	err := pg.First(&user, userID).Error
+	if err != nil {
+		return errors.Wrap(err, "PUSH: Error when getting user")
+	}
+	// Получаем список объявлений у пользователя
+	err = pg.Model(&user).Related(&posts).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error getting user='%v' posts", user)
+	}
+	// Гоняем по объявлениям из пакета
+	for _, post := range ps.Posts {
+		// Найдем подходящую тему в БД
+		postFound := false
+		for _, dbPost := range posts {
+			if post.Author == dbPost.Author && post.Title == dbPost.Title && post.Date == dbPost.Date {
+				postFound = true
+				newPost = dbPost
+				break
+			}
+		}
+		if !postFound {
+			// Объявления не существует, надо создать
+			newPost = db.Post{UserID: user.ID, Unread: post.Unread, Author: post.Author, Title: post.Title, Date: post.Date, Message: post.Message, File: post.FileLink, FileName: post.FileName}
+			err = pg.Create(&newPost).Error
+			if err != nil {
+				return errors.Wrapf(err, "Error creating newPost='%v'", newPost)
+			}
+			posts = append(posts, newPost)
+			// Запишем объявление в структуру
+			res.Posts = append(res.Posts, newPostStruct{Title: newPost.Title, Body: newPost.Message})
+		}
+	}
+	// Сохраним пользователя
+	err = pg.Save(&user).Error
+	if err != nil {
+		return errors.Wrapf(err, "Error saving user='%v'", user)
+	}
+	return nil
 }
 
 // diaryNewTasksMarks
