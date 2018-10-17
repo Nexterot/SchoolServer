@@ -190,31 +190,41 @@ func GetAnnouncements(s *dt.Session) (*dt.Posts, error) {
 					} else {
 						if messageNode.Data == "div" {
 							if messageNode.FirstChild != nil {
-								// Нашли прикреплённый файл
-								fileNode := messageNode.FirstChild
-								for fileNode != nil && fileNode.Data != "div" {
-									fileNode = fileNode.NextSibling
-								}
-								if fileNode != nil && fileNode.FirstChild != nil {
-									fileNode = fileNode.FirstChild
-									for fileNode != nil && fileNode.Data != "span" {
+								if messageNode.Data == "a" {
+									// Нашли ссылку на сайт
+									for _, a := range messageNode.Attr {
+										if a.Key == "href" {
+											message += a.Val
+											break
+										}
+									}
+								} else {
+									// Нашли прикреплённый файл
+									fileNode := messageNode.FirstChild
+									for fileNode != nil && fileNode.Data != "div" {
 										fileNode = fileNode.NextSibling
 									}
 									if fileNode != nil && fileNode.FirstChild != nil {
 										fileNode = fileNode.FirstChild
-										for fileNode != nil && fileNode.Data != "a" {
+										for fileNode != nil && fileNode.Data != "span" {
 											fileNode = fileNode.NextSibling
 										}
 										if fileNode != nil && fileNode.FirstChild != nil {
-											post.FileName = fileNode.FirstChild.Data
-											for _, a := range fileNode.Attr {
-												if a.Key == "href" {
-													path, ID, err := findURLAndID(a.Val)
-													if err != nil {
-														return &posts, err
+											fileNode = fileNode.FirstChild
+											for fileNode != nil && fileNode.Data != "a" {
+												fileNode = fileNode.NextSibling
+											}
+											if fileNode != nil && fileNode.FirstChild != nil {
+												post.FileName = fileNode.FirstChild.Data
+												for _, a := range fileNode.Attr {
+													if a.Key == "href" {
+														path, ID, err := findURLAndID(a.Val)
+														if err != nil {
+															return &posts, err
+														}
+														post.FileLink = path
+														post.FileID = ID
 													}
-													post.FileLink = path
-													post.FileID = ID
 												}
 											}
 										}
@@ -224,6 +234,29 @@ func GetAnnouncements(s *dt.Session) (*dt.Posts, error) {
 						} else {
 							message += messageNode.Data
 						}
+					}
+				}
+				// Убираем лишние пробелы в начале и конце объявления
+				if len(message) > 1 {
+					if message[0] == 10 && message[1] == 9 {
+						var i int
+						for i = 0; i < len(message); i++ {
+							if message[i] != 10 && message[i] != 9 {
+								break
+							}
+						}
+						message = message[i:]
+					}
+				}
+				if len(message) > 1 {
+					if message[len(message)-1] == 9 && message[len(message)-2] == 9 {
+						var i int
+						for i = len(message) - 1; i >= 0; i-- {
+							if message[i] != 10 && message[i] != 9 {
+								break
+							}
+						}
+						message = message[:i+1]
 					}
 				}
 				post.Message = message
