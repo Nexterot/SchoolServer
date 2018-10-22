@@ -64,6 +64,7 @@ func (p *Push) Stop() {
 func (p *Push) handlePushes() {
 	var (
 		users    []db.User
+		usersNum int
 		devices  []db.Device
 		school   db.School
 		students []db.Student
@@ -71,322 +72,334 @@ func (p *Push) handlePushes() {
 	p.logger.Info("PUSH: Sending push notifications")
 	// shortcut
 	pg := p.db.SchoolServerDB
-	// Достанем пользователей
-	err := pg.Find(&users).Error
-	if err != nil {
-		p.logger.Error("PUSH: Error when getting users list", "Error", err)
-		return
-	}
+
 	// Отображение schoolID в число новых для этой школы
 	nResources := make(map[uint]*resourcesChanges)
 	// Текущее время
 	now := time.Now()
 	nowAsString := now.Format("02.01.2006")
 	nextAsString := now.AddDate(0, 0, 7).Format("02.01.2006")
-	// Гоним по пользователям
-	for _, usr := range users {
-		p.logger.Info("PUSH: user", "Login", usr.Login)
-		// очистим поля
-		students = []db.Student{}
-		// Получаем школу по id
-		err := pg.First(&school, usr.SchoolID).Error
+
+	// Узнаем количество пользователей
+	pg.Table("users").Count(&usersNum)
+	// Будем доставать пользователей по N=50 штук
+	N := 50
+	cyclesNum, lastUsersNum := usersNum/N, usersNum%N
+	if lastUsersNum > 0 {
+		cyclesNum++
+	}
+	for i := 0; i < cyclesNum; i++ {
+		err := pg.Offset(i * N).Limit(N).Find(&users).Error
 		if err != nil {
-			p.logger.Error("PUSH: Error when getting school by id", "Error", err, "SchoolID", usr.SchoolID)
+			p.logger.Error("PUSH: Error when getting users list", "Error", err)
 			return
 		}
-		// Сходим на удаленный сервер
-		config := cp.School{Link: school.Address, Login: usr.Login, Password: usr.Password, Type: school.Type}
-		session := ss.NewSession(&config)
-		// Залогинимся
-		err = session.Login()
-		if err != nil {
-			p.logger.Error("PUSH: Error when logging in", "Error", err)
-			return
-		}
-
-		// Получим ChidlrenMap
-		err = session.GetChildrenMap()
-		if err != nil {
-			p.logger.Error("PUSH: Error when getting children map", "Error", err)
-			return
-		}
-
-		// ИЗМЕНЕНИЯ
-		scheduleChanged := false
-		newTasksMarks := diaryNewTasksMarks{}
-
-		if usr.Role == "Ученик" {
-			// Достанем всех "учеников" пользователя
-			err = pg.Model(&usr).Related(&students).Error
+		// Гоним по пользователям
+		for _, usr := range users {
+			p.logger.Info("PUSH: user", "Login", usr.Login)
+			// очистим поля
+			students = []db.Student{}
+			// Получаем школу по id
+			err := pg.First(&school, usr.SchoolID).Error
 			if err != nil {
-				p.logger.Error("PUSH: Error when getting students", "Error", err, "User", usr)
+				p.logger.Error("PUSH: Error when getting school by id", "Error", err, "SchoolID", usr.SchoolID)
+				return
+			}
+			// Сходим на удаленный сервер
+			config := cp.School{Link: school.Address, Login: usr.Login, Password: usr.Password, Type: school.Type}
+			session := ss.NewSession(&config)
+			// Залогинимся
+			err = session.Login()
+			if err != nil {
+				p.logger.Error("PUSH: Error when logging in", "Error", err)
 				return
 			}
 
-			// Скачаем расписание
-			week, err := session.GetTimeTable(nowAsString, 7, strconv.Itoa(students[0].NetSchoolID))
+			// Получим ChidlrenMap
+			err = session.GetChildrenMap()
 			if err != nil {
-				p.logger.Error("PUSH: Error when getting schedule", "Error", err)
-				return
-			}
-			scheduleChanged, err = p.checkSchedule(students[0].ID, week)
-			if err != nil {
-				p.logger.Error("PUSH: Error when checking schedule", "Error", err)
+				p.logger.Error("PUSH: Error when getting children map", "Error", err)
 				return
 			}
 
-			// Дневник на текущую и следующие недели
-			// текущая
-			thisWeek, err := session.GetWeekSchoolMarks(nowAsString, strconv.Itoa(students[0].NetSchoolID))
-			if err != nil {
-				p.logger.Error("PUSH: Error when getting tasks and marks", "Error", err)
-				return
-			}
-			err = p.checkDiary(students[0].ID, thisWeek, &newTasksMarks)
-			if err != nil {
-				p.logger.Error("PUSH: Error when checking tasks and marks", "Error", err)
-				return
-			}
-			// следующая
-			nextWeek, err := session.GetWeekSchoolMarks(nextAsString, strconv.Itoa(students[0].NetSchoolID))
-			if err != nil {
-				p.logger.Error("PUSH: Error when getting tasks and marks", "Error", err)
-				return
-			}
-			err = p.checkDiary(students[0].ID, nextWeek, &newTasksMarks)
-			if err != nil {
-				p.logger.Error("PUSH: Error when checking tasks and marks", "Error", err)
-				return
-			}
-		}
+			// ИЗМЕНЕНИЯ
+			scheduleChanged := false
+			newTasksMarks := diaryNewTasksMarks{}
 
-		// Скачаем форум
-		forumTopics, err := session.GetForumThemesList("1")
-		if err != nil {
-			p.logger.Error("PUSH: Error when getting forum", "Error", err)
-			return
-		}
-		err = p.checkForumTopics(usr.ID, forumTopics)
-		if err != nil {
-			p.logger.Error("PUSH: Error when checking forum topics", "Error", err)
-			return
-		}
-		nForum := forumNewMessages{}
-		for _, post := range forumTopics.Posts {
-			// Для каждой темы скачаем сообщения
-			messages, err := session.GetForumThemeMessages(strconv.Itoa(post.ID), "1", "10")
+			if usr.Role == "Ученик" {
+				// Достанем всех "учеников" пользователя
+				err = pg.Model(&usr).Related(&students).Error
+				if err != nil {
+					p.logger.Error("PUSH: Error when getting students", "Error", err, "User", usr)
+					return
+				}
+
+				// Скачаем расписание
+				week, err := session.GetTimeTable(nowAsString, 7, strconv.Itoa(students[0].NetSchoolID))
+				if err != nil {
+					p.logger.Error("PUSH: Error when getting schedule", "Error", err)
+					return
+				}
+				scheduleChanged, err = p.checkSchedule(students[0].ID, week)
+				if err != nil {
+					p.logger.Error("PUSH: Error when checking schedule", "Error", err)
+					return
+				}
+
+				// Дневник на текущую и следующие недели
+				// текущая
+				thisWeek, err := session.GetWeekSchoolMarks(nowAsString, strconv.Itoa(students[0].NetSchoolID))
+				if err != nil {
+					p.logger.Error("PUSH: Error when getting tasks and marks", "Error", err)
+					return
+				}
+				err = p.checkDiary(students[0].ID, thisWeek, &newTasksMarks)
+				if err != nil {
+					p.logger.Error("PUSH: Error when checking tasks and marks", "Error", err)
+					return
+				}
+				// следующая
+				nextWeek, err := session.GetWeekSchoolMarks(nextAsString, strconv.Itoa(students[0].NetSchoolID))
+				if err != nil {
+					p.logger.Error("PUSH: Error when getting tasks and marks", "Error", err)
+					return
+				}
+				err = p.checkDiary(students[0].ID, nextWeek, &newTasksMarks)
+				if err != nil {
+					p.logger.Error("PUSH: Error when checking tasks and marks", "Error", err)
+					return
+				}
+			}
+
+			// Скачаем форум
+			forumTopics, err := session.GetForumThemesList("1")
 			if err != nil {
-				p.logger.Error("PUSH: Error when getting forum messages", "Error", err)
+				p.logger.Error("PUSH: Error when getting forum", "Error", err)
 				return
 			}
-			err = p.checkForumMessages(usr.ID, post.ID, post.Title, messages, &nForum)
+			err = p.checkForumTopics(usr.ID, forumTopics)
 			if err != nil {
-				p.logger.Error("PUSH: Error when checking forum messages", "Error", err)
+				p.logger.Error("PUSH: Error when checking forum topics", "Error", err)
 				return
 			}
-		}
+			nForum := forumNewMessages{}
+			for _, post := range forumTopics.Posts {
+				// Для каждой темы скачаем сообщения
+				messages, err := session.GetForumThemeMessages(strconv.Itoa(post.ID), "1", "10")
+				if err != nil {
+					p.logger.Error("PUSH: Error when getting forum messages", "Error", err)
+					return
+				}
+				err = p.checkForumMessages(usr.ID, post.ID, post.Title, messages, &nForum)
+				if err != nil {
+					p.logger.Error("PUSH: Error when checking forum messages", "Error", err)
+					return
+				}
+			}
 
-		// Скачаем почту
-		mailMessages, err := session.GetEmailsList("1", "0", "25", "DESC")
-		if err != nil {
-			p.logger.Error("PUSH: Error when getting mail", "Error", err)
-			return
-		}
-		newMail := mailNewMessages{}
-		err = p.checkMail(usr.ID, mailMessages, &newMail)
-		if err != nil {
-			p.logger.Error("PUSH: Error when checking mail", "Error", err)
-			return
-		}
-
-		// С помощью первого пользователя из каждой школы скачаем ресурсы
-		_, ok := nResources[usr.SchoolID]
-		if !ok {
-			resources, err := session.GetResourcesList()
+			// Скачаем почту
+			mailMessages, err := session.GetEmailsList("1", "0", "25", "DESC")
 			if err != nil {
-				p.logger.Error("PUSH: Error when getting resource list", "Error", err)
+				p.logger.Error("PUSH: Error when getting mail", "Error", err)
 				return
 			}
-			rChanges, err := p.checkResources(usr.SchoolID, resources)
-			p.logger.Info("kek", "chan", rChanges)
+			newMail := mailNewMessages{}
+			err = p.checkMail(usr.ID, mailMessages, &newMail)
 			if err != nil {
-				p.logger.Error("PUSH: Error when checking for new resources", "Error", err)
+				p.logger.Error("PUSH: Error when checking mail", "Error", err)
 				return
 			}
-			nResources[usr.SchoolID] = rChanges
-		}
 
-		// Скачаем объявления
-		posts, err := session.GetAnnouncements()
-		if err != nil {
-			p.logger.Error("PUSH: Error when getting posts", "Error", err)
-			return
-		}
-		newPs := newPosts{}
-		err = p.checkPosts(usr.ID, posts, &newPs)
-		if err != nil {
-			p.logger.Error("PUSH: Error when checking posts", "Error", err)
-			return
-		}
-
-		// Выйдем из системы
-		if err := session.Logout(); err != nil {
-			p.logger.Error("PUSH: Error when logging out", "Error", err)
-			return
-		}
-
-		// Достанем все девайсы пользователя
-		err = pg.Model(&usr).Related(&devices).Error
-		if err != nil {
-			p.logger.Error("PUSH: Error when getting devices list", "Error", err, "User", usr)
-			return
-		}
-
-		// Гоним по девайсам
-		for _, dev := range devices {
-			p.logger.Info("PUSH: device", "System", dev.SystemType, "Token", dev.Token)
-			// Если стоит "не беспокоить", пропустим
-			if dev.DoNotDisturbUntil != nil && now.Sub(*dev.DoNotDisturbUntil).String()[0] == '-' {
-				p.logger.Info("Not disturbing this device until date", "Date", dev.DoNotDisturbUntil)
-				continue
+			// С помощью первого пользователя из каждой школы скачаем ресурсы
+			_, ok := nResources[usr.SchoolID]
+			if !ok {
+				resources, err := session.GetResourcesList()
+				if err != nil {
+					p.logger.Error("PUSH: Error when getting resource list", "Error", err)
+					return
+				}
+				rChanges, err := p.checkResources(usr.SchoolID, resources)
+				p.logger.Info("kek", "chan", rChanges)
+				if err != nil {
+					p.logger.Error("PUSH: Error when checking for new resources", "Error", err)
+					return
+				}
+				nResources[usr.SchoolID] = rChanges
 			}
-			// Появился новый учебный материал
-			rChanges := nResources[usr.SchoolID]
-			p.logger.Info("Resources", "Number of changes", rChanges)
-			if rChanges != nil && dev.ReportsNotification {
-				for _, v := range rChanges.Changes {
-					title := v.Title
-					subtitle := v.Subtitle
-					body := v.Body
-					if v.Subtitle == "" {
-						// это группа
-						err = p.send(dev.SystemType, dev.Token, "resources_new_file_group", title, subtitle, body, "")
+
+			// Скачаем объявления
+			posts, err := session.GetAnnouncements()
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting posts", "Error", err)
+				return
+			}
+			newPs := newPosts{}
+			err = p.checkPosts(usr.ID, posts, &newPs)
+			if err != nil {
+				p.logger.Error("PUSH: Error when checking posts", "Error", err)
+				return
+			}
+
+			// Выйдем из системы
+			if err := session.Logout(); err != nil {
+				p.logger.Error("PUSH: Error when logging out", "Error", err)
+				return
+			}
+
+			// Достанем все девайсы пользователя
+			err = pg.Model(&usr).Related(&devices).Error
+			if err != nil {
+				p.logger.Error("PUSH: Error when getting devices list", "Error", err, "User", usr)
+				return
+			}
+
+			// Гоним по девайсам
+			for _, dev := range devices {
+				p.logger.Info("PUSH: device", "System", dev.SystemType, "Token", dev.Token)
+				// Если стоит "не беспокоить", пропустим
+				if dev.DoNotDisturbUntil != nil && now.Sub(*dev.DoNotDisturbUntil).String()[0] == '-' {
+					p.logger.Info("Not disturbing this device until date", "Date", dev.DoNotDisturbUntil)
+					continue
+				}
+				// Появился новый учебный материал
+				rChanges := nResources[usr.SchoolID]
+				p.logger.Info("Resources", "Number of changes", rChanges)
+				if rChanges != nil && dev.ReportsNotification {
+					for _, v := range rChanges.Changes {
+						title := v.Title
+						subtitle := v.Subtitle
+						body := v.Body
+						if v.Subtitle == "" {
+							// это группа
+							err = p.send(dev.SystemType, dev.Token, "resources_new_file_group", title, subtitle, body, "")
+							if err != nil {
+								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+								return
+							}
+						} else {
+							// это файл
+							err = p.send(dev.SystemType, dev.Token, "resources_new_file", title, subtitle, body, "")
+							if err != nil {
+								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+								return
+							}
+						}
+					}
+				}
+				// Изменения в расписании
+				p.logger.Info("Schedule", "Was Changed", scheduleChanged)
+				if scheduleChanged && dev.ScheduleNotification {
+					err = p.send(dev.SystemType, dev.Token, "schedule_change", "Изменения в расписании (см. детали)", "", "", "")
+					if err != nil {
+						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+						return
+					}
+				}
+				// Новые сообщения на форуме
+				p.logger.Info("Forum", "Number of new messages", len(nForum.Messages))
+				if dev.ForumNotification {
+					if len(nForum.Messages) > 3 {
+						err = p.send(dev.SystemType, dev.Token, "forum_new_message", "Форум", "", "Оставлено "+strconv.Itoa(len(nForum.Messages))+" новых сообщений", "")
 						if err != nil {
 							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
 							return
 						}
 					} else {
-						// это файл
-						err = p.send(dev.SystemType, dev.Token, "resources_new_file", title, subtitle, body, "")
+						for _, post := range nForum.Messages {
+							err = p.send(dev.SystemType, dev.Token, "forum_new_message", post.Title, post.Subtitle, post.Body, "")
+							if err != nil {
+								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+								return
+							}
+						}
+					}
+				}
+				// Новое почтовое сообщение
+				p.logger.Info("Mail", "Number of new messages", len(newMail.Messages))
+				if dev.MailNotification {
+					if len(newMail.Messages) > 3 {
+						err = p.send(dev.SystemType, dev.Token, "mail_new_message", "Почта", "", "У вас "+strconv.Itoa(len(newMail.Messages))+" новых сообщений", "")
 						if err != nil {
 							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
 							return
 						}
-					}
-				}
-			}
-			// Изменения в расписании
-			p.logger.Info("Schedule", "Was Changed", scheduleChanged)
-			if scheduleChanged && dev.ScheduleNotification {
-				err = p.send(dev.SystemType, dev.Token, "schedule_change", "Изменения в расписании (см. детали)", "", "", "")
-				if err != nil {
-					p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-					return
-				}
-			}
-			// Новые сообщения на форуме
-			p.logger.Info("Forum", "Number of new messages", len(nForum.Messages))
-			if dev.ForumNotification {
-				if len(nForum.Messages) > 3 {
-					err = p.send(dev.SystemType, dev.Token, "forum_new_message", "Форум", "", "Оставлено "+strconv.Itoa(len(nForum.Messages))+" новых сообщений", "")
-					if err != nil {
-						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-						return
-					}
-				} else {
-					for _, post := range nForum.Messages {
-						err = p.send(dev.SystemType, dev.Token, "forum_new_message", post.Title, post.Subtitle, post.Body, "")
-						if err != nil {
-							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-							return
+					} else {
+						for _, post := range newMail.Messages {
+							err = p.send(dev.SystemType, dev.Token, "mail_new_message", post.Title, "", post.Body, "")
+							if err != nil {
+								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+								return
+							}
 						}
 					}
 				}
-			}
-			// Новое почтовое сообщение
-			p.logger.Info("Mail", "Number of new messages", len(newMail.Messages))
-			if dev.MailNotification {
-				if len(newMail.Messages) > 3 {
-					err = p.send(dev.SystemType, dev.Token, "mail_new_message", "Почта", "", "У вас "+strconv.Itoa(len(newMail.Messages))+" новых сообщений", "")
-					if err != nil {
-						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-						return
-					}
-				} else {
-					for _, post := range newMail.Messages {
-						err = p.send(dev.SystemType, dev.Token, "mail_new_message", post.Title, "", post.Body, "")
-						if err != nil {
-							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-							return
-						}
-					}
-				}
-			}
-			// Новое задание или оценка
-			p.logger.Info("Tasks and marks", "Total changes", len(newTasksMarks.TasksMarks))
-			for _, task := range newTasksMarks.TasksMarks {
-				if task.Type == Mark {
-					switch dev.MarksNotification {
-					case db.MarksNotificationDisabled:
-						continue
-					case db.MarksNotificationImportant:
-						if task.IsImportant {
+				// Новое задание или оценка
+				p.logger.Info("Tasks and marks", "Total changes", len(newTasksMarks.TasksMarks))
+				for _, task := range newTasksMarks.TasksMarks {
+					if task.Type == Mark {
+						switch dev.MarksNotification {
+						case db.MarksNotificationDisabled:
+							continue
+						case db.MarksNotificationImportant:
+							if task.IsImportant {
+								err = p.send(dev.SystemType, dev.Token, "diary_new_mark", task.Title, "", task.Body, "")
+								if err != nil {
+									p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+									return
+								}
+							}
+						case db.MarksNotificationAll:
 							err = p.send(dev.SystemType, dev.Token, "diary_new_mark", task.Title, "", task.Body, "")
 							if err != nil {
 								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
 								return
 							}
-						}
-					case db.MarksNotificationAll:
-						err = p.send(dev.SystemType, dev.Token, "diary_new_mark", task.Title, "", task.Body, "")
-						if err != nil {
-							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+						default:
+							p.logger.Error("PUSH: Invalid mark type", "Type", task.Type)
 							return
 						}
-					default:
-						p.logger.Error("PUSH: Invalid mark type", "Type", task.Type)
-						return
-					}
-				} else if task.Type == Task {
-					switch dev.TasksNotification {
-					case db.TasksNotificationDisabled:
-						continue
-					case db.TasksNotificationHome:
-						if task.IsHomework {
+					} else if task.Type == Task {
+						switch dev.TasksNotification {
+						case db.TasksNotificationDisabled:
+							continue
+						case db.TasksNotificationHome:
+							if task.IsHomework {
+								err = p.send(dev.SystemType, dev.Token, "diary_new_task", task.Title, "", task.Body, "")
+								if err != nil {
+									p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+									return
+								}
+							}
+						case db.TasksNotificationAll:
 							err = p.send(dev.SystemType, dev.Token, "diary_new_task", task.Title, "", task.Body, "")
 							if err != nil {
 								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
 								return
 							}
+						default:
+							p.logger.Error("PUSH: Invalid task type", "Type", task.Type)
+							return
 						}
-					case db.TasksNotificationAll:
-						err = p.send(dev.SystemType, dev.Token, "diary_new_task", task.Title, "", task.Body, "")
+					} else {
+						p.logger.Error("PUSH: Invalid task or mark type", "Type", task.Type)
+						return
+					}
+				}
+				// Новое объявление
+				p.logger.Info("Posts", "Total changes", len(newPs.Posts))
+				if dev.ReportsNotification {
+					for _, post := range newPs.Posts {
+						err = p.send(dev.SystemType, dev.Token, "new_post", post.Title, "", post.Body, "")
 						if err != nil {
 							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
 							return
 						}
-					default:
-						p.logger.Error("PUSH: Invalid task type", "Type", task.Type)
-						return
-					}
-				} else {
-					p.logger.Error("PUSH: Invalid task or mark type", "Type", task.Type)
-					return
-				}
-			}
-			// Новое объявление
-			p.logger.Info("Posts", "Total changes", len(newPs.Posts))
-			if dev.ReportsNotification {
-				for _, post := range newPs.Posts {
-					err = p.send(dev.SystemType, dev.Token, "new_post", post.Title, "", post.Body, "")
-					if err != nil {
-						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-						return
-					}
 
+					}
 				}
 			}
 		}
+
 	}
 }
 
