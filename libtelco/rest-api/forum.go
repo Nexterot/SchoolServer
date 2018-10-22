@@ -93,9 +93,9 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 		}
 	}
 	// Сравнить с БД
-	userName := session.Values["userName"]
-	schoolID := session.Values["schoolID"]
-	err = rest.Db.UpdateTopicsStatuses(userName.(string), schoolID.(int), forumThemes)
+	userName := session.Values["userName"].(string)
+	schoolID := session.Values["schoolID"].(int)
+	err = rest.Db.UpdateTopicsStatuses(userName, schoolID, forumThemes)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when updating statuses for forum themes", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
@@ -114,5 +114,10 @@ func (rest *RestAPI) GetForumHandler(respwr http.ResponseWriter, req *http.Reque
 		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", forumThemes, "Status", status, "IP", req.RemoteAddr)
 	} else {
 		rest.logger.Info("REST: Successfully sent response", "Response", forumThemes, "IP", req.RemoteAddr)
+	}
+	// Отправить пуш на удаление пушей с сообщениями форума
+	err = rest.pushDelete(userName, schoolID, "forum_new_message")
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending deleting push", "Error", err, "Category", "forum_new_message", "IP", req.RemoteAddr)
 	}
 }

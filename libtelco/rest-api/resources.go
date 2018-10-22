@@ -72,4 +72,11 @@ func (rest *RestAPI) GetResourcesHandler(respwr http.ResponseWriter, req *http.R
 	} else {
 		rest.logger.Info("REST: Successfully sent response", "Response", resources, "IP", req.RemoteAddr)
 	}
+	// Отправить пуш на удаление пушей с сообщениями форума
+	userName := session.Values["userName"].(string)
+	schoolID := session.Values["schoolID"].(int)
+	err = rest.pushDelete(userName, schoolID, "resources")
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending deleting push", "Error", err, "Category", "resources", "IP", req.RemoteAddr)
+	}
 }

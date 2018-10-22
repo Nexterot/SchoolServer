@@ -111,4 +111,9 @@ func (rest *RestAPI) GetPostsHandler(respwr http.ResponseWriter, req *http.Reque
 	} else {
 		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
 	}
+	// Отправить пуш на удаление пушей с объявлениями
+	err = rest.pushDelete(userName, schoolID, "new_post")
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending deleting push", "Error", err, "Category", "new_post", "IP", req.RemoteAddr)
+	}
 }

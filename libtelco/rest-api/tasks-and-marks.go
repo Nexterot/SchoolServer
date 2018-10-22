@@ -114,10 +114,10 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 		}
 	}
 	// Обновить статусы заданий
-	userName := session.Values["userName"]
-	schoolID := session.Values["schoolID"]
+	userName := session.Values["userName"].(string)
+	schoolID := session.Values["schoolID"].(int)
 	// Сходить в бд
-	err = rest.Db.UpdateTasksStatuses(userName.(string), schoolID.(int), rReq.ID, weekMarks)
+	err = rest.Db.UpdateTasksStatuses(userName, schoolID, rReq.ID, weekMarks)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when updating statuses for tasks and marks", "Error", err, "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusInternalServerError)
@@ -149,5 +149,10 @@ func (rest *RestAPI) GetTasksAndMarksHandler(respwr http.ResponseWriter, req *ht
 		rest.logger.Error("REST: Error occured when sending response", "Error", err, "Response", resp, "Status", status, "IP", req.RemoteAddr)
 	} else {
 		rest.logger.Info("REST: Successfully sent response", "Response", resp, "IP", req.RemoteAddr)
+	}
+	// Отправить пуш на удаление пушей с дневником
+	err = rest.pushDelete(userName, schoolID, "diary")
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending deleting push", "Error", err, "Category", "diary", "IP", req.RemoteAddr)
 	}
 }
