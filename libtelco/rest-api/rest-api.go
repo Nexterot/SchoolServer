@@ -16,6 +16,7 @@ import (
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	red "github.com/masyagin1998/SchoolServer/libtelco/in-memory-db"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
+	"github.com/masyagin1998/SchoolServer/libtelco/push"
 	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 	db "github.com/masyagin1998/SchoolServer/libtelco/sql-db"
 	redistore "gopkg.in/boj/redistore.v1"
@@ -32,10 +33,11 @@ type RestAPI struct {
 	Db          *db.Database
 	Redis       *red.Database
 	Errors      *marshalledErrors
+	Push        *push.Push
 }
 
 // NewRestAPI создает структуру для работы с Rest API.
-func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
+func NewRestAPI(logger *log.Logger, config *cp.Config, database *db.Database, p *push.Push) *RestAPI {
 	key := make([]byte, 32)
 	rand.Read(key)
 	logger.Info("REST: Successfully generated secure key", "Key", key)
@@ -54,13 +56,6 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		logger.Info("REST: Successfully initialized redistore")
 	}
 	newStore.SetMaxAge(86400 * 365)
-	// gorm
-	database, err := db.NewDatabase(logger, config)
-	if err != nil {
-		logger.Fatal("REST: Error occured when initializing database", "Error", err)
-	} else {
-		logger.Info("REST: Successfully initialized database")
-	}
 	// redis
 	redis, err := red.NewDatabase(config)
 	if err != nil {
@@ -76,6 +71,7 @@ func NewRestAPI(logger *log.Logger, config *cp.Config) *RestAPI {
 		Db:          database,
 		Redis:       redis,
 		Errors:      NewMarshalledErrors(logger),
+		Push:        p,
 	}
 }
 

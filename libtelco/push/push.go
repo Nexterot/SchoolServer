@@ -10,10 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/appleboy/gorush/rpc/proto"
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
-	api "github.com/masyagin1998/SchoolServer/libtelco/rest-api"
 	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
 	db "github.com/masyagin1998/SchoolServer/libtelco/sql-db"
@@ -22,26 +20,23 @@ import (
 
 // Push struct содержит конфигурацию пушей.
 type Push struct {
-	api           *api.RestAPI
 	db            *db.Database
 	logger        *log.Logger
 	stopped       bool
-	period        time.Duration
-	client        *proto.GorushClient
-	gorushAddress string
-	appTopic      string
+	Period        time.Duration
+	GorushAddress string
+	AppTopic      string
 }
 
 // NewPush создает структуру пушей и возвращает указатель на неё.
-func NewPush(restapi *api.RestAPI, logger *log.Logger) *Push {
+func NewPush(database *db.Database, logger *log.Logger) *Push {
 	return &Push{
-		api:           restapi,
-		db:            restapi.Db,
+		db:            database,
 		logger:        logger,
 		stopped:       true,
-		period:        time.Second * 20,
-		gorushAddress: "http://localhost:8088/api/push",
-		appTopic:      "kir4567.NetSchoolApp",
+		Period:        time.Second * 20,
+		GorushAddress: "http://localhost:8088/api/push",
+		AppTopic:      "kir4567.NetSchoolApp",
 	}
 }
 
@@ -51,7 +46,7 @@ func (p *Push) Run() {
 	p.stopped = false
 	// В бесконечном цикле с заданным периодом пускать горутину
 	for {
-		timer := time.NewTimer(p.period)
+		timer := time.NewTimer(p.Period)
 		<-timer.C
 		if p.stopped == false {
 			go p.handlePushes()
@@ -1080,53 +1075,53 @@ func (p *Push) checkResources(schoolID uint, resources *dt.Resources) (*resource
 	return &resourcesChanges{Changes: changes}, nil
 }
 
-type gorushRequest struct {
-	Notifications []notification `json:"notifications"`
+type GorushRequest struct {
+	Notifications []Notification `json:"notifications"`
 }
 
-type alert struct {
+type Alert struct {
 	Title    string `json:"title,omitempty"`
 	Subtitle string `json:"subtitle,omitempty"`
 	Body     string `json:"body,omitempty"`
 }
 
-type notification struct {
+type Notification struct {
 	Tokens         []string `json:"tokens,omitempty"`
 	Platform       int      `json:"platform,omitempty"`
 	Badge          int      `json:"badge,omitempty"`
 	Category       string   `json:"category,omitempty"`
 	MutableContent bool     `json:"mutableContent,omitempty"`
 	Topic          string   `json:"topic,omitempty"`
-	Alert          alert    `json:"alert,omitempty"`
+	Alert          Alert    `json:"alert,omitempty"`
 	Message        string   `json:"message,omitempty"`
 	Sound          string   `json:"sound,omitempty"`
 }
 
 // send посылает push-уведомление по web api gorush
 func (p *Push) send(systemType int, token, category, title, subtitle, body, message string) error {
-	var notifications []notification
-	notifications = make([]notification, 1)
-	notifications[0] = notification{
+	var notifications []Notification
+	notifications = make([]Notification, 1)
+	notifications[0] = Notification{
 		Tokens:         []string{token},
 		Platform:       systemType,
 		Badge:          1,
 		Category:       category,
 		MutableContent: true,
-		Topic:          p.appTopic,
+		Topic:          p.AppTopic,
 		Message:        message,
 		Sound:          "default",
-		Alert: alert{
+		Alert: Alert{
 			Title:    title,
 			Subtitle: subtitle,
 			Body:     body,
 		},
 	}
-	req := gorushRequest{Notifications: notifications}
+	req := GorushRequest{Notifications: notifications}
 	byt, err := json.Marshal(req)
 	if err != nil {
 		return errors.Wrap(err, "PUSH: Error marshalling norification")
 	}
-	resp, err := http.Post(p.gorushAddress, "application/json", bytes.NewBuffer(byt))
+	resp, err := http.Post(p.GorushAddress, "application/json", bytes.NewBuffer(byt))
 	if err != nil {
 		return errors.Wrap(err, "PUSH: Error sending web api gorush request")
 	}

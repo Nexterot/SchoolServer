@@ -115,4 +115,9 @@ func (rest *RestAPI) GetScheduleHandler(respwr http.ResponseWriter, req *http.Re
 	} else {
 		rest.logger.Info("REST: Successfully sent response", "Response", timeTable, "IP", req.RemoteAddr)
 	}
+	// Отправить пуш на удаление пушей с расписанием
+	err = rest.pushDelete(userName, schoolID, "schedule_change")
+	if err != nil {
+		rest.logger.Error("REST: Error occured when sending deleting push", "Error", err, "Category", "schedule_change", "IP", req.RemoteAddr)
+	}
 }

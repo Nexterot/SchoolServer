@@ -16,6 +16,7 @@ import (
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
 	"github.com/masyagin1998/SchoolServer/libtelco/push"
 	api "github.com/masyagin1998/SchoolServer/libtelco/rest-api"
+	db "github.com/masyagin1998/SchoolServer/libtelco/sql-db"
 
 	"net/http"
 	"runtime"
@@ -23,22 +24,32 @@ import (
 
 // Server struct содержит конфигурацию сервера.
 type Server struct {
-	config *cp.Config
-	api    *api.RestAPI
-	logger *log.Logger
-	push   *push.Push
-	serv   *http.Server
+	config   *cp.Config
+	api      *api.RestAPI
+	database *db.Database
+	logger   *log.Logger
+	push     *push.Push
+	serv     *http.Server
 }
 
 // NewServer создает новый сервер.
 func NewServer(config *cp.Config, logger *log.Logger) *Server {
-	rest := api.NewRestAPI(logger, config)
+	// gorm database
+	database, err := db.NewDatabase(logger, config)
+	if err != nil {
+		logger.Fatal("Error occured when initializing database", "Error", err)
+	} else {
+		logger.Info("Successfully initialized database")
+	}
+	p := push.NewPush(database, logger)
+	rest := api.NewRestAPI(logger, config, database, p)
 	serv := &Server{
-		config: config,
-		api:    rest,
-		logger: logger,
-		push:   push.NewPush(rest, logger),
-		serv:   &http.Server{Addr: config.ServerAddr, Handler: rest.BindHandlers()},
+		config:   config,
+		api:      rest,
+		database: database,
+		logger:   logger,
+		push:     p,
+		serv:     &http.Server{Addr: config.ServerAddr, Handler: rest.BindHandlers()},
 	}
 	return serv
 }
