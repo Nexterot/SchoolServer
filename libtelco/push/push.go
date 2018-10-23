@@ -255,16 +255,29 @@ func (p *Push) handlePushes() {
 
 			// Гоним по девайсам
 			for _, dev := range devices {
-				p.logger.Info("PUSH: device", "System", dev.SystemType, "Token", dev.Token)
+				// p.logger.Info("PUSH: device", "System", dev.SystemType, "Token", dev.Token)
 				// Если стоит "не беспокоить", пропустим
 				if dev.DoNotDisturbUntil != nil && now.Sub(*dev.DoNotDisturbUntil).String()[0] == '-' {
-					p.logger.Info("Not disturbing this device until date", "Date", dev.DoNotDisturbUntil)
+					// p.logger.Info("Not disturbing this device until date", "Date", dev.DoNotDisturbUntil)
+					continue
+				}
+				// Если устройство только появилось, не посылать ничего
+				if dev.JustRegistered {
+					dev.JustRegistered = false
+					// Сохраним
+					err = pg.Save(&dev).Error
+					if err != nil {
+						p.logger.Error("Error saving device", "user", usr, "device", dev)
+						return
+					}
 					continue
 				}
 				// Появился новый учебный материал
 				rChanges := nResources[usr.SchoolID]
-				p.logger.Info("Resources", "Number of changes", rChanges)
 				if rChanges != nil && dev.ReportsNotification {
+					if len(rChanges.Changes) > 0 {
+						p.logger.Info("Resources", "Number of changes", rChanges)
+					}
 					for _, v := range rChanges.Changes {
 						title := v.Title
 						subtitle := v.Subtitle
@@ -274,67 +287,66 @@ func (p *Push) handlePushes() {
 							err = p.send(dev.SystemType, dev.Token, "resources_new_file_group", title, subtitle, body, "")
 							if err != nil {
 								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-								return
 							}
 						} else {
 							// это файл
 							err = p.send(dev.SystemType, dev.Token, "resources_new_file", title, subtitle, body, "")
 							if err != nil {
 								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-								return
 							}
 						}
 					}
 				}
 				// Изменения в расписании
-				p.logger.Info("Schedule", "Was Changed", scheduleChanged)
 				if scheduleChanged && dev.ScheduleNotification {
+					p.logger.Info("Schedule", "Was Changed", scheduleChanged)
 					err = p.send(dev.SystemType, dev.Token, "schedule_change", "Изменения в расписании (см. детали)", "", "", "")
 					if err != nil {
 						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-						return
 					}
 				}
 				// Новые сообщения на форуме
-				p.logger.Info("Forum", "Number of new messages", len(nForum.Messages))
 				if dev.ForumNotification {
+					if len(nForum.Messages) > 0 {
+						p.logger.Info("Forum", "Number of new messages", len(nForum.Messages))
+					}
 					if len(nForum.Messages) > 3 {
 						err = p.send(dev.SystemType, dev.Token, "forum_new_message", "Форум", "", "Оставлено "+strconv.Itoa(len(nForum.Messages))+" новых сообщений", "")
 						if err != nil {
 							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-							return
 						}
 					} else {
 						for _, post := range nForum.Messages {
 							err = p.send(dev.SystemType, dev.Token, "forum_new_message", post.Title, post.Subtitle, post.Body, "")
 							if err != nil {
 								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-								return
 							}
 						}
 					}
 				}
 				// Новое почтовое сообщение
-				p.logger.Info("Mail", "Number of new messages", len(newMail.Messages))
 				if dev.MailNotification {
+					if len(newMail.Messages) > 0 {
+						p.logger.Info("Mail", "Number of new messages", len(newMail.Messages))
+					}
 					if len(newMail.Messages) > 3 {
 						err = p.send(dev.SystemType, dev.Token, "mail_new_message", "Почта", "", "У вас "+strconv.Itoa(len(newMail.Messages))+" новых сообщений", "")
 						if err != nil {
 							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-							return
 						}
 					} else {
 						for _, post := range newMail.Messages {
 							err = p.send(dev.SystemType, dev.Token, "mail_new_message", post.Title, "", post.Body, "")
 							if err != nil {
 								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-								return
 							}
 						}
 					}
 				}
 				// Новое задание или оценка
-				p.logger.Info("Tasks and marks", "Total changes", len(newTasksMarks.TasksMarks))
+				if len(newTasksMarks.TasksMarks) > 0 {
+					p.logger.Info("Tasks and marks", "Total changes", len(newTasksMarks.TasksMarks))
+				}
 				for _, task := range newTasksMarks.TasksMarks {
 					if task.Type == Mark {
 						switch dev.MarksNotification {
@@ -345,14 +357,12 @@ func (p *Push) handlePushes() {
 								err = p.send(dev.SystemType, dev.Token, "diary_new_mark", task.Title, "", task.Body, "")
 								if err != nil {
 									p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-									return
 								}
 							}
 						case db.MarksNotificationAll:
 							err = p.send(dev.SystemType, dev.Token, "diary_new_mark", task.Title, "", task.Body, "")
 							if err != nil {
 								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-								return
 							}
 						default:
 							p.logger.Error("PUSH: Invalid mark type", "Type", task.Type)
@@ -367,14 +377,12 @@ func (p *Push) handlePushes() {
 								err = p.send(dev.SystemType, dev.Token, "diary_new_task", task.Title, "", task.Body, "")
 								if err != nil {
 									p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-									return
 								}
 							}
 						case db.TasksNotificationAll:
 							err = p.send(dev.SystemType, dev.Token, "diary_new_task", task.Title, "", task.Body, "")
 							if err != nil {
 								p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-								return
 							}
 						default:
 							p.logger.Error("PUSH: Invalid task type", "Type", task.Type)
@@ -386,15 +394,16 @@ func (p *Push) handlePushes() {
 					}
 				}
 				// Новое объявление
-				p.logger.Info("Posts", "Total changes", len(newPs.Posts))
 				if dev.ReportsNotification {
+					if len(newPs.Posts) > 0 {
+						p.logger.Info("Posts", "Total changes", len(newPs.Posts))
+					}
 					for _, post := range newPs.Posts {
 						err = p.send(dev.SystemType, dev.Token, "new_post", post.Title, "", post.Body, "")
 						if err != nil {
 							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
-							return
-						}
 
+						}
 					}
 				}
 			}

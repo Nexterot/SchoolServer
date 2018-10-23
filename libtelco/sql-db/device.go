@@ -24,6 +24,7 @@ type Device struct {
 	MailNotification      bool       `sql:"DEFAULT:true"`
 	ForumNotification     bool       `sql:"DEFAULT:true"`
 	ResourcesNotification bool       `sql:"DEFAULT:true"`
+	JustRegistered        bool       `sql:"DEFAULT:true"` // for not to ddos with pushes at first login
 }
 
 // Типы систем устройств
