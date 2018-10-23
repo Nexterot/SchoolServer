@@ -49,11 +49,9 @@ func (rest *RestAPI) sendPushDelete(systemType int, token, category string) erro
 	notifications[0] = push.Notification{
 		Tokens:           []string{token},
 		Platform:         systemType,
-		Badge:            1,
 		Category:         category,
 		ContentAvailable: true,
 		Topic:            rest.Push.AppTopic,
-		Alert:            push.Alert{Title: "delete"},
 	}
 	req := push.GorushRequest{Notifications: notifications}
 	byt, err := json.Marshal(req)

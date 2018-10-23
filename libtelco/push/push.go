@@ -1127,7 +1127,6 @@ func (p *Push) send(systemType int, token, category, title, subtitle, body, mess
 	notifications[0] = Notification{
 		Tokens:         []string{token},
 		Platform:       systemType,
-		Badge:          1,
 		Category:       category,
 		MutableContent: true,
 		Topic:          p.AppTopic,
