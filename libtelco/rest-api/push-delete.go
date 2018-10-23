@@ -47,19 +47,18 @@ func (rest *RestAPI) sendPushDelete(systemType int, token, category string) erro
 	var notifications []push.Notification
 	notifications = make([]push.Notification, 1)
 	notifications[0] = push.Notification{
-		Tokens:         []string{token},
-		Platform:       systemType,
-		Badge:          1,
-		Category:       category,
-		MutableContent: true,
-		Topic:          rest.Push.AppTopic,
-		Message:        "delete",
-		Alert:          push.Alert{Title: "delete"},
+		Tokens:           []string{token},
+		Platform:         systemType,
+		Badge:            1,
+		Category:         category,
+		ContentAvailable: true,
+		Topic:            rest.Push.AppTopic,
+		Alert:            push.Alert{Title: "delete"},
 	}
 	req := push.GorushRequest{Notifications: notifications}
 	byt, err := json.Marshal(req)
 	if err != nil {
-		return errors.Wrap(err, "REST: Error marshalling norification")
+		return errors.Wrap(err, "REST: Error marshalling notification")
 	}
 	resp, err := http.Post(rest.Push.GorushAddress, "application/json", bytes.NewBuffer(byt))
 	if err != nil {

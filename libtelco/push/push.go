@@ -1099,15 +1099,16 @@ type Alert struct {
 }
 
 type Notification struct {
-	Tokens         []string `json:"tokens,omitempty"`
-	Platform       int      `json:"platform,omitempty"`
-	Badge          int      `json:"badge,omitempty"`
-	Category       string   `json:"category,omitempty"`
-	MutableContent bool     `json:"mutableContent,omitempty"`
-	Topic          string   `json:"topic,omitempty"`
-	Alert          Alert    `json:"alert,omitempty"`
-	Message        string   `json:"message,omitempty"`
-	Sound          string   `json:"sound,omitempty"`
+	Tokens           []string `json:"tokens,omitempty"`
+	Platform         int      `json:"platform,omitempty"`
+	Badge            int      `json:"badge,omitempty"`
+	Category         string   `json:"category,omitempty"`
+	MutableContent   bool     `json:"mutable_content,omitempty"`
+	ContentAvailable bool     `json:"content_available,omitempty"`
+	Topic            string   `json:"topic,omitempty"`
+	Alert            Alert    `json:"alert,omitempty"`
+	Message          string   `json:"message,omitempty"`
+	Sound            string   `json:"sound,omitempty"`
 }
 
 // send посылает push-уведомление по web api gorush
