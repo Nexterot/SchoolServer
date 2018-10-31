@@ -8,7 +8,6 @@ import (
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
-	"github.com/masyagin1998/SchoolServer/libtelco/server"
 	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 )
 
@@ -61,20 +60,26 @@ func main() {
 		fmt.Println(err)
 	}
 
-	data, err := kek.GetAnnouncements()
+	data, err := kek.GetAnnouncements("1", "127.0.0.1:1488")
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(data)
+	for i, post := range data.Posts {
+		fmt.Printf("%v)\n", i)
+		fmt.Println(post.Title)
+		fmt.Println(post.FileLink)
+		fmt.Println(post.FileID)
+		fmt.Println(post.FileName)
+	}
 
 	if err := kek.Logout(); err != nil {
 		fmt.Println(err)
 	}
-	/*
-		os.Exit(1)
-	*/
+	os.Exit(1)
 
 	// Запуск сервера.
-	server := server.NewServer(config, logger)
-	server.Run()
+	/*
+		server := server.NewServer(config, logger)
+		server.Run()
+	*/
 }

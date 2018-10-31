@@ -11,14 +11,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func (s *Session) GetAnnouncements() (*dt.Posts, error) {
+func (s *Session) GetAnnouncements(schooldID, serverAddr string) (*dt.Posts, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	var err error
 	var posts *dt.Posts
 	switch s.Serv.Type {
 	case cp.FirstType:
-		posts, err = t01.GetAnnouncements(&s.Session)
+		posts, err = t01.GetAnnouncements(&s.Session, schooldID, serverAddr)
 		err = errors.Wrap(err, "type-01")
 	default:
 		err = fmt.Errorf("Unknown SchoolServer Type: %d", s.Serv.Type)

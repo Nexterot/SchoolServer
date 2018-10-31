@@ -5,6 +5,8 @@ package announcements
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"os"
 
 	gr "github.com/levigross/grequests"
 	dt "github.com/masyagin1998/SchoolServer/libtelco/sessions/datatypes"
@@ -13,7 +15,7 @@ import (
 	"golang.org/x/net/html"
 )
 
-func GetAnnouncements(s *dt.Session) (*dt.Posts, error) {
+func GetAnnouncements(s *dt.Session, schoolID, serverAddr string) (*dt.Posts, error) {
 	p := "http://"
 
 	// 0-ой Post-запрос.
@@ -273,5 +275,78 @@ func GetAnnouncements(s *dt.Session) (*dt.Posts, error) {
 		return formPosts(tableNode)
 	}
 
-	return makePosts(parsedHTML)
+	posts, err := makePosts(parsedHTML)
+	if err != nil {
+		return nil, err
+	}
+	for i := 0; i < len(posts.Posts); i++ {
+		if err := getFile(s, &(posts.Posts[i]), schoolID, serverAddr); err != nil {
+			return nil, err
+		}
+	}
+	return posts, nil
+}
+
+func getFile(s *dt.Session, post *dt.Post, schoolID, serverAddr string) error {
+	p := "http://"
+
+	if post.FileName == "" {
+		return nil
+	}
+
+	fmt.Println("kek")
+
+	// Проверка, есть ли файл на диске.
+	path := fmt.Sprintf("files/%s/announcements/%d/", schoolID, post.ID)
+	if _, err := os.Stat(path + post.FileName); err == nil {
+		post.FileLink = serverAddr + "/doc/" + path[6:] + post.FileName
+		return nil
+	}
+	fmt.Println(post.FileID)
+	// Закачка файла.
+	// 0-ой POST-запрос.
+	ro := &gr.RequestOptions{
+		Data: map[string]string{
+			"VER":          s.VER,
+			"at":           s.AT,
+			"attachmentId": fmt.Sprint(post.ID),
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   p + s.Serv.Link + "/asp/Announce/ViewAnnouncements.asp",
+		},
+	}
+	fmt.Println(p + s.Serv.Link + post.FileLink)
+	r, err := s.Sess.Post(p+s.Serv.Link+post.FileLink, ro)
+	if err != nil {
+		post.FileLink = ""
+		post.FileName = "Broken"
+		fmt.Println("Chto za nahui")
+		return err
+	}
+	defer func() {
+		_ = r.Close()
+	}()
+	fmt.Println(r.String())
+	if _, err := check.CheckResponse(s, r); err != nil {
+		post.FileLink = ""
+		post.FileName = "Broken"
+		fmt.Println("HuLel")
+		return err
+	}
+
+	// Сохранение файла на диск.
+	// Создание папок, если надо.
+	if err = os.MkdirAll(path, 0700); err != nil {
+		return err
+	}
+	// Создание файла.
+	if err := ioutil.WriteFile(path+post.FileName, r.Bytes(), 0700); err != nil {
+		return err
+	}
+	// Подмена Ссылки.
+	post.FileLink = serverAddr + "/doc/" + path[6:] + post.FileName
+	post.File = post.FileLink
+	return nil
 }
