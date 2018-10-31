@@ -307,32 +307,45 @@ func getFile(s *dt.Session, post *dt.Post, schoolID, serverAddr string) error {
 	// 0-ой POST-запрос.
 	ro := &gr.RequestOptions{
 		Data: map[string]string{
-			"VER":          s.VER,
-			"at":           s.AT,
-			"attachmentId": fmt.Sprint(post.ID),
+			"VER": s.VER,
+			"at":  s.AT,
 		},
 		Headers: map[string]string{
 			"Origin":                    p + s.Serv.Link,
 			"Upgrade-Insecure-Requests": "1",
-			"Referer":                   p + s.Serv.Link + "/asp/Announce/ViewAnnouncements.asp",
+			"Referer":                   p + s.Serv.Link,
 		},
 	}
+	r, err := s.Sess.Post(p+s.Serv.Link+"/asp/Announce/ViewAnnouncements.asp", ro)
+	if err != nil {
+		return err
+	}
+	ro = &gr.RequestOptions{
+		Data: map[string]string{
+			"VER":          s.VER,
+			"at":           s.AT,
+			"attachmentId": post.FileID,
+		},
+		Headers: map[string]string{
+			"Origin":                    p + s.Serv.Link,
+			"Upgrade-Insecure-Requests": "1",
+			"Referer":                   "http://62.117.74.43/asp/Announce/ViewAnnouncements.asp",
+		},
+	}
+	fmt.Println(p + s.Serv.Link + "/asp/Announce/ViewAnnouncements.asp")
 	fmt.Println(p + s.Serv.Link + post.FileLink)
-	r, err := s.Sess.Post(p+s.Serv.Link+post.FileLink, ro)
+	r, err = s.Sess.Post(p+s.Serv.Link+post.FileLink, ro)
 	if err != nil {
 		post.FileLink = ""
 		post.FileName = "Broken"
-		fmt.Println("Chto za nahui")
 		return err
 	}
 	defer func() {
 		_ = r.Close()
 	}()
-	fmt.Println(r.String())
 	if _, err := check.CheckResponse(s, r); err != nil {
 		post.FileLink = ""
 		post.FileName = "Broken"
-		fmt.Println("HuLel")
 		return err
 	}
 
