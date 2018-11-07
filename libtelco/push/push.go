@@ -111,8 +111,8 @@ func (p *Push) handlePushes() {
 			// Залогинимся
 			err = session.Login()
 			if err != nil {
-				p.logger.Error("PUSH: Error when logging in", "Error", err)
-				return
+				p.logger.Error("PUSH: Error when logging in", "Config", config, "Error", err)
+				continue
 			}
 
 			// Получим ChidlrenMap
