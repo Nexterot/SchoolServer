@@ -4,6 +4,7 @@ package restapi
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
@@ -48,8 +49,10 @@ func (rest *RestAPI) GetPostsHandler(respwr http.ResponseWriter, req *http.Reque
 			return
 		}
 	}
+	userName := session.Values["userName"].(string)
+	schoolID := session.Values["schoolID"].(int)
 	// Получить объявления
-	posts, err := remoteSession.GetAnnouncements()
+	posts, err := remoteSession.GetAnnouncements(strconv.Itoa(schoolID), rest.config.ServerName)
 	if err != nil {
 		if strings.Contains(err.Error(), "You was logged out from server") {
 			// Если удаленная сессия есть, но не активна
@@ -60,7 +63,7 @@ func (rest *RestAPI) GetPostsHandler(respwr http.ResponseWriter, req *http.Reque
 				return
 			}
 			// Повторно получить с сайта школы
-			posts, err = remoteSession.GetAnnouncements()
+			posts, err = remoteSession.GetAnnouncements(strconv.Itoa(schoolID), rest.config.ServerName)
 			if err != nil {
 				// Ошибка
 				rest.logger.Error("REST: Error occured when getting data from site", "Error", err, "IP", req.RemoteAddr)
@@ -75,8 +78,6 @@ func (rest *RestAPI) GetPostsHandler(respwr http.ResponseWriter, req *http.Reque
 		}
 	}
 	// Обновить БД
-	userName := session.Values["userName"].(string)
-	schoolID := session.Values["schoolID"].(int)
 	err = rest.Db.UpdatePosts(userName, schoolID, posts)
 	if err != nil {
 		rest.logger.Error("REST: Error occured when updating posts in DB", "Error", err, "IP", req.RemoteAddr)

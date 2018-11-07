@@ -60,7 +60,7 @@ func (serv *Server) Run() {
 	runtime.GOMAXPROCS(serv.config.MaxProcs)
 
 	// Подключить рассылку пушей
-	// go serv.push.Run()
+	go serv.push.Run()
 
 	defer func() {
 		_ = serv.api.Db.Close()

@@ -8,6 +8,7 @@ import (
 
 	cp "github.com/masyagin1998/SchoolServer/libtelco/config-parser"
 	"github.com/masyagin1998/SchoolServer/libtelco/log"
+	"github.com/masyagin1998/SchoolServer/libtelco/server"
 	ss "github.com/masyagin1998/SchoolServer/libtelco/sessions"
 )
 
@@ -75,11 +76,10 @@ func main() {
 	if err := kek.Logout(); err != nil {
 		fmt.Println(err)
 	}
-	os.Exit(1)
+	// os.Exit(1)
 
 	// Запуск сервера.
-	/*
-		server := server.NewServer(config, logger)
-		server.Run()
-	*/
+	server := server.NewServer(config, logger)
+	server.Run()
+
 }

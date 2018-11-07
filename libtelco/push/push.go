@@ -228,7 +228,7 @@ func (p *Push) handlePushes() {
 			}
 
 			// Скачаем объявления
-			posts, err := session.GetAnnouncements()
+			posts, err := session.GetAnnouncements(strconv.Itoa(int(usr.SchoolID)), "push")
 			if err != nil {
 				p.logger.Error("PUSH: Error when getting posts", "Error", err)
 				return
