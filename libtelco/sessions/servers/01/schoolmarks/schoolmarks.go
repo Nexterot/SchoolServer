@@ -211,16 +211,7 @@ func GetWeekSchoolMarks(s *dt.Session, date, studentID string) (*dt.WeekSchoolMa
 
 						c2 = c2.NextSibling
 						if c2.FirstChild != nil {
-							lesson.Weight = c2.FirstChild.Data
-						}
-						if c2 != nil {
-							c2 = c2.NextSibling
-							for c2 != nil && c2.Data != "td" {
-								c2 = c2.NextSibling
-							}
-							if c2 != nil && c2.FirstChild != nil {
-								lesson.Mark = c2.FirstChild.Data
-							}
+							lesson.Mark = c2.FirstChild.Data
 						}
 						lessons = append(lessons, lesson)
 					}
