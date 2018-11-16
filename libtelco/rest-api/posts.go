@@ -8,15 +8,20 @@ import (
 	"strings"
 )
 
-// type Post struct используется в postsResponse
-type Post struct {
-	Unread   bool   `json:"unread"`
-	Author   string `json:"author"`
-	Title    string `json:"title"`
-	Date     string `json:"date"`
-	Message  string `json:"message"`
+// File struct используется в Post
+type File struct {
 	File     string `json:"file"`
 	FileName string `json:"fileName"`
+}
+
+// type Post struct используется в postsResponse
+type Post struct {
+	Unread  bool   `json:"unread"`
+	Author  string `json:"author"`
+	Title   string `json:"title"`
+	Date    string `json:"date"`
+	Message string `json:"message"`
+	Files   []File `json:"files"`
 }
 
 // postsResponse struct используется в GetPostsHandler
@@ -87,14 +92,14 @@ func (rest *RestAPI) GetPostsHandler(respwr http.ResponseWriter, req *http.Reque
 	// Сформировать ответ по протоколу
 	resp := postsResponse{}
 	for _, p := range posts.Posts {
+		file := File{p.FileLink, p.FileName}
 		newPost := Post{
-			Unread:   p.Unread,
-			Author:   p.Author,
-			Title:    p.Title,
-			Date:     p.Date,
-			Message:  p.Message,
-			File:     p.FileLink,
-			FileName: p.FileName,
+			Unread:  p.Unread,
+			Author:  p.Author,
+			Title:   p.Title,
+			Date:    p.Date,
+			Message: p.Message,
+			Files:   []File{file},
 		}
 		resp.Posts = append(resp.Posts, newPost)
 	}
