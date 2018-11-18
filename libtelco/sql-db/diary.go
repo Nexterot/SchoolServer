@@ -100,7 +100,7 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, AID, CID, TP int
 	return fmt.Errorf("record not found")
 }
 
-// TaskMarkSeen меняет статус задания на "Выполненное"
+// TaskMarkSeen меняет статус задания на "Просмотренное"
 func (db *Database) TaskMarkSeen(userName string, schoolID int, AID, CID, TP int) error {
 	var (
 		tasks   []Task
@@ -380,7 +380,7 @@ func (db *Database) UpdateTasksStatuses(userName string, schoolID int, studentID
 			// Найдем подходящее задание в БД
 			dbTaskFound := false
 			for _, dbTask := range tasks {
-				if task.AID == dbTask.AID {
+				if task.AID == dbTask.AID && task.CID == dbTask.CID && task.TP == dbTask.TP {
 					dbTaskFound = true
 					newTask = dbTask
 					break
