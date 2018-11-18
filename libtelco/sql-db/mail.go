@@ -69,7 +69,7 @@ func (db *Database) UpdateMailStatuses(userName string, schoolID int, section in
 		// Найдем подходящее сообщение в БД
 		postFound := false
 		for _, dbPost := range messages {
-			if post.ID == dbPost.NetschoolID {
+			if post.ID == dbPost.NetschoolID && section == dbPost.Section {
 				postFound = true
 				newMessage = dbPost
 				break

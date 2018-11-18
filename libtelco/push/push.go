@@ -34,7 +34,7 @@ func NewPush(database *db.Database, logger *log.Logger) *Push {
 		db:            database,
 		logger:        logger,
 		stopped:       true,
-		Period:        time.Second * 20,
+		Period:        time.Minute * 15,
 		GorushAddress: "http://localhost:8088/api/push",
 		AppTopic:      "kir4567.NetSchoolApp",
 	}
@@ -668,7 +668,7 @@ func (p *Push) checkMail(userID uint, mailsList *dt.EmailsList, res *mailNewMess
 		// Найдем подходящее сообщение в БД
 		postFound := false
 		for _, dbPost := range messages {
-			if post.MessageID == dbPost.NetschoolID {
+			if post.MessageID == dbPost.NetschoolID && section == dbPost.Section {
 				postFound = true
 				newMessage = dbPost
 				break
