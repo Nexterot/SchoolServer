@@ -529,7 +529,7 @@ func (p *Push) checkDiary(studentID uint, week *dt.WeekSchoolMarks, tasksMarks *
 		}
 		if !dbDayFound {
 			// Дня не существует, надо создать
-			newDay = db.Day{StudentID: student.ID, Date: date, Tasks: []db.Task{}, Lessons: []Lesson{}}
+			newDay = db.Day{StudentID: student.ID, Date: date, Tasks: []db.Task{}, Lessons: []db.Lesson{}}
 			err = pg.Create(&newDay).Error
 			if err != nil {
 				return errors.Wrapf(err, "Error creating newDay='%v'", newDay)
