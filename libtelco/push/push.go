@@ -668,7 +668,7 @@ func (p *Push) checkMail(userID uint, mailsList *dt.EmailsList, res *mailNewMess
 		// Найдем подходящее сообщение в БД
 		postFound := false
 		for _, dbPost := range messages {
-			if post.MessageID == dbPost.NetschoolID && section == dbPost.Section {
+			if post.MessageID == dbPost.NetschoolID && dbPost.Section == 1 {
 				postFound = true
 				newMessage = dbPost
 				break
