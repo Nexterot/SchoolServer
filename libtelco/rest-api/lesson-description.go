@@ -111,7 +111,7 @@ func (rest *RestAPI) GetLessonDescriptionHandler(respwr http.ResponseWriter, req
 	if err != nil {
 		if strings.Contains(err.Error(), "record not found") {
 			// Такого таска нет в БД
-			rest.logger.Info("REST: Task with specified id not found in db", "IP", req.RemoteAddr)
+			rest.logger.Info("REST: Task with specified id not found in db", "Error", err.Error(), "IP", req.RemoteAddr)
 			respwr.WriteHeader(http.StatusBadRequest)
 			status, err := respwr.Write(rest.Errors.InvalidData)
 			if err != nil {

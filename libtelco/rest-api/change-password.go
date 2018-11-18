@@ -54,7 +54,7 @@ func (rest *RestAPI) ChangePasswordHandler(respwr http.ResponseWriter, req *http
 	rest.logger.Info("REST: Request data", "Data", rReq, "IP", req.RemoteAddr)
 	// Проверим валидность данных
 	if rReq.New == "" || rReq.Old == "" {
-		rest.logger.Info("REST: Invalid data", "Error", err.Error(), "IP", req.RemoteAddr)
+		rest.logger.Info("REST: Invalid data: empty passwords", "IP", req.RemoteAddr)
 		respwr.WriteHeader(http.StatusBadRequest)
 		status, err := respwr.Write(rest.Errors.InvalidData)
 		if err != nil {
