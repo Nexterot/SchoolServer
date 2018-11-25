@@ -432,10 +432,17 @@ func GetForumThemeMessages(s *dt.Session, TID, page, pageSize string) (*dt.Forum
 			c = c.FirstChild
 			var messageString string
 			for c != nil {
-				if c.Data != "br" {
-					messageString += c.Data
-				} else {
+				if c.Data == "a" {
+					for _, a := range c.Attr {
+						if a.Key == "href" {
+							messageString += a.Val
+							break
+						}
+					}
+				} else if c.Data == "br" {
 					messageString += "\n"
+				} else {
+					messageString += c.Data
 				}
 				c = c.NextSibling
 			}
