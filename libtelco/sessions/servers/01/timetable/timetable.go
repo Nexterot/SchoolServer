@@ -145,10 +145,14 @@ func GetDayTimeTable(s *dt.Session, date, studentID string) (*dt.DayTimeTable, e
 				*starts = append(*starts, start)
 				*ends = append(*ends, end)
 			} else if strings.Contains(node.Data, "Урок: ") {
-				// Нашли предмет и кабинет, в котором проходит урок.
+				// Нашли предмет и, возможно, кабинет, в котором проходит урок.
 				s := strings.Split(node.Data, "[")
 				*names = append(*names, (s[0])[10:])
-				*classrooms = append(*classrooms, "["+s[1])
+				if len(s) <= 1 {
+					*classrooms = append(*classrooms, "")
+				} else {
+					*classrooms = append(*classrooms, "["+s[1])
+				}
 			}
 			for c := node.FirstChild; c != nil; c = c.NextSibling {
 				getAllLessonsInfo(c, starts, ends, names, classrooms)
