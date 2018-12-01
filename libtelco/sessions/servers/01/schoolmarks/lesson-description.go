@@ -199,6 +199,23 @@ func GetLessonDescription(s *dt.Session, AID, CID, TP int, schoolID, studentID, 
 			}
 
 			tableNode = tableNode.NextSibling
+			
+			commentNode = tableNode.FirstChild.NextSibling
+			if commentNode.FirstChild != nil {
+				commentNode = commentNode.FirstChild
+				for commentNode != nil {
+					if commentNode.FirstChild == nil {
+						if commentNode.Data == "br" {
+							details.Description += "\n"
+						} else {
+							if !(len(commentNode.Data) == 2 && commentNode.Data[0] == 194 && commentNode.Data[1] == 160) {
+								details.Description += "\n" + commentNode.Data
+							}
+						}
+					}
+					commentNode = commentNode.NextSibling
+				}
+			}
 			if tableNode.FirstChild.NextSibling.FirstChild != nil {
 				if tableNode.FirstChild.NextSibling.FirstChild.FirstChild != nil {
 					if tableNode.FirstChild.NextSibling.FirstChild.FirstChild.FirstChild != nil {
