@@ -216,6 +216,7 @@ func GetLessonDescription(s *dt.Session, AID, CID, TP int, schoolID, studentID, 
 					commentNode = commentNode.NextSibling
 				}
 			}
+			details.Description = strings.TrimSpace(details.Description)
 			if tableNode.FirstChild.NextSibling.FirstChild != nil {
 				if tableNode.FirstChild.NextSibling.FirstChild.FirstChild != nil {
 					if tableNode.FirstChild.NextSibling.FirstChild.FirstChild.FirstChild != nil {
