@@ -123,7 +123,7 @@ func (p *Push) handlePushes() {
 			}
 
 			// ИЗМЕНЕНИЯ
-			scheduleChanged := false
+			// scheduleChanged := false
 			newTasksMarks := diaryNewTasksMarks{}
 
 			if usr.Role == "Ученик" {
@@ -134,17 +134,19 @@ func (p *Push) handlePushes() {
 					return
 				}
 
-				// Скачаем расписание
-				week, err := session.GetTimeTable(nowAsString, 7, strconv.Itoa(students[0].NetSchoolID))
-				if err != nil {
-					p.logger.Error("PUSH: Error when getting schedule", "Error", err)
-					return
-				}
-				scheduleChanged, err = p.checkSchedule(students[0].ID, week)
-				if err != nil {
-					p.logger.Error("PUSH: Error when checking schedule", "Error", err)
-					return
-				}
+				/*
+					// Скачаем расписание
+					week, err := session.GetTimeTable(nowAsString, 7, strconv.Itoa(students[0].NetSchoolID))
+					if err != nil {
+						p.logger.Error("PUSH: Error when getting schedule", "Error", err)
+						return
+					}
+					scheduleChanged, err = p.checkSchedule(students[0].ID, week)
+					if err != nil {
+						p.logger.Error("PUSH: Error when checking schedule", "Error", err)
+						return
+					}
+				*/
 
 				// Дневник на текущую и следующие недели
 				// текущая
@@ -219,7 +221,6 @@ func (p *Push) handlePushes() {
 					return
 				}
 				rChanges, err := p.checkResources(usr.SchoolID, resources)
-				p.logger.Info("kek", "chan", rChanges)
 				if err != nil {
 					p.logger.Error("PUSH: Error when checking for new resources", "Error", err)
 					return
@@ -297,14 +298,16 @@ func (p *Push) handlePushes() {
 						}
 					}
 				}
-				// Изменения в расписании
-				if scheduleChanged && dev.ScheduleNotification {
-					p.logger.Info("Schedule", "Was Changed", scheduleChanged)
-					err = p.send(dev.SystemType, dev.Token, "schedule_change", "Изменения в расписании (см. детали)", "", "", "")
-					if err != nil {
-						p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+				/*
+					// Изменения в расписании
+					if scheduleChanged && dev.ScheduleNotification {
+						p.logger.Info("Schedule", "Was Changed", scheduleChanged)
+						err = p.send(dev.SystemType, dev.Token, "schedule_change", "Изменения в расписании (см. детали)", "", "", "")
+						if err != nil {
+							p.logger.Error("PUSH: Error when sending push to client", "Error", err, "Platform Type", dev.SystemType, "Token", dev.Token)
+						}
 					}
-				}
+				*/
 				// Новые сообщения на форуме
 				if dev.ForumNotification {
 					if len(nForum.Messages) > 0 {
