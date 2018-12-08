@@ -125,7 +125,7 @@ func (db *Database) TaskMarkSeen(userName string, schoolID int, AID, CID, TP int
 		// Получим день по DayID
 		err = db.SchoolServerDB.First(&day, t.DayID).Error
 		if err != nil {
-			return errors.Wrapf(err, "Error query day with id='%v'", t.DayID)
+			return errors.Wrapf(err, "Error query day with id='%v', task='%v'", t.DayID, t)
 		}
 		// Получим студента по дню
 		err = db.SchoolServerDB.First(&student, day.StudentID).Error
