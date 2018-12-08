@@ -105,7 +105,6 @@ func (db *Database) TaskMarkSeen(userName string, schoolID int, AID, CID, TP int
 	var (
 		tasks   []Task
 		day     Day
-		days    []Day
 		student Student
 		user    User
 	)
@@ -124,15 +123,7 @@ func (db *Database) TaskMarkSeen(userName string, schoolID int, AID, CID, TP int
 	// Найдем нужный таск
 	for _, t := range tasks {
 		// Получим день по DayID
-		db.Logger.Info("Getting all days...")
-		err = db.SchoolServerDB.Find(&days).Error
-		if err != nil {
-			return errors.Wrapf(err, "Error query all days")
-		}
-		for i, d := range days {
-			db.Logger.Info("Days", "num", i, "day", d)
-		}
-		err = db.SchoolServerDB.Where("id = ?", t.DayID).First(&day).Error
+		err = db.SchoolServerDB.Debug().Where("id = ?", t.DayID).First(&day).Error
 		if err != nil {
 			return errors.Wrapf(err, "Error query day with id='%v', task='%v'", t.DayID, t)
 		}
