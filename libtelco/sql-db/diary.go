@@ -77,12 +77,14 @@ func (db *Database) TaskMarkDone(userName string, schoolID int, AID, CID, TP int
 	// Найдем нужный таск
 	for _, t := range tasks {
 		// Получим день по DayID
-		err = db.SchoolServerDB.First(&day, t.DayID).Error
+		day = Day{}
+		err = db.SchoolServerDB.Model(&t).Related(&day).Error
 		if err != nil {
 			return errors.Wrapf(err, "Error query day with id='%v'", t.DayID)
 		}
 		// Получим студента по дню
-		err = db.SchoolServerDB.First(&student, day.StudentID).Error
+		student = Student{}
+		err = db.SchoolServerDB.Model(&day).Related(&student).Error
 		if err != nil {
 			return errors.Wrapf(err, "Error query student with id='%v'", day.StudentID)
 		}
@@ -123,12 +125,14 @@ func (db *Database) TaskMarkSeen(userName string, schoolID int, AID, CID, TP int
 	// Найдем нужный таск
 	for _, t := range tasks {
 		// Получим день по DayID
-		err = db.SchoolServerDB.Debug().First(&day, t.DayID).Error
+		day = Day{}
+		err = db.SchoolServerDB.Model(&t).Related(&day).Error
 		if err != nil {
 			return errors.Wrapf(err, "Error query day with id='%v'", t.DayID)
 		}
 		// Получим студента по дню
-		err = db.SchoolServerDB.First(&student, day.StudentID).Error
+		student = Student{}
+		err = db.SchoolServerDB.Model(&day).Related(&student).Error
 		if err != nil {
 			return errors.Wrapf(err, "Error query student with id='%v'", day.StudentID)
 		}
@@ -171,12 +175,14 @@ func (db *Database) TaskMarkUndone(userName string, schoolID int, AID, CID, TP i
 	// Найдем нужный таск
 	for _, t := range tasks {
 		// Получим день по DayID
-		err = db.SchoolServerDB.First(&day, t.DayID).Error
+		day = Day{}
+		err = db.SchoolServerDB.Model(&t).Related(&day).Error
 		if err != nil {
 			return errors.Wrapf(err, "Error query day with id='%v'", t.DayID)
 		}
 		// Получим студента по дню
-		err = db.SchoolServerDB.First(&student, day.StudentID).Error
+		student = Student{}
+		err = db.SchoolServerDB.Model(&day).Related(&student).Error
 		if err != nil {
 			return errors.Wrapf(err, "Error query student with id='%v'", day.StudentID)
 		}
