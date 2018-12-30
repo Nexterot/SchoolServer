@@ -5,6 +5,8 @@
 [![GoDoc](https://godoc.org/github.com/masyagin1998/SchoolServer?status.svg)](https://godoc.org/github.com/masyagin1998/SchoolServer)
 [![Go Report Card](https://goreportcard.com/badge/github.com/masyagin1998/SchoolServer)](https://goreportcard.com/report/github.com/masyagin1998/SchoolServer)
 
+### В ДАННЫЙ МОМЕНТ РАЗРАБОТКА ОТКРЫТОЙ ВЕРСИИ ПРЕКРАЩЕНА.
+
 ### Описание.
 **SchoolServer** - это высоконагруженный сервер для мобильных приложений на IOS/Android. Он позволяет ученикам школ и их родителям в режиме реального времени узнавать оценки и расписание уроков, получать отчеты об успеваемости и посещаемости, общаться на форуме. Также доступны PUSH-уведомления.
 
